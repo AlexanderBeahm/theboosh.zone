@@ -22,5 +22,10 @@ COPY . /usr/src/hello-perld
 # Copy built frontend assets from builder stage
 COPY --from=frontend-builder /lib/HelloPerld/Public/dist /usr/src/hello-perld/lib/HelloPerld/Public/dist
 
-CMD ["morbo", "./script/hello-perld"]
+# Copy and set up entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 3000
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["morbo", "./script/hello-perld"]

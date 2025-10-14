@@ -55,6 +55,10 @@ sub startup {
         }
     });
 
+    # Configure session management
+    $self->sessions->default_expiration(86400); # 24 hours
+    $self->secrets(['your-secret-key-change-in-production']); # TODO: Use environment variable
+
     # Configure OpenAPI plugin
     $self->plugin('OpenAPI' => {
         url => $self->home->rel_file('swagger/swagger.json')
@@ -64,7 +68,7 @@ sub startup {
     $self->plugin('SwaggerUI' => {
         route => $self->routes->any('/swagger'),
         url => '/swagger.json',
-        favicon => '/helloperld.ico'
+        favicon => '/thebooshzone.ico'
     });
 
     # Serve the swagger.json file
@@ -72,6 +76,56 @@ sub startup {
         my $c = shift;
         $c->reply->file($c->app->home->rel_file('swagger/swagger.json'));
     });
+
+    # API Routes
+    my $api = $self->routes->under('/api');
+
+    # Authentication routes
+    $api->post('/auth/login')->to('Auth#login');
+    $api->post('/auth/logout')->to('Auth#logout');
+    $api->get('/auth/status')->to('Auth#status');
+
+    # Public article routes
+    $api->get('/articles')->to('Articles#get_all');
+    $api->get('/articles/:slug')->to('Articles#get_by_slug');
+
+    # Public tag routes
+    $api->get('/tags')->to('Tags#get_all');
+    $api->get('/tags/popular')->to('Tags#get_popular');
+    $api->get('/tags/search')->to('Tags#search');
+    $api->get('/tags/:slug')->to('Tags#get_by_slug');
+
+    # Admin routes (protected)
+    my $admin = $api->under('/admin')->to(cb => sub {
+        my $c = shift;
+
+        # Check if user is authenticated
+        my $user_id = $c->session('admin_user_id');
+        unless ($user_id) {
+            return $c->render(json => {
+                success => 0,
+                error => 'Authentication required'
+            }, status => 401);
+        }
+
+        return 1;
+    });
+
+    # Protected article management routes
+    $admin->get('/articles')->to('Articles#get_all'); # Admin can see unpublished
+    $admin->get('/articles/:id')->to('Articles#get_by_id');
+    $admin->post('/articles')->to('Articles#create');
+    $admin->put('/articles/:id')->to('Articles#update');
+    $admin->delete('/articles/:id')->to('Articles#delete');
+
+    # Protected tag management routes
+    $admin->get('/tags/:id')->to('Tags#get_by_id');
+    $admin->post('/tags')->to('Tags#create');
+    $admin->put('/tags/:id')->to('Tags#update');
+    $admin->delete('/tags/:id')->to('Tags#delete');
+
+    # Protected auth management routes
+    $admin->post('/auth/change-password')->to('Auth#change_password');
 
     # SPA fallback routing - catch all non-API routes and serve index.html
     # This allows Vue Router history mode to work correctly

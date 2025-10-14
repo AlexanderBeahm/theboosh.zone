@@ -1,0 +1,513 @@
+package HelloPerld::Model::Article;
+
+use strict;
+use warnings;
+
+our $VERSION = '1.0.0';
+
+use HelloPerld::Database::Postgres;
+
+sub new {
+    my ($class, %args) = @_;
+
+    my $self = {
+        logger => $args{logger},
+    };
+
+    return bless $self, $class;
+}
+
+sub get_all {
+    my ($self, %params) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    my $limit = $params{limit} || 20;
+    my $offset = $params{offset} || 0;
+    my $published_only = $params{published_only} // 1;
+    my $tag_filter = $params{tag_filter};
+
+    my $sql = q{
+        SELECT DISTINCT a.id, a.title, a.slug, a.excerpt, a.author,
+               a.published_at, a.date_added, a.date_updated, a.is_published,
+               a.meta_description, a.featured_image
+        FROM articles a
+    };
+
+    my @where_conditions;
+    my @bind_params;
+
+    if ($published_only) {
+        push @where_conditions, "a.is_published = ?";
+        push @bind_params, 1;
+    }
+
+    if ($tag_filter) {
+        $sql .= q{
+            INNER JOIN article_tags at ON a.id = at.article_id
+            INNER JOIN tags t ON at.tag_id = t.id
+        };
+        push @where_conditions, "t.slug = ?";
+        push @bind_params, $tag_filter;
+    }
+
+    if (@where_conditions) {
+        $sql .= " WHERE " . join(" AND ", @where_conditions);
+    }
+
+    $sql .= " ORDER BY a.published_at DESC, a.date_added DESC";
+    $sql .= " LIMIT ? OFFSET ?";
+    push @bind_params, $limit, $offset;
+
+    eval {
+        my $sth = $dbh->prepare($sql);
+        $sth->execute(@bind_params);
+
+        my @articles;
+        while (my $row = $sth->fetchrow_hashref()) {
+            # Fetch tags for this article
+            $row->{tags} = $self->get_article_tags($row->{id});
+            push @articles, $row;
+        }
+
+        $dbh->disconnect();
+        return \@articles;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to fetch articles: $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub get_by_slug {
+    my ($self, $slug) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    my $sql = q{
+        SELECT id, title, slug, content, excerpt, author,
+               published_at, date_added, date_updated, is_published,
+               meta_description, featured_image
+        FROM articles
+        WHERE slug = ?
+    };
+
+    eval {
+        my $sth = $dbh->prepare($sql);
+        $sth->execute($slug);
+
+        my $article = $sth->fetchrow_hashref();
+
+        if ($article) {
+            # Fetch tags for this article
+            $article->{tags} = $self->get_article_tags($article->{id});
+        }
+
+        $dbh->disconnect();
+        return $article;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to fetch article by slug '$slug': $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub get_by_id {
+    my ($self, $id) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    my $sql = q{
+        SELECT id, title, slug, content, excerpt, author,
+               published_at, date_added, date_updated, is_published,
+               meta_description, featured_image
+        FROM articles
+        WHERE id = ?
+    };
+
+    eval {
+        my $sth = $dbh->prepare($sql);
+        $sth->execute($id);
+
+        my $article = $sth->fetchrow_hashref();
+
+        if ($article) {
+            # Fetch tags for this article
+            $article->{tags} = $self->get_article_tags($article->{id});
+        }
+
+        $dbh->disconnect();
+        return $article;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to fetch article by ID '$id': $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub create {
+    my ($self, $article_data) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    # Generate slug from title if not provided
+    if (!$article_data->{slug}) {
+        $article_data->{slug} = $self->generate_slug($article_data->{title});
+    }
+
+    # Set default author if not provided
+    $article_data->{author} //= 'Alex Beahm';
+
+    eval {
+        $dbh->begin_work();
+
+        my $sql = q{
+            INSERT INTO articles (title, slug, content, excerpt, author,
+                                published_at, is_published, meta_description, featured_image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+        };
+
+        my $sth = $dbh->prepare($sql);
+        $sth->execute(
+            $article_data->{title},
+            $article_data->{slug},
+            $article_data->{content},
+            $article_data->{excerpt},
+            $article_data->{author},
+            $article_data->{published_at},
+            $article_data->{is_published} // 0,
+            $article_data->{meta_description},
+            $article_data->{featured_image}
+        );
+
+        my ($article_id) = $sth->fetchrow_array();
+
+        # Add tags if provided
+        if ($article_data->{tag_ids} && @{$article_data->{tag_ids}}) {
+            $self->set_article_tags($article_id, $article_data->{tag_ids});
+        }
+
+        $dbh->commit();
+        $dbh->disconnect();
+
+        return $article_id;
+    };
+
+    if ($@) {
+        $dbh->rollback();
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to create article: $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub update {
+    my ($self, $id, $article_data) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    eval {
+        $dbh->begin_work();
+
+        my $sql = q{
+            UPDATE articles
+            SET title = ?, slug = ?, content = ?, excerpt = ?, author = ?,
+                published_at = ?, is_published = ?, meta_description = ?,
+                featured_image = ?, date_updated = CURRENT_TIMESTAMP
+            WHERE id = ?
+        };
+
+        my $sth = $dbh->prepare($sql);
+        my $rows_affected = $sth->execute(
+            $article_data->{title},
+            $article_data->{slug},
+            $article_data->{content},
+            $article_data->{excerpt},
+            $article_data->{author},
+            $article_data->{published_at},
+            $article_data->{is_published},
+            $article_data->{meta_description},
+            $article_data->{featured_image},
+            $id
+        );
+
+        # Update tags if provided
+        if (exists $article_data->{tag_ids}) {
+            $self->set_article_tags($id, $article_data->{tag_ids});
+        }
+
+        $dbh->commit();
+        $dbh->disconnect();
+
+        return $rows_affected;
+    };
+
+    if ($@) {
+        $dbh->rollback();
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to update article ID '$id': $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub delete {
+    my ($self, $id) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return undef unless $dbh;
+
+    eval {
+        my $sql = "DELETE FROM articles WHERE id = ?";
+        my $sth = $dbh->prepare($sql);
+        my $rows_affected = $sth->execute($id);
+
+        $dbh->disconnect();
+        return $rows_affected;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to delete article ID '$id': $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+}
+
+sub get_article_tags {
+    my ($self, $article_id) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return [] unless $dbh;
+
+    my $sql = q{
+        SELECT t.id, t.name, t.slug
+        FROM tags t
+        INNER JOIN article_tags at ON t.id = at.tag_id
+        WHERE at.article_id = ?
+        ORDER BY t.name
+    };
+
+    eval {
+        my $sth = $dbh->prepare($sql);
+        $sth->execute($article_id);
+
+        my @tags;
+        while (my $row = $sth->fetchrow_hashref()) {
+            push @tags, $row;
+        }
+
+        $dbh->disconnect();
+        return \@tags;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to fetch tags for article ID '$article_id': $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return [];
+    }
+}
+
+sub set_article_tags {
+    my ($self, $article_id, $tag_ids) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return 0 unless $dbh;
+
+    eval {
+        # Remove existing tags
+        my $delete_sql = "DELETE FROM article_tags WHERE article_id = ?";
+        my $delete_sth = $dbh->prepare($delete_sql);
+        $delete_sth->execute($article_id);
+
+        # Add new tags
+        if ($tag_ids && @$tag_ids) {
+            my $insert_sql = "INSERT INTO article_tags (article_id, tag_id) VALUES (?, ?)";
+            my $insert_sth = $dbh->prepare($insert_sql);
+
+            foreach my $tag_id (@$tag_ids) {
+                $insert_sth->execute($article_id, $tag_id);
+            }
+        }
+
+        return 1;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to set tags for article ID '$article_id': $@");
+        }
+        return 0;
+    }
+}
+
+sub generate_slug {
+    my ($self, $title) = @_;
+
+    # Convert to lowercase and replace spaces/special chars with hyphens
+    my $slug = lc($title);
+    $slug =~ s/[^a-z0-9\s-]//g;     # Remove non-alphanumeric chars (except spaces and hyphens)
+    $slug =~ s/\s+/-/g;             # Replace spaces with hyphens
+    $slug =~ s/--+/-/g;             # Replace multiple hyphens with single
+    $slug =~ s/^-|-$//g;            # Remove leading/trailing hyphens
+
+    return $slug;
+}
+
+sub get_count {
+    my ($self, %params) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return 0 unless $dbh;
+
+    my $published_only = $params{published_only} // 1;
+    my $tag_filter = $params{tag_filter};
+
+    my $sql = "SELECT COUNT(DISTINCT a.id) FROM articles a";
+    my @where_conditions;
+    my @bind_params;
+
+    if ($published_only) {
+        push @where_conditions, "a.is_published = ?";
+        push @bind_params, 1;
+    }
+
+    if ($tag_filter) {
+        $sql .= q{
+            INNER JOIN article_tags at ON a.id = at.article_id
+            INNER JOIN tags t ON at.tag_id = t.id
+        };
+        push @where_conditions, "t.slug = ?";
+        push @bind_params, $tag_filter;
+    }
+
+    if (@where_conditions) {
+        $sql .= " WHERE " . join(" AND ", @where_conditions);
+    }
+
+    eval {
+        my $sth = $dbh->prepare($sql);
+        $sth->execute(@bind_params);
+
+        my ($count) = $sth->fetchrow_array();
+        $dbh->disconnect();
+
+        return $count || 0;
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to get article count: $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return 0;
+    }
+}
+
+1;
+
+__END__
+
+=head1 NAME
+
+HelloPerld::Model::Article - Article data model and database operations
+
+=head1 SYNOPSIS
+
+    use HelloPerld::Model::Article;
+
+    my $article_model = HelloPerld::Model::Article->new(logger => $logger);
+
+    # Get all articles with pagination
+    my $articles = $article_model->get_all(limit => 10, offset => 0);
+
+    # Get article by slug
+    my $article = $article_model->get_by_slug('my-article-slug');
+
+    # Create new article
+    my $article_id = $article_model->create({
+        title => 'My Article',
+        content => 'Article content...',
+        is_published => 1
+    });
+
+=head1 DESCRIPTION
+
+This module provides database operations for articles in the HelloPerld application.
+It handles CRUD operations, tag associations, and provides methods for retrieving
+articles with various filtering and pagination options.
+
+=head1 METHODS
+
+=head2 new
+
+Creates a new Article model instance.
+
+=head2 get_all
+
+Retrieves articles with optional filtering and pagination.
+
+=head2 get_by_slug
+
+Retrieves a single article by its slug.
+
+=head2 get_by_id
+
+Retrieves a single article by its ID.
+
+=head2 create
+
+Creates a new article.
+
+=head2 update
+
+Updates an existing article.
+
+=head2 delete
+
+Deletes an article by ID.
+
+=head2 get_article_tags
+
+Retrieves tags associated with an article.
+
+=head2 set_article_tags
+
+Sets the tags for an article.
+
+=head1 AUTHOR
+
+Alex Beahm <alexanderbeahm@gmail.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2024 Alex Beahm
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

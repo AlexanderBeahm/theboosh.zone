@@ -5,6 +5,8 @@ services:
       - "3000:3000"
     env_file:
       - ./.env
+    environment:
+      POSTGRES_HOST: db
     develop:
       watch:
         - action: sync+restart
@@ -20,8 +22,6 @@ services:
 
   db:
     image: postgres:latest
-    env_file:
-      - ./.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

@@ -3,6 +3,7 @@
     <nav class="nav-links" aria-label="Main navigation">
       <router-link to="/" :class="{ active: $route.path === '/' }">Home</router-link>
       <router-link to="/about" :class="{ active: $route.path === '/about' }">About</router-link>
+      <router-link to="/articles" :class="{ active: $route.path.startsWith('/articles') }">Articles</router-link>
       <a
         href="/swagger"
         target="_blank"
@@ -10,7 +11,7 @@
         rel="noopener noreferrer"
       >Swagger</a>
     </nav>
-    <div class="nav-title" aria-label="Application name">Hello, Perld</div>
+    <div class="nav-title" aria-label="Site name">TheBoosh.Zone</div>
     <div class="nav-spacer"></div>
   </div>
 </template>

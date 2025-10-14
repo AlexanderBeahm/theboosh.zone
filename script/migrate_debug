@@ -1,0 +1,104 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use FindBin;
+BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+
+use HelloPerld::Database::Postgres;
+use HelloPerld::Logger::LoggerFactory;
+use File::Glob qw(bsd_glob);
+
+# Initialize logger
+my $logger = HelloPerld::Logger::LoggerFactory->create_default_logger();
+
+# Test database connection first
+print "Testing database connection...\n";
+my $dbh = HelloPerld::Database::Postgres::get_connection($logger);
+if (!$dbh) {
+    print "❌ Failed to connect to database\n";
+    exit 1;
+}
+print "✅ Database connection successful\n";
+
+# Check if migrations directory exists and list files
+my $migration_dir = 'migrations';
+print "Checking migration directory: $migration_dir\n";
+
+unless (-d $migration_dir) {
+    print "❌ Migration directory does not exist: $migration_dir\n";
+    exit 1;
+}
+
+my @sql_files = bsd_glob("$migration_dir/*.sql");
+my @pl_files = bsd_glob("$migration_dir/*.pl");
+my @migration_files = sort (@sql_files, @pl_files);
+
+print "Found migration files:\n";
+foreach my $file (@migration_files) {
+    print "  - $file\n";
+}
+print "Total files found: " . scalar(@migration_files) . "\n\n";
+
+if (@migration_files == 0) {
+    print "❌ No migration files found\n";
+    exit 1;
+}
+
+# Check applied migrations
+print "Checking applied migrations...\n";
+HelloPerld::Database::Postgres::initialize_migrations_table($dbh, $logger);
+my @applied = HelloPerld::Database::Postgres::get_applied_migrations($dbh, $logger);
+print "Applied migrations: " . join(", ", @applied) . "\n";
+my %applied_lookup = map { $_ => 1 } @applied;
+
+# Process each migration
+foreach my $file (@migration_files) {
+    my ($version, $description, $type) = HelloPerld::Database::Postgres::extract_migration_info($file);
+
+    if (!$version) {
+        print "❌ Could not extract version from filename: $file\n";
+        next;
+    }
+
+    print "\nProcessing: $file\n";
+    print "  Version: $version\n";
+    print "  Description: $description\n";
+    print "  Type: $type\n";
+
+    if ($applied_lookup{$version}) {
+        print "  Status: ⏭️  Skipped (already applied)\n";
+        next;
+    }
+
+    print "  Status: 🔄 Applying...\n";
+
+    my $success = 0;
+    if ($type eq 'sql') {
+        # Test reading the file
+        if (open my $fh, '<', $file) {
+            my $sql = do { local $/; <$fh> };
+            close $fh;
+            print "  SQL content length: " . length($sql) . " characters\n";
+
+            # Apply the migration
+            $success = HelloPerld::Database::Postgres::apply_migration($dbh, $version, $description, $sql, $logger);
+        } else {
+            print "  ❌ Could not read file: $!\n";
+        }
+    } elsif ($type eq 'pl') {
+        print "  🐪 Perl migration (requires additional dependencies)\n";
+        $success = HelloPerld::Database::Postgres::execute_perl_migration($dbh, $file, $version, $description, $logger);
+    }
+
+    if ($success) {
+        print "  Status: ✅ Applied successfully\n";
+    } else {
+        print "  Status: ❌ Failed to apply\n";
+        last;
+    }
+}
+
+$dbh->disconnect();
+print "\n🎉 Migration debugging complete!\n";

@@ -1,17 +1,19 @@
-# hello-perld
+# TheBoosh.Zone
 
-A simple perl server with containerization and VSCode dev container support.
+Alex Beahm's personal portfolio and blog website built with modern full-stack architecture.
 
 [![Docker Image CI](https://github.com/AlexanderBeahm/hello-perld/actions/workflows/docker-image.yml/badge.svg)](https://github.com/AlexanderBeahm/hello-perld/actions/workflows/docker-image.yml)
 
 # Features
-- Lightweight Perl web server w/ [Mojolicious](https://docs.mojolicious.org/)
-- Vue 3 SPA frontend with Vite build system
-- OpenAPI schema support w/ Swagger page.
-- Multiple logging schemes available out of box.
-- PostgreSQL database integration.
-- DevContainer support w/ external Docker containerization.
-- Integrated Claude Code support.
+- **Blog System**: Full-featured articles with Markdown support, syntax highlighting, and tag management
+- **Admin Interface**: Comprehensive dashboard for content creation and management
+- **Authentication**: Secure admin login system with session management
+- **Database**: PostgreSQL with migration system for schema management
+- **Frontend**: Vue 3 SPA with responsive design and modern UI components
+- **Backend**: Mojolicious Perl framework with RESTful API
+- **OpenAPI Documentation**: Complete API documentation with Swagger UI
+- **Development**: DevContainer support with hot-reload and integrated tooling
+- **Monitoring**: Prometheus metrics and Grafana dashboards included
 
 # Prerequisites
 - **Node.js LTS** (for frontend development)
@@ -21,11 +23,33 @@ A simple perl server with containerization and VSCode dev container support.
 # Setup
 
 ## DevContainer Setup (Recommended)
-1. Open repository with VSCode `code .`
-2. Use VSCode command 'Open Folder In Container...'
-3. Wait until postcreate.sh and poststart.sh are completed (installs dependencies and builds frontend)
-4. Run `docker compose up --build --watch`
-5. "Hello, perld!" will be served at localhost:3000, with swagger frontend at localhost:3000/swagger
+1. **Configure Environment**: Copy `.env.example` to `.env` and update with your database credentials:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your secure passwords and configuration
+   ```
+
+2. Open repository with VSCode `code .`
+
+3. Use VSCode command 'Open Folder In Container...'
+
+4. Wait until postcreate.sh and poststart.sh are completed (installs dependencies and builds frontend)
+
+5. **Start Services**:
+   ```bash
+   docker compose up --build --watch
+   ```
+
+6. **Run Database Migrations** (in a new terminal):
+   ```bash
+   docker exec thebooshzone-hello-perld-1 perl script/migrate
+   ```
+
+7. TheBoosh.Zone will be served at:
+   - **Main Site**: http://localhost:3000
+   - **Admin Dashboard**: http://localhost:3000/admin
+   - **API Documentation**: http://localhost:3000/swagger
+   - **Monitoring**: http://localhost:3001 (Grafana)
 
 ## Local Development Setup
 1. **Install Perl dependencies:**
@@ -51,6 +75,64 @@ A simple perl server with containerization and VSCode dev container support.
 ```bash
 docker compose up --build
 ```
+
+# Database Management
+
+TheBoosh.Zone uses PostgreSQL with a custom migration system that supports both SQL and Perl scripts.
+
+## Environment Configuration
+
+Configure database connection in your `.env` file:
+
+```env
+# PostgreSQL Database Configuration
+POSTGRES_DB=thebooshzone_dev
+POSTGRES_USER=theboosh_user
+POSTGRES_PASSWORD=your_secure_database_password
+POSTGRES_HOST=db  # Use 'db' for Docker, 'localhost' for external connections
+
+# Admin User Configuration (for initial setup)
+ADMIN_USERNAME=admin
+ADMIN_EMAIL=your-email@example.com
+ADMIN_PASSWORD=your_secure_admin_password
+```
+
+## Migration System
+
+### Running Migrations
+
+**After starting Docker containers**, run migrations to set up the database schema:
+
+```bash
+# Run all pending migrations
+docker exec thebooshzone-hello-perld-1 perl script/migrate
+
+# Debug migration issues (detailed output)
+docker exec thebooshzone-hello-perld-1 perl script/migrate_debug
+```
+
+### Migration Files
+
+Migrations are located in `/migrations/` and are applied in numerical order:
+
+- `001_create_articles_table.sql` - Blog articles table
+- `002_create_tags_table.sql` - Content tags
+- `003_create_article_tags_table.sql` - Many-to-many relationship
+- `004_create_admin_users_table.sql` - Admin authentication
+- `005_create_default_admin_user.pl` - Creates initial admin user
+
+### Development Workflow for Migrations
+
+1. **Start containers**: `docker compose up -d`
+2. **Run migrations**: `docker exec thebooshzone-hello-perld-1 perl script/migrate`
+3. **Verify setup**: Check that all tables exist and admin user is created
+
+### Troubleshooting Database Issues
+
+- **Connection refused**: Ensure PostgreSQL container is running (`docker compose ps`)
+- **User does not exist**: Delete postgres volume and restart: `docker compose down && docker volume rm thebooshzone_postgres_data && docker compose up -d`
+- **Migration issues**: Use `script/migrate_debug` for detailed diagnostics
+- **Check applied migrations**: `docker exec thebooshzone-db-1 psql -U theboosh_user -d thebooshzone_dev -c "SELECT * FROM schema_migrations;"`
 
 # Development Workflow
 
@@ -82,11 +164,20 @@ This builds assets to `lib/HelloPerld/Public/dist/` which are served by Mojolici
 
 ## Project Structure
 ```
-hello-perld/
+theboosh.zone/
 ├── frontend/                    # Vue 3 SPA frontend
 │   ├── src/
 │   │   ├── components/         # Vue components
+│   │   │   ├── MarkdownRenderer.vue    # Markdown rendering with syntax highlighting
+│   │   │   ├── ArticleEditor.vue       # Admin article creation/editing
+│   │   │   └── NavBar.vue              # Main navigation
 │   │   ├── views/              # Page views
+│   │   │   ├── HomePage.vue            # Landing page
+│   │   │   ├── AboutPage.vue           # About page
+│   │   │   ├── ArticlesPage.vue        # Blog listing with tag filtering
+│   │   │   ├── ArticlePage.vue         # Individual article display
+│   │   │   ├── AdminLogin.vue          # Admin authentication
+│   │   │   └── AdminDashboard.vue      # Content management interface
 │   │   ├── router/             # Vue Router config
 │   │   ├── assets/             # CSS and static assets
 │   │   ├── App.vue             # Root component
@@ -95,11 +186,37 @@ hello-perld/
 │   ├── vite.config.js          # Vite configuration
 │   └── package.json            # Frontend dependencies
 ├── lib/HelloPerld/             # Perl backend
+│   ├── Controller/             # API controllers
+│   │   ├── Articles.pm         # Article CRUD operations
+│   │   ├── Tags.pm             # Tag management
+│   │   ├── Auth.pm             # Admin authentication
+│   │   └── Health.pm           # Health check endpoint
+│   ├── Model/                  # Data models
+│   │   ├── Article.pm          # Article data operations
+│   │   └── Tag.pm              # Tag data operations
+│   ├── Database/               # Database utilities
+│   │   └── Postgres.pm         # Connection and migration system
+│   ├── Logger/                 # Logging system
 │   ├── Public/                 # Static assets
 │   │   └── dist/               # Built frontend assets (generated)
 │   └── Templates/              # Mojolicious templates
+├── migrations/                 # Database migrations
+│   ├── 001_create_articles_table.sql
+│   ├── 002_create_tags_table.sql
+│   ├── 003_create_article_tags_table.sql
+│   ├── 004_create_admin_users_table.sql
+│   └── 005_create_default_admin_user.pl
 ├── script/                     # Perl scripts
-└── Dockerfile                  # Multi-stage build (Node + Perl)
+│   ├── hello-perld             # Main application script
+│   ├── migrate                 # Migration runner
+│   ├── migrate_debug           # Migration debugging
+│   └── create_admin_user       # Admin user creation utility
+├── swagger/                    # API documentation
+│   └── swagger.json            # OpenAPI 3.0 specification
+├── .env.example                # Environment configuration template
+├── docker-compose.yml          # Multi-service development environment
+├── Dockerfile                  # Multi-stage build (Node + Perl)
+└── docker-entrypoint.sh        # Container startup script
 
 ---
 ## ssh-agent Setup (for use with Git SSH within Dev Container)

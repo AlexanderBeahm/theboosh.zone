@@ -1,0 +1,158 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use FindBin;
+BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+
+use HelloPerld::Database::Postgres;
+use Digest::SHA qw(sha256_hex);
+use Crypt::Random qw(makerandom_octet);
+
+# Get environment variables for admin user
+my $username = $ENV{'ADMIN_USERNAME'} || 'admin';
+my $email = $ENV{'ADMIN_EMAIL'} || 'admin@example.com';
+my $password = $ENV{'ADMIN_PASSWORD'};
+
+# Validate required environment variables
+unless ($password) {
+    die "ERROR: ADMIN_PASSWORD environment variable is required\n";
+}
+
+# Validate email format (basic check)
+unless ($email =~ /^[^\s@]+@[^\s@]+\.[^\s@]+$/) {
+    die "ERROR: Invalid email format: $email\n";
+}
+
+# Validate password strength (minimum 8 characters)
+if (length($password) < 8) {
+    die "ERROR: Password must be at least 8 characters long\n";
+}
+
+print "Creating default admin user...\n";
+print "Username: $username\n";
+print "Email: $email\n";
+
+# Get database connection
+my $dbh = HelloPerld::Database::Postgres::get_connection();
+unless ($dbh) {
+    die "ERROR: Could not connect to database\n";
+}
+
+eval {
+    # Check if admin user already exists
+    my $check_sql = "SELECT id FROM admin_users WHERE username = ? OR email = ?";
+    my $check_sth = $dbh->prepare($check_sql);
+    $check_sth->execute($username, $email);
+
+    if (my $existing_user = $check_sth->fetchrow_hashref()) {
+        print "Admin user already exists (ID: $existing_user->{id}). Skipping creation.\n";
+        $dbh->disconnect();
+        exit 0;
+    }
+
+    # Hash the password using the same method as Auth controller
+    my $password_hash = hash_password($password);
+
+    # Insert new admin user
+    my $insert_sql = q{
+        INSERT INTO admin_users (username, password_hash, email, is_active)
+        VALUES (?, ?, ?, true)
+        RETURNING id
+    };
+
+    my $insert_sth = $dbh->prepare($insert_sql);
+    $insert_sth->execute($username, $password_hash, $email);
+
+    my ($user_id) = $insert_sth->fetchrow_array();
+
+    print "✅ Admin user created successfully with ID: $user_id\n";
+    print "You can now log in with:\n";
+    print "  Username: $username\n";
+    print "  Email: $email\n";
+    print "  Password: [from ADMIN_PASSWORD env var]\n";
+
+    $dbh->disconnect();
+};
+
+if ($@) {
+    print "❌ Failed to create admin user: $@\n";
+    $dbh->disconnect() if $dbh;
+    exit 1;
+}
+
+sub hash_password {
+    my ($password) = @_;
+
+    # Generate a random salt (same method as Auth controller)
+    my $salt = unpack('H*', makerandom_octet(Length => 16));
+
+    # Create hash with salt
+    my $hash = sha256_hex($password . $salt);
+
+    # Return salt + hash combined
+    return $salt . $hash;
+}
+
+__END__
+
+=head1 NAME
+
+create_admin_user - Create default admin user for TheBoosh.Zone
+
+=head1 SYNOPSIS
+
+    ADMIN_USERNAME=admin ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=mypassword perl script/create_admin_user
+
+=head1 DESCRIPTION
+
+This script creates a default admin user for the TheBoosh.Zone application.
+It uses the same password hashing method as the Auth controller to ensure
+compatibility.
+
+The script is idempotent - it will not create duplicate users if one already
+exists with the same username or email.
+
+=head1 ENVIRONMENT VARIABLES
+
+=over 4
+
+=item * ADMIN_USERNAME - Admin username (default: 'admin')
+
+=item * ADMIN_EMAIL - Admin email address (required, must be valid email format)
+
+=item * ADMIN_PASSWORD - Admin password (required, minimum 8 characters)
+
+=back
+
+=head1 SECURITY
+
+The script uses the same password hashing method as HelloPerld::Controller::Auth:
+- Generates a random 16-byte salt
+- Combines password with salt
+- Creates SHA256 hash
+- Returns salt + hash (96 hex characters total)
+
+=head1 EXIT CODES
+
+=over 4
+
+=item * 0 - Success (user created or already exists)
+
+=item * 1 - Failure (validation error, database error, etc.)
+
+=back
+
+=head1 AUTHOR
+
+Alex Beahm <alexanderbeahm@gmail.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2024 Alex Beahm
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=cut

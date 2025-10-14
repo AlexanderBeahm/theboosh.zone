@@ -3,6 +3,7 @@
 Makefile
 MYMETA.json
 MYMETA.yml
+.claude*
 
 # Frontend build artifacts
 frontend/node_modules/

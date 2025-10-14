@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hello, Perld</title>
-  <link rel="icon" type="image/x-icon" href="/helloperld.ico">
+  <link rel="icon" type="image/x-icon" href="/thebooshzone.ico">
   <script type="module" crossorigin src="/dist/assets/index.js"></script>
   <link rel="stylesheet" crossorigin href="/dist/assets/index.css">
 </head>

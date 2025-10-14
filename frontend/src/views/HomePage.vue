@@ -1,6 +1,6 @@
 <template>
   <div class="content">
-    <h1>Hello, Perld!</h1>
+    <h1>TheBoosh.Zone</h1>
   </div>
 </template>
 

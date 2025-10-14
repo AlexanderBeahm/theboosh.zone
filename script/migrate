@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use FindBin;
+BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+
+use HelloPerld::Database::Postgres;
+use HelloPerld::Logger::LoggerFactory;
+
+# Initialize logger
+my $logger = HelloPerld::Logger::LoggerFactory->create_default_logger();
+
+# Run migrations
+$logger->info("Starting database migrations...");
+
+my $migrations_run = HelloPerld::Database::Postgres::run_migrations('migrations', $logger);
+
+if ($migrations_run >= 0) {
+    $logger->info("Migration process completed successfully.");
+    exit 0;
+} else {
+    $logger->error("Migration process failed.");
+    exit 1;
+}
