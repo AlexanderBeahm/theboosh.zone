@@ -5,15 +5,6 @@
       <div class="header-content">
         <h1>Admin Dashboard</h1>
         <p class="welcome-message">Welcome back, {{ user?.username || 'Admin' }}</p>
-
-        <div class="header-actions">
-          <button @click="showCreateArticle = true" class="create-button">
-            ➕ Create Article
-          </button>
-          <button @click="handleLogout" class="logout-button">
-            🚪 Logout
-          </button>
-        </div>
       </div>
     </div>
 
@@ -65,6 +56,10 @@
           <option value="published_at">Recently Published</option>
           <option value="title">Title A-Z</option>
         </select>
+
+        <button @click="showCreateArticle = true" class="create-article-button">
+          ✏️ New Article
+        </button>
       </div>
     </div>
 
@@ -322,7 +317,7 @@ async function fetchArticles() {
       pagination.value = response.data.pagination
 
       // Update stats
-      stats.value.totalArticles = pagination.value.total_count
+      stats.value.totalArticles = response.data.articles.length
       stats.value.publishedArticles = response.data.articles.filter(a => a.is_published).length
       stats.value.draftArticles = response.data.articles.filter(a => !a.is_published).length
     } else {
@@ -484,16 +479,13 @@ onMounted(async () => {
 }
 
 .header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--spacing-lg);
+  text-align: center;
+  color: var(--text-primary);
 }
 
 .dashboard-header h1 {
   font-size: 2.5rem;
-  margin: 0;
+  margin: 0 0 var(--spacing-xs) 0;
   font-weight: 700;
 }
 
@@ -501,41 +493,6 @@ onMounted(async () => {
   margin: 0;
   opacity: 0.9;
   font-size: 1.125rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--spacing-md);
-}
-
-.create-button,
-.logout-button {
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border: none;
-  border-radius: var(--radius-md);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.create-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.create-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-.logout-button {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.logout-button:hover {
-  background-color: rgba(255, 0, 0, 0.2);
 }
 
 /* Stats Grid */
@@ -619,6 +576,30 @@ onMounted(async () => {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-size: 0.875rem;
+}
+
+.create-article-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+}
+
+.create-article-button:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.create-article-button:active {
+  transform: translateY(0);
 }
 
 /* Loading and Error States */
@@ -967,11 +948,6 @@ onMounted(async () => {
     padding: var(--spacing-md);
   }
 
-  .header-content {
-    flex-direction: column;
-    text-align: center;
-  }
-
   .dashboard-header h1 {
     font-size: 2rem;
   }
@@ -981,12 +957,21 @@ onMounted(async () => {
     align-items: stretch;
   }
 
+  .search-box {
+    max-width: none;
+  }
+
   .filter-controls {
-    justify-content: stretch;
+    flex-wrap: wrap;
   }
 
   .filter-select {
     flex: 1;
+    min-width: 150px;
+  }
+
+  .create-article-button {
+    width: 100%;
   }
 
   .table-header {

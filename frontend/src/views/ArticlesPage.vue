@@ -3,7 +3,7 @@
     <div class="page-header">
       <h1>Articles</h1>
       <p class="page-description">
-        Exploring technology, programming, and digital innovation
+        The articles below are written with my own personal opinions and offer no reflection on any other associations I have.
       </p>
     </div>
 

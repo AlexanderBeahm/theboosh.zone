@@ -125,7 +125,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary-color-light) 0%, var(--primary-color) 100%);
+  background-color: var(--bg-color);
   padding: var(--spacing-lg);
 }
 
@@ -258,13 +258,6 @@ onMounted(async () => {
 .back-link:hover {
   color: var(--primary-color-dark);
   text-decoration: underline;
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .admin-login-page {
-    background: linear-gradient(135deg, var(--darker-bg) 0%, var(--dark-bg) 100%);
-  }
 }
 
 /* Responsive design */

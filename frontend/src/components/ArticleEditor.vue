@@ -677,8 +677,11 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
+  min-height: 0;
+}
+
+.selected-tags:not(:empty) {
   margin-bottom: var(--spacing-sm);
-  min-height: 24px;
 }
 
 .selected-tag {
