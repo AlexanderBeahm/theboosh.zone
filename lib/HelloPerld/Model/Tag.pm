@@ -150,18 +150,18 @@ sub get_by_name {
         WHERE name = ?
     };
 
+    my $tag;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($name);
 
-        my $tag = $sth->fetchrow_hashref();
+        $tag = $sth->fetchrow_hashref();
 
         if ($tag) {
             $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
         }
 
         $dbh->disconnect();
-        return $tag;
     };
 
     if ($@) {
@@ -171,6 +171,8 @@ sub get_by_name {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $tag;
 }
 
 sub create {
@@ -184,6 +186,7 @@ sub create {
         $tag_data->{slug} = $self->generate_slug($tag_data->{name});
     }
 
+    my $tag_id;
     eval {
         my $sql = q{
             INSERT INTO tags (name, slug)
@@ -194,10 +197,9 @@ sub create {
         my $sth = $dbh->prepare($sql);
         $sth->execute($tag_data->{name}, $tag_data->{slug});
 
-        my ($tag_id) = $sth->fetchrow_array();
+        ($tag_id) = $sth->fetchrow_array();
 
         $dbh->disconnect();
-        return $tag_id;
     };
 
     if ($@) {
@@ -207,6 +209,8 @@ sub create {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $tag_id;
 }
 
 sub update {

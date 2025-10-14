@@ -8,7 +8,7 @@ wait_for_database() {
     echo "⏳ Waiting for database to be ready..."
 
     # Wait for database connection to be available
-    until perl -MHelloPerld::Database::Postgres -e "HelloPerld::Database::Postgres::validate_connection()" 2>/dev/null; do
+    until perl -I/usr/src/hello-perld/lib -MHelloPerld::Database::Postgres -e "HelloPerld::Database::Postgres::validate_connection()" 2>/dev/null; do
         echo "Database is not ready yet, waiting 2 seconds..."
         sleep 2
     done

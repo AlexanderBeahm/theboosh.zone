@@ -14,6 +14,8 @@ WriteMakefile(
         'Mojolicious'         => 0,  # Added for web framework,
         'Mojolicious::Plugin::OpenAPI' => 0, # Added for OpenAPI/Swagger
         'Mojolicious::Plugin::SwaggerUI' => 0, # Added for Swagger UI
+        'Crypt::Random'       => 0,  # Added for password salt generation
+        'Digest::SHA'         => 0,  # Added for password hashing
     },
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
       (ABSTRACT      => 'Hello Perl Daemon', # Set abstract directly

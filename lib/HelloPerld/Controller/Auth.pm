@@ -13,8 +13,10 @@ use Crypt::Random qw(makerandom_octet);
 sub login {
     my $self = shift;
 
-    my $username = $self->param('username');
-    my $password = $self->param('password');
+    # Try to get params from OpenAPI validation first, fallback to standard param
+    my $body = $self->req->json || {};
+    my $username = $self->param('username') || $body->{username};
+    my $password = $self->param('password') || $body->{password};
 
     unless ($username && $password) {
         return $self->render(json => {
@@ -178,6 +180,8 @@ sub _is_authenticated {
 sub _authenticate_user {
     my ($self, $username, $password) = @_;
 
+    $self->app->logger_instance->info("Auth attempt - username: '$username', password length: " . length($password));
+
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
     return undef unless $dbh;
 
@@ -187,6 +191,7 @@ sub _authenticate_user {
         WHERE username = ? AND is_active = true
     };
 
+    my $authenticated_user;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($username);
@@ -194,11 +199,16 @@ sub _authenticate_user {
         my $user = $sth->fetchrow_hashref();
         $dbh->disconnect();
 
-        if ($user && $self->_verify_password($password, $user->{password_hash})) {
-            return $user;
+        if ($user) {
+            $self->app->logger_instance->info("User found: " . $user->{username} . ", hash length: " . length($user->{password_hash}));
+            my $verify_result = $self->_verify_password($password, $user->{password_hash});
+            $self->app->logger_instance->info("Password verification result: " . ($verify_result ? "SUCCESS" : "FAILED"));
+            if ($verify_result) {
+                $authenticated_user = $user;
+            }
+        } else {
+            $self->app->logger_instance->info("User not found in database");
         }
-
-        return undef;
     };
 
     if ($@) {
@@ -206,6 +216,8 @@ sub _authenticate_user {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $authenticated_user;
 }
 
 sub _get_user_by_id {

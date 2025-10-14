@@ -60,19 +60,20 @@ sub get_all {
     $sql .= " LIMIT ? OFFSET ?";
     push @bind_params, $limit, $offset;
 
+    my $articles;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute(@bind_params);
 
-        my @articles;
+        my @articles_array;
         while (my $row = $sth->fetchrow_hashref()) {
             # Fetch tags for this article
             $row->{tags} = $self->get_article_tags($row->{id});
-            push @articles, $row;
+            push @articles_array, $row;
         }
 
         $dbh->disconnect();
-        return \@articles;
+        $articles = \@articles_array;
     };
 
     if ($@) {
@@ -82,6 +83,8 @@ sub get_all {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $articles;
 }
 
 sub get_by_slug {
@@ -98,11 +101,12 @@ sub get_by_slug {
         WHERE slug = ?
     };
 
+    my $article;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($slug);
 
-        my $article = $sth->fetchrow_hashref();
+        $article = $sth->fetchrow_hashref();
 
         if ($article) {
             # Fetch tags for this article
@@ -110,7 +114,6 @@ sub get_by_slug {
         }
 
         $dbh->disconnect();
-        return $article;
     };
 
     if ($@) {
@@ -120,6 +123,8 @@ sub get_by_slug {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $article;
 }
 
 sub get_by_id {
@@ -136,11 +141,12 @@ sub get_by_id {
         WHERE id = ?
     };
 
+    my $article;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($id);
 
-        my $article = $sth->fetchrow_hashref();
+        $article = $sth->fetchrow_hashref();
 
         if ($article) {
             # Fetch tags for this article
@@ -148,7 +154,6 @@ sub get_by_id {
         }
 
         $dbh->disconnect();
-        return $article;
     };
 
     if ($@) {
@@ -158,6 +163,8 @@ sub get_by_id {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $article;
 }
 
 sub create {
@@ -174,6 +181,7 @@ sub create {
     # Set default author if not provided
     $article_data->{author} //= 'Alex Beahm';
 
+    my $article_id;
     eval {
         $dbh->begin_work();
 
@@ -197,7 +205,7 @@ sub create {
             $article_data->{featured_image}
         );
 
-        my ($article_id) = $sth->fetchrow_array();
+        ($article_id) = $sth->fetchrow_array();
 
         # Add tags if provided
         if ($article_data->{tag_ids} && @{$article_data->{tag_ids}}) {
@@ -206,8 +214,6 @@ sub create {
 
         $dbh->commit();
         $dbh->disconnect();
-
-        return $article_id;
     };
 
     if ($@) {
@@ -218,6 +224,8 @@ sub create {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $article_id;
 }
 
 sub update {
@@ -226,6 +234,7 @@ sub update {
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
+    my $rows_affected;
     eval {
         $dbh->begin_work();
 
@@ -238,7 +247,7 @@ sub update {
         };
 
         my $sth = $dbh->prepare($sql);
-        my $rows_affected = $sth->execute(
+        $rows_affected = $sth->execute(
             $article_data->{title},
             $article_data->{slug},
             $article_data->{content},
@@ -258,8 +267,6 @@ sub update {
 
         $dbh->commit();
         $dbh->disconnect();
-
-        return $rows_affected;
     };
 
     if ($@) {
@@ -270,6 +277,8 @@ sub update {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $rows_affected;
 }
 
 sub delete {
@@ -278,13 +287,13 @@ sub delete {
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
+    my $rows_affected;
     eval {
         my $sql = "DELETE FROM articles WHERE id = ?";
         my $sth = $dbh->prepare($sql);
-        my $rows_affected = $sth->execute($id);
+        $rows_affected = $sth->execute($id);
 
         $dbh->disconnect();
-        return $rows_affected;
     };
 
     if ($@) {
@@ -294,6 +303,8 @@ sub delete {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $rows_affected;
 }
 
 sub get_article_tags {
