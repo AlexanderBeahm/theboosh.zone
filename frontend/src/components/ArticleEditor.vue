@@ -192,7 +192,7 @@
 
             <input
               v-model="form.featured_image"
-              type="url"
+              :type="isRelativeUrl ? 'text' : 'url'"
               :disabled="isSaving"
               class="form-input featured-image-url"
               placeholder="Or enter image URL directly"
@@ -356,6 +356,11 @@ const isFormValid = computed(() => {
   return form.value.title.trim() &&
          form.value.slug.trim() &&
          form.value.content.trim()
+})
+
+const isRelativeUrl = computed(() => {
+  const url = form.value.featured_image
+  return url && (url.startsWith('/') || !url.includes('://'))
 })
 
 // Methods
