@@ -18,6 +18,7 @@ sub validate_connection {
     my $user = $ENV{'POSTGRES_USER'}; # fetch from env variables
     my $password = $ENV{'POSTGRES_PASSWORD'}; # fetch from env variables
 
+    my $success = 0;
     eval {
         my $dbh = DBI->connect("dbi:Pg:dbname=$dbname;host=$host;port=$port", $user, $password, { RaiseError => 1, AutoCommit => 1 });
 
@@ -28,7 +29,7 @@ sub validate_connection {
                 print "Connected to PostgreSQL database successfully!\n";
             }
             $dbh->disconnect;
-            return 1;
+            $success = 1;
         }
     };
 
@@ -41,6 +42,8 @@ sub validate_connection {
         }
         return 0;
     }
+
+    return $success;
 }
 
 sub get_connection {
@@ -77,12 +80,13 @@ sub initialize_migrations_table {
         )
     };
 
+    my $success = 0;
     eval {
         $dbh->do($sql);
         if ($logger) {
             $logger->info("Migrations table initialized");
         }
-        return 1;
+        $success = 1;
     };
 
     if ($@) {
@@ -91,21 +95,21 @@ sub initialize_migrations_table {
         }
         return 0;
     }
+
+    return $success;
 }
 
 sub get_applied_migrations {
     my ($dbh, $logger) = @_;
 
+    my @applied_versions;
     eval {
         my $sth = $dbh->prepare("SELECT version FROM schema_migrations ORDER BY version");
         $sth->execute();
 
-        my @applied_versions;
         while (my ($version) = $sth->fetchrow_array()) {
             push @applied_versions, $version;
         }
-
-        return @applied_versions;
     };
 
     if ($@) {
@@ -114,11 +118,14 @@ sub get_applied_migrations {
         }
         return ();
     }
+
+    return @applied_versions;
 }
 
 sub apply_migration {
     my ($dbh, $version, $description, $sql, $logger) = @_;
 
+    my $success = 0;
     eval {
         $dbh->begin_work();
 
@@ -135,7 +142,7 @@ sub apply_migration {
             $logger->info("Applied migration $version: $description");
         }
 
-        return 1;
+        $success = 1;
     };
 
     if ($@) {
@@ -145,6 +152,8 @@ sub apply_migration {
         }
         return 0;
     }
+
+    return $success;
 }
 
 sub run_migrations {
