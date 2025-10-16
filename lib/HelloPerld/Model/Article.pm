@@ -71,6 +71,7 @@ sub get_all {
             $row->{tags} = $self->get_article_tags($row->{id});
             push @articles_array, $row;
         }
+        $sth->finish();
 
         $dbh->disconnect();
         $articles = \@articles_array;
@@ -107,6 +108,7 @@ sub get_by_slug {
         $sth->execute($slug);
 
         $article = $sth->fetchrow_hashref();
+        $sth->finish();
 
         if ($article) {
             # Fetch tags for this article
@@ -147,6 +149,7 @@ sub get_by_id {
         $sth->execute($id);
 
         $article = $sth->fetchrow_hashref();
+        $sth->finish();
 
         if ($article) {
             # Fetch tags for this article
@@ -182,6 +185,8 @@ sub create {
     $article_data->{author} //= 'Alex Beahm';
 
     my $article_id;
+    my $tag_ids = $article_data->{tag_ids};
+
     eval {
         $dbh->begin_work();
 
@@ -206,11 +211,7 @@ sub create {
         );
 
         ($article_id) = $sth->fetchrow_array();
-
-        # Add tags if provided
-        if ($article_data->{tag_ids} && @{$article_data->{tag_ids}}) {
-            $self->set_article_tags($article_id, $article_data->{tag_ids});
-        }
+        $sth->finish();
 
         $dbh->commit();
         $dbh->disconnect();
@@ -225,6 +226,27 @@ sub create {
         return undef;
     }
 
+    # Add tags AFTER article is committed (so foreign key constraint is satisfied)
+    if ($self->{logger}) {
+        $self->{logger}->info("About to set tags for article $article_id. tag_ids = " .
+            (defined $tag_ids ? "array with " . scalar(@{$tag_ids}) . " elements: [" . join(", ", @{$tag_ids}) . "]" : "undef"));
+    }
+
+    if ($article_id && $tag_ids && @{$tag_ids}) {
+        my $tag_result = $self->set_article_tags($article_id, $tag_ids);
+        unless ($tag_result) {
+            if ($self->{logger}) {
+                $self->{logger}->error("Article created but failed to set tags for article ID '$article_id'");
+            }
+            # Article was created successfully, so still return the ID
+        }
+    } else {
+        if ($self->{logger}) {
+            $self->{logger}->warn("Skipping set_article_tags: article_id=$article_id, tag_ids is " .
+                (defined $tag_ids ? "array with " . scalar(@{$tag_ids}) . " elements" : "undef"));
+        }
+    }
+
     return $article_id;
 }
 
@@ -235,6 +257,9 @@ sub update {
     return undef unless $dbh;
 
     my $rows_affected;
+    my $should_update_tags = exists $article_data->{tag_ids};
+    my $tag_ids = $article_data->{tag_ids};
+
     eval {
         $dbh->begin_work();
 
@@ -260,11 +285,6 @@ sub update {
             $id
         );
 
-        # Update tags if provided
-        if (exists $article_data->{tag_ids}) {
-            $self->set_article_tags($id, $article_data->{tag_ids});
-        }
-
         $dbh->commit();
         $dbh->disconnect();
     };
@@ -276,6 +296,17 @@ sub update {
         }
         $dbh->disconnect() if $dbh;
         return undef;
+    }
+
+    # Update tags AFTER article is committed (so foreign key constraint is satisfied)
+    if ($should_update_tags) {
+        my $tag_result = $self->set_article_tags($id, $tag_ids);
+        unless ($tag_result) {
+            if ($self->{logger}) {
+                $self->{logger}->error("Article updated but failed to set tags for article ID '$id'");
+            }
+            # Article was updated successfully, so still return rows_affected
+        }
     }
 
     return $rows_affected;
@@ -321,17 +352,19 @@ sub get_article_tags {
         ORDER BY t.name
     };
 
+    my $tags;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($article_id);
 
-        my @tags;
+        my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
-            push @tags, $row;
+            push @tags_array, $row;
         }
+        $sth->finish();
 
         $dbh->disconnect();
-        return \@tags;
+        $tags = \@tags_array;
     };
 
     if ($@) {
@@ -341,14 +374,22 @@ sub get_article_tags {
         $dbh->disconnect() if $dbh;
         return [];
     }
+
+    return $tags;
 }
 
 sub set_article_tags {
-    my ($self, $article_id, $tag_ids) = @_;
+    my ($self, $article_id, $tag_ids, $dbh) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    return 0 unless $dbh;
+    # If no database handle provided, get a new connection
+    my $should_disconnect = 0;
+    unless ($dbh) {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+        return 0 unless $dbh;
+        $should_disconnect = 1;
+    }
 
+    my $success = 0;
     eval {
         # Remove existing tags
         my $delete_sql = "DELETE FROM article_tags WHERE article_id = ?";
@@ -365,15 +406,19 @@ sub set_article_tags {
             }
         }
 
-        return 1;
+        $success = 1;
     };
 
     if ($@) {
         if ($self->{logger}) {
             $self->{logger}->error("Failed to set tags for article ID '$article_id': $@");
         }
+        $dbh->disconnect() if $should_disconnect;
         return 0;
     }
+
+    $dbh->disconnect() if $should_disconnect;
+    return $success;
 }
 
 sub generate_slug {
@@ -425,6 +470,7 @@ sub get_count {
         $sth->execute(@bind_params);
 
         my ($count) = $sth->fetchrow_array();
+        $sth->finish();
         $dbh->disconnect();
 
         return $count || 0;

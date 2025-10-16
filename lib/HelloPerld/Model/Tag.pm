@@ -44,19 +44,20 @@ sub get_all {
 
     $sql .= " LIMIT ? OFFSET ?";
 
+    my $tags;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($limit, $offset);
 
-        my @tags;
+        my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
             # Get usage count for this tag
             $row->{usage_count} = $self->get_tag_usage_count($row->{id});
-            push @tags, $row;
+            push @tags_array, $row;
         }
 
         $dbh->disconnect();
-        return \@tags;
+        $tags = \@tags_array;
     };
 
     if ($@) {
@@ -66,6 +67,8 @@ sub get_all {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $tags;
 }
 
 sub get_by_id {
@@ -80,18 +83,15 @@ sub get_by_id {
         WHERE id = ?
     };
 
+    my $tag;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($id);
 
-        my $tag = $sth->fetchrow_hashref();
-
-        if ($tag) {
-            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
-        }
+        $tag = $sth->fetchrow_hashref();
+        $sth->finish();
 
         $dbh->disconnect();
-        return $tag;
     };
 
     if ($@) {
@@ -101,6 +101,38 @@ sub get_by_id {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    # Debug: Check what we got from the query
+    if ($self->{logger}) {
+        $self->{logger}->info("get_by_id($id): After eval, tag is " . (defined $tag ? "defined" : "UNDEF"));
+        if (defined $tag) {
+            $self->{logger}->info("get_by_id($id): tag is a " . ref($tag));
+            if (ref($tag) eq 'HASH') {
+                $self->{logger}->info("get_by_id($id): tag->{id}=" . ($tag->{id} // 'undef'));
+            }
+        }
+    }
+
+    # Get usage count after successful fetch (outside eval to avoid nested connection issues)
+    if ($tag) {
+        if ($self->{logger}) {
+            $self->{logger}->info("get_by_id($id): Calling get_tag_usage_count(" . $tag->{id} . ")");
+        }
+        eval {
+            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
+        };
+        if ($self->{logger}) {
+            $self->{logger}->info("get_by_id($id): After get_tag_usage_count, usage_count=" . ($tag->{usage_count} // 'undef'));
+        }
+        # Default to 0 if usage count fails
+        $tag->{usage_count} //= 0;
+    }
+
+    if ($self->{logger}) {
+        $self->{logger}->info("get_by_id($id): About to return, tag is " . (defined $tag ? "defined" : "UNDEF"));
+    }
+
+    return $tag;
 }
 
 sub get_by_slug {
@@ -115,18 +147,15 @@ sub get_by_slug {
         WHERE slug = ?
     };
 
+    my $tag;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($slug);
 
-        my $tag = $sth->fetchrow_hashref();
-
-        if ($tag) {
-            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
-        }
+        $tag = $sth->fetchrow_hashref();
+        $sth->finish();
 
         $dbh->disconnect();
-        return $tag;
     };
 
     if ($@) {
@@ -136,6 +165,17 @@ sub get_by_slug {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    # Get usage count after successful fetch (outside eval to avoid nested connection issues)
+    if ($tag) {
+        eval {
+            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
+        };
+        # Default to 0 if usage count fails
+        $tag->{usage_count} //= 0;
+    }
+
+    return $tag;
 }
 
 sub get_by_name {
@@ -156,10 +196,7 @@ sub get_by_name {
         $sth->execute($name);
 
         $tag = $sth->fetchrow_hashref();
-
-        if ($tag) {
-            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
-        }
+        $sth->finish();
 
         $dbh->disconnect();
     };
@@ -170,6 +207,15 @@ sub get_by_name {
         }
         $dbh->disconnect() if $dbh;
         return undef;
+    }
+
+    # Get usage count after successful fetch (outside eval to avoid nested connection issues)
+    if ($tag) {
+        eval {
+            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
+        };
+        # Default to 0 if usage count fails
+        $tag->{usage_count} //= 0;
     }
 
     return $tag;
@@ -198,6 +244,7 @@ sub create {
         $sth->execute($tag_data->{name}, $tag_data->{slug});
 
         ($tag_id) = $sth->fetchrow_array();
+        $sth->finish();
 
         $dbh->disconnect();
     };
@@ -219,6 +266,7 @@ sub update {
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
+    my $rows_affected;
     eval {
         my $sql = q{
             UPDATE tags
@@ -227,10 +275,9 @@ sub update {
         };
 
         my $sth = $dbh->prepare($sql);
-        my $rows_affected = $sth->execute($tag_data->{name}, $tag_data->{slug}, $id);
+        $rows_affected = $sth->execute($tag_data->{name}, $tag_data->{slug}, $id);
 
         $dbh->disconnect();
-        return $rows_affected;
     };
 
     if ($@) {
@@ -240,6 +287,8 @@ sub update {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $rows_affected;
 }
 
 sub delete {
@@ -248,13 +297,13 @@ sub delete {
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
+    my $rows_affected;
     eval {
         my $sql = "DELETE FROM tags WHERE id = ?";
         my $sth = $dbh->prepare($sql);
-        my $rows_affected = $sth->execute($id);
+        $rows_affected = $sth->execute($id);
 
         $dbh->disconnect();
-        return $rows_affected;
     };
 
     if ($@) {
@@ -264,6 +313,8 @@ sub delete {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $rows_affected;
 }
 
 sub get_tag_usage_count {
@@ -279,14 +330,14 @@ sub get_tag_usage_count {
         WHERE at.tag_id = ? AND a.is_published = true
     };
 
+    my $count;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($tag_id);
 
-        my ($count) = $sth->fetchrow_array();
+        ($count) = $sth->fetchrow_array();
+        $sth->finish();
         $dbh->disconnect();
-
-        return $count || 0;
     };
 
     if ($@) {
@@ -296,6 +347,8 @@ sub get_tag_usage_count {
         $dbh->disconnect() if $dbh;
         return 0;
     }
+
+    return $count || 0;
 }
 
 sub get_popular_tags {
@@ -318,17 +371,18 @@ sub get_popular_tags {
         LIMIT ?
     };
 
+    my $tags;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($limit);
 
-        my @tags;
+        my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
-            push @tags, $row;
+            push @tags_array, $row;
         }
 
         $dbh->disconnect();
-        return \@tags;
+        $tags = \@tags_array;
     };
 
     if ($@) {
@@ -338,6 +392,8 @@ sub get_popular_tags {
         $dbh->disconnect() if $dbh;
         return [];
     }
+
+    return $tags;
 }
 
 sub search {
@@ -356,18 +412,19 @@ sub search {
         LIMIT ?
     };
 
+    my $tags;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute("%$search_term%", $limit);
 
-        my @tags;
+        my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
             $row->{usage_count} = $self->get_tag_usage_count($row->{id});
-            push @tags, $row;
+            push @tags_array, $row;
         }
 
         $dbh->disconnect();
-        return \@tags;
+        $tags = \@tags_array;
     };
 
     if ($@) {
@@ -377,6 +434,8 @@ sub search {
         $dbh->disconnect() if $dbh;
         return [];
     }
+
+    return $tags;
 }
 
 sub find_or_create_by_name {
@@ -392,7 +451,28 @@ sub find_or_create_by_name {
         slug => $self->generate_slug($name)
     });
 
-    return $tag_id ? $self->get_by_id($tag_id) : undef;
+    if (!$tag_id) {
+        if ($self->{logger}) {
+            $self->{logger}->error("find_or_create_by_name: create() returned undef for tag '$name'");
+        }
+        return undef;
+    }
+
+    # Try get_by_name instead of get_by_id since get_by_name works but get_by_id doesn't
+    my $created_tag = $self->get_by_name($name);
+
+    if ($self->{logger}) {
+        $self->{logger}->info("get_by_id($tag_id) returned: " . (defined $created_tag && ref($created_tag) eq 'HASH' ? "HASH with id=" . ($created_tag->{id} // 'undef') : defined $created_tag ? ref($created_tag) : "undef"));
+    }
+
+    if (!$created_tag) {
+        if ($self->{logger}) {
+            $self->{logger}->error("find_or_create_by_name: get_by_id($tag_id) returned undef for tag '$name'");
+        }
+        return undef;
+    }
+
+    return $created_tag;
 }
 
 sub generate_slug {
@@ -416,14 +496,13 @@ sub get_count {
 
     my $sql = "SELECT COUNT(*) FROM tags";
 
+    my $count;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute();
 
-        my ($count) = $sth->fetchrow_array();
+        ($count) = $sth->fetchrow_array();
         $dbh->disconnect();
-
-        return $count || 0;
     };
 
     if ($@) {
@@ -433,6 +512,8 @@ sub get_count {
         $dbh->disconnect() if $dbh;
         return 0;
     }
+
+    return $count || 0;
 }
 
 1;

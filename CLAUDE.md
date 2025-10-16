@@ -452,6 +452,45 @@ The admin authentication system is complete with:
 
      **Check ALL eval blocks in new code for this pattern!**
 
+   - CRITICAL: Always call `$sth->finish()` before `$dbh->disconnect()` - Disconnecting before finishing statement handles corrupts fetched data
+
+     **This was the root cause of article/tag association failures!** When `disconnect()` is called on an active statement handle (one that hasn't been finished), DBI invalidates the handle and any data fetched from it may be corrupted or lost.
+
+     ```perl
+     # WRONG - disconnect before finish corrupts data
+     eval {
+         my $sth = $dbh->prepare($sql);
+         $sth->execute(@params);
+         my $result = $sth->fetchrow_hashref();
+         $dbh->disconnect();  # ❌ Invalidates active statement handle!
+     };
+     # Warning: "disconnect invalidates 1 active statement handle"
+     # $result may be corrupted or incomplete
+
+     # CORRECT - finish before disconnect
+     my $result;
+     eval {
+         my $sth = $dbh->prepare($sql);
+         $sth->execute(@params);
+         $result = $sth->fetchrow_hashref();
+         $sth->finish();       # ✅ Properly clean up statement handle
+         $dbh->disconnect();   # ✅ Safe to disconnect now
+     };
+     ```
+
+     **Why This Matters**:
+     - `finish()` releases resources and marks the statement handle as complete
+     - Skipping `finish()` before `disconnect()` triggers warnings AND data corruption
+     - Fetched data may appear valid in tests but fail intermittently in production
+     - This pattern MUST be followed for ALL fetch operations: `fetchrow_hashref()`, `fetchrow_array()`, `fetchall_arrayref()`, etc.
+
+     **All Statement Handles Fixed**:
+     - `HelloPerld::Model::Tag::*` - All methods with fetch operations
+     - `HelloPerld::Model::Article::*` - All methods with fetch operations
+     - `HelloPerld::Controller::Auth::_authenticate_user()` - User lookup
+
+     **Golden Rule**: Always call `$sth->finish()` after fetching data and before calling `$dbh->disconnect()`
+
    - Parse JSON request bodies correctly - OpenAPI plugin requires special handling:
      ```perl
      # Support both OpenAPI and standard Mojolicious routing

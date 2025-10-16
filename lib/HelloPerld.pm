@@ -25,9 +25,6 @@ sub startup {
         my $c = shift;
         my $filepath = $c->param('filepath');
 
-        # DEBUG: Test if route is being hit
-        $c->app->log->info("UPLOADS ROUTE HIT: $filepath");
-
         # Prevent directory traversal attacks
         if ($filepath =~ /\.\./ || $filepath =~ /^\//) {
             return $c->render(text => 'Forbidden', status => 403);

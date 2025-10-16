@@ -197,6 +197,7 @@ sub _authenticate_user {
         $sth->execute($username);
 
         my $user = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
 
         if ($user) {
