@@ -731,6 +731,55 @@ perl -I/usr/src/hello-perld/lib -MHelloPerld::Database::Postgres -e "..."
    - `POSTGRES_USER=theboosh_user`
    - `POSTGRES_PASSWORD` (from .env)
 
+### Database Migration Best Practices
+
+**CRITICAL**: All database migrations MUST be idempotent to allow safe re-running.
+
+**SQL Migrations** (`migrations/*.sql`):
+- Always use `CREATE TABLE IF NOT EXISTS` instead of `CREATE TABLE`
+- Always use `CREATE INDEX IF NOT EXISTS` instead of `CREATE INDEX`
+- For other DDL operations, use appropriate idempotent forms:
+  - `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+  - `DROP TABLE IF EXISTS ...`
+  - `DROP INDEX IF EXISTS ...`
+
+**Example Idempotent Migration**:
+```sql
+-- CORRECT - Idempotent
+CREATE TABLE IF NOT EXISTS my_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_my_table_name ON my_table(name);
+
+-- WRONG - Will fail on re-run
+CREATE TABLE my_table (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX idx_my_table_name ON my_table(name);
+```
+
+**Perl Migrations** (`migrations/*.pl`):
+- Must check for existing data before inserting/updating
+- Use `SELECT` queries to verify state before making changes
+- Exit with code 0 if already applied (idempotent behavior)
+- See `migrations/005_create_default_admin_user.pl` and `script/create_admin_user` for reference implementation
+
+**Migration Tracking**:
+- The `schema_migrations` table automatically tracks applied migrations
+- Migrations are identified by their filename prefix (e.g., `001`, `002`, etc.)
+- Never manually edit `schema_migrations` - let the migration system manage it
+- To verify tracking: `SELECT * FROM schema_migrations ORDER BY version;`
+
+**Testing New Migrations**:
+1. Run migration on fresh database: `docker exec thebooshzone-hello-perld-1 perl script/migrate`
+2. Verify schema_migrations updated: Check for new entry with migration version
+3. Run migration again: Should skip already-applied migrations cleanly
+4. Check for PostgreSQL notices: `NOTICE: relation "table_name" already exists, skipping` is expected and correct
+
 ### Vue Router Authentication Guards
 
 Protected routes (admin pages) use navigation guards to check authentication:

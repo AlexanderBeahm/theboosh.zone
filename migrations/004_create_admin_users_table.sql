@@ -1,5 +1,5 @@
 -- Create admin_users table for authentication
-CREATE TABLE admin_users (
+CREATE TABLE IF NOT EXISTS admin_users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
@@ -10,10 +10,10 @@ CREATE TABLE admin_users (
 );
 
 -- Create index on username for fast lookups during authentication
-CREATE INDEX idx_admin_users_username ON admin_users(username);
+CREATE INDEX IF NOT EXISTS idx_admin_users_username ON admin_users(username);
 
 -- Create index on email for lookups
-CREATE INDEX idx_admin_users_email ON admin_users(email);
+CREATE INDEX IF NOT EXISTS idx_admin_users_email ON admin_users(email);
 
 -- Create index on is_active for filtering active users
-CREATE INDEX idx_admin_users_active ON admin_users(is_active);
+CREATE INDEX IF NOT EXISTS idx_admin_users_active ON admin_users(is_active);

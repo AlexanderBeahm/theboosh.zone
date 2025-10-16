@@ -1,5 +1,5 @@
 -- Create media table for uploaded images and files
-CREATE TABLE media (
+CREATE TABLE IF NOT EXISTS media (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
     original_filename VARCHAR(255) NOT NULL,
@@ -15,10 +15,10 @@ CREATE TABLE media (
 );
 
 -- Create indexes for common queries
-CREATE INDEX idx_media_filename ON media(filename);
-CREATE INDEX idx_media_mime_type ON media(mime_type);
-CREATE INDEX idx_media_uploaded_by ON media(uploaded_by);
-CREATE INDEX idx_media_created_at ON media(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_media_filename ON media(filename);
+CREATE INDEX IF NOT EXISTS idx_media_mime_type ON media(mime_type);
+CREATE INDEX IF NOT EXISTS idx_media_uploaded_by ON media(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_media_created_at ON media(created_at DESC);
 
 -- Comments for documentation
 COMMENT ON TABLE media IS 'Stores metadata for uploaded media files (images, etc.)';

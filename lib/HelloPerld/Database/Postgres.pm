@@ -135,6 +135,7 @@ sub apply_migration {
         # Record the migration
         my $sth = $dbh->prepare("INSERT INTO schema_migrations (version, description) VALUES (?, ?)");
         $sth->execute($version, $description);
+        $sth->finish();
 
         $dbh->commit();
 
@@ -146,7 +147,7 @@ sub apply_migration {
     };
 
     if ($@) {
-        $dbh->rollback();
+        eval { $dbh->rollback() };
         if ($logger) {
             $logger->error("Failed to apply migration $version: $@");
         }
@@ -242,9 +243,8 @@ sub extract_migration_info {
 sub execute_perl_migration {
     my ($dbh, $file, $version, $description, $logger) = @_;
 
+    my $success = 0;
     eval {
-        $dbh->begin_work();
-
         if ($logger) {
             $logger->info("Executing Perl migration $version: $description");
         }
@@ -261,9 +261,13 @@ sub execute_perl_migration {
             die "Perl migration script failed with exit code: $result";
         }
 
-        # Record the migration in the database
+        # Record the migration in the database (in separate transaction)
+        # Perl scripts run in separate process, so we track after success
+        $dbh->begin_work();
+
         my $sth = $dbh->prepare("INSERT INTO schema_migrations (version, description) VALUES (?, ?)");
         $sth->execute($version, $description);
+        $sth->finish();
 
         $dbh->commit();
 
@@ -271,16 +275,18 @@ sub execute_perl_migration {
             $logger->info("Applied Perl migration $version: $description");
         }
 
-        return 1;
+        $success = 1;
     };
 
     if ($@) {
-        $dbh->rollback();
+        eval { $dbh->rollback() };
         if ($logger) {
             $logger->error("Failed to apply Perl migration $version: $@");
         }
         return 0;
     }
+
+    return $success;
 }
 
 1;

@@ -1,5 +1,5 @@
 -- Create articles table for blog posts
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -15,10 +15,10 @@ CREATE TABLE articles (
 );
 
 -- Create index on slug for fast lookups
-CREATE INDEX idx_articles_slug ON articles(slug);
+CREATE INDEX IF NOT EXISTS idx_articles_slug ON articles(slug);
 
 -- Create index on published_at for sorting published articles
-CREATE INDEX idx_articles_published_at ON articles(published_at);
+CREATE INDEX IF NOT EXISTS idx_articles_published_at ON articles(published_at);
 
 -- Create index on is_published for filtering
-CREATE INDEX idx_articles_published ON articles(is_published);
+CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(is_published);
