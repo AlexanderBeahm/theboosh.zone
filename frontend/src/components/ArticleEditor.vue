@@ -57,7 +57,7 @@
               :class="{ active: activeTab === 'write' }"
               @click="activeTab = 'write'"
             >
-              ✏️ Write
+              Write
             </button>
             <button
               type="button"
@@ -65,7 +65,7 @@
               :class="{ active: activeTab === 'preview' }"
               @click="activeTab = 'preview'"
             >
-              👁️ Preview
+              Preview
             </button>
           </div>
 
@@ -156,34 +156,64 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="featured_image">Featured Image URL</label>
+        <div class="form-group">
+          <label>Featured Image</label>
+          <div class="featured-image-section">
+            <div v-if="form.featured_image" class="featured-image-preview">
+              <img :src="form.featured_image" alt="Featured image preview" />
+              <button
+                type="button"
+                class="remove-image-button"
+                @click="removeFeaturedImage"
+                :disabled="isSaving"
+              >
+                Remove Image
+              </button>
+            </div>
+
+            <div v-else class="image-selection-buttons">
+              <button
+                type="button"
+                class="select-image-button"
+                @click="showMediaLibraryModal = true"
+                :disabled="isSaving"
+              >
+                Browse Media Library
+              </button>
+              <button
+                type="button"
+                class="upload-image-button"
+                @click="showImageUploadModal = true"
+                :disabled="isSaving"
+              >
+                Upload New Image
+              </button>
+            </div>
+
             <input
-              id="featured_image"
               v-model="form.featured_image"
               type="url"
               :disabled="isSaving"
-              class="form-input"
-              placeholder="https://example.com/image.jpg"
+              class="form-input featured-image-url"
+              placeholder="Or enter image URL directly"
             />
           </div>
+        </div>
 
-          <div class="form-group">
-            <label for="meta_description">Meta Description</label>
-            <input
-              id="meta_description"
-              v-model="form.meta_description"
-              type="text"
-              :disabled="isSaving"
-              class="form-input"
-              placeholder="SEO meta description"
-              maxlength="160"
-            />
-            <small v-if="form.meta_description">
-              {{ form.meta_description.length }}/160 characters
-            </small>
-          </div>
+        <div class="form-group">
+          <label for="meta_description">Meta Description</label>
+          <input
+            id="meta_description"
+            v-model="form.meta_description"
+            type="text"
+            :disabled="isSaving"
+            class="form-input"
+            placeholder="SEO meta description"
+            maxlength="160"
+          />
+          <small v-if="form.meta_description">
+            {{ form.meta_description.length }}/160 characters
+          </small>
         </div>
 
         <div class="form-group">
@@ -233,11 +263,46 @@
           </div>
 
           <div v-if="error" class="error-message">
-            <span class="error-icon">⚠️</span>
             {{ error }}
           </div>
         </div>
       </form>
+    </div>
+
+    <!-- Media Library Modal -->
+    <div v-if="showMediaLibraryModal" class="image-modal-overlay" @click="showMediaLibraryModal = false">
+      <div class="image-modal-content" @click.stop>
+        <div class="image-modal-header">
+          <h3>Select Featured Image</h3>
+          <button @click="showMediaLibraryModal = false" class="close-button">✕</button>
+        </div>
+        <div class="image-modal-body">
+          <MediaLibrary
+            ref="mediaLibrary"
+            selection-mode="single"
+            @media-selected="handleMediaSelected"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Upload Modal -->
+    <div v-if="showImageUploadModal" class="image-modal-overlay" @click="showImageUploadModal = false">
+      <div class="image-modal-content" @click.stop>
+        <div class="image-modal-header">
+          <h3>Upload Featured Image</h3>
+          <button @click="showImageUploadModal = false" class="close-button">✕</button>
+        </div>
+        <div class="image-modal-body">
+          <ImageUploader
+            ref="imageUploader"
+            :max-size-m-b="5"
+            :show-metadata="true"
+            :auto-upload="false"
+            @upload-success="handleImageUpload"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -246,6 +311,8 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
 import MarkdownRenderer from './MarkdownRenderer.vue'
+import MediaLibrary from './MediaLibrary.vue'
+import ImageUploader from './ImageUploader.vue'
 
 const props = defineProps({
   article: {
@@ -268,6 +335,10 @@ const tagInput = ref('')
 const tagSuggestions = ref([])
 const availableTags = ref([])
 const selectedTags = ref([])
+const showMediaLibraryModal = ref(false)
+const showImageUploadModal = ref(false)
+const mediaLibrary = ref(null)
+const imageUploader = ref(null)
 
 const form = ref({
   title: '',
@@ -416,6 +487,20 @@ function handleTabKey(event) {
     // Move cursor to after the inserted tab
     textarea.selectionStart = textarea.selectionEnd = start + 1
   }
+}
+
+function handleMediaSelected(media) {
+  form.value.featured_image = media.url
+  showMediaLibraryModal.value = false
+}
+
+function handleImageUpload(media) {
+  form.value.featured_image = media.url
+  showImageUploadModal.value = false
+}
+
+function removeFeaturedImage() {
+  form.value.featured_image = ''
 }
 
 async function handleSave() {
@@ -927,6 +1012,164 @@ small {
 
   .preview-container {
     padding: var(--spacing-sm);
+  }
+}
+
+/* Featured Image Section */
+.featured-image-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.featured-image-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--light-bg);
+}
+
+.featured-image-preview img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: var(--radius-md);
+}
+
+.remove-image-button {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--error-color);
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+}
+
+.remove-image-button:hover:not(:disabled) {
+  background-color: var(--error-color);
+  color: white;
+}
+
+.image-selection-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.select-image-button,
+.upload-image-button {
+  flex: 1;
+  min-width: 180px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--transition-fast);
+}
+
+.select-image-button {
+  background-color: var(--primary-color-light);
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.select-image-button:hover:not(:disabled) {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.upload-image-button {
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+}
+
+.upload-image-button:hover:not(:disabled) {
+  background-color: var(--primary-color-light);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.featured-image-url {
+  margin-top: 0;
+}
+
+/* Image Modals */
+.image-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: var(--spacing-lg);
+}
+
+.image-modal-content {
+  background-color: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--light-bg);
+}
+
+.image-modal-header h3 {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.image-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+@media (max-width: 768px) {
+  .image-selection-buttons {
+    flex-direction: column;
+  }
+
+  .select-image-button,
+  .upload-image-button {
+    min-width: 100%;
+  }
+
+  .image-modal-overlay {
+    padding: var(--spacing-md);
+  }
+
+  .image-modal-content {
+    max-width: 100%;
+  }
+
+  .image-modal-body {
+    padding: var(--spacing-md);
   }
 }
 </style>

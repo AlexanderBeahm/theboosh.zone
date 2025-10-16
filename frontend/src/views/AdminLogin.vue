@@ -46,7 +46,6 @@
           </div>
 
           <div v-if="error" class="error-message">
-            <span class="error-icon">⚠️</span>
             {{ error }}
           </div>
         </form>
@@ -62,10 +61,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import axios from 'axios'
+import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
 const route = useRoute()
+const { isAuthenticated, login: authLogin, checkAuth } = useAuth()
 
 // Reactive state
 const isLoading = ref(false)
@@ -83,21 +83,14 @@ async function handleLogin() {
   error.value = ''
 
   try {
-    const response = await axios.post('/api/auth/login', {
-      username: loginForm.value.username,
-      password: loginForm.value.password
-    })
+    await authLogin(loginForm.value.username, loginForm.value.password)
 
-    if (response.data.success) {
-      // Login successful, redirect to intended page or dashboard
-      const redirectPath = route.query.redirect || '/admin'
-      router.push(redirectPath)
-    } else {
-      throw new Error(response.data.error || 'Login failed')
-    }
+    // Login successful, redirect to intended page or dashboard
+    const redirectPath = route.query.redirect || '/admin'
+    router.push(redirectPath)
   } catch (err) {
     console.error('Login error:', err)
-    error.value = err.response?.data?.error || err.message || 'Login failed. Please try again.'
+    error.value = err.message || 'Login failed. Please try again.'
   } finally {
     isLoading.value = false
   }
@@ -105,16 +98,11 @@ async function handleLogin() {
 
 // Check if already authenticated on mount
 onMounted(async () => {
-  try {
-    const response = await axios.get('/api/auth/status')
-    if (response.data.authenticated) {
-      // Already logged in, redirect to dashboard
-      const redirectPath = route.query.redirect || '/admin'
-      router.push(redirectPath)
-    }
-  } catch (err) {
-    // Not authenticated, stay on login page
-    console.log('Not authenticated, showing login form')
+  const authenticated = await checkAuth()
+  if (authenticated) {
+    // Already logged in, redirect to dashboard
+    const redirectPath = route.query.redirect || '/admin'
+    router.push(redirectPath)
   }
 })
 </script>

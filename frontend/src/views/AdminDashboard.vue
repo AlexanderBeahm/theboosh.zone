@@ -57,8 +57,12 @@
           <option value="title">Title A-Z</option>
         </select>
 
+        <button @click="$router.push('/admin/media')" class="media-library-button">
+          Media Library
+        </button>
+
         <button @click="showCreateArticle = true" class="create-article-button">
-          ✏️ New Article
+          New Article
         </button>
       </div>
     </div>
@@ -158,32 +162,36 @@
                 @click="editArticle(article)"
                 class="action-button edit-button"
                 title="Edit Article"
+                aria-label="Edit Article"
               >
-                ✏️
+                Edit
               </button>
 
               <button
                 @click="viewArticle(article)"
                 class="action-button view-button"
                 title="View Article"
+                aria-label="View Article"
               >
-                👁️
+                View
               </button>
 
               <button
                 @click="togglePublish(article)"
                 class="action-button publish-button"
-                :title="article.is_published ? 'Unpublish' : 'Publish'"
+                :title="article.is_published ? 'Unpublish Article' : 'Publish Article'"
+                :aria-label="article.is_published ? 'Unpublish Article' : 'Publish Article'"
               >
-                {{ article.is_published ? '📤' : '📥' }}
+                {{ article.is_published ? 'Unpublish' : 'Publish' }}
               </button>
 
               <button
                 @click="confirmDelete(article)"
                 class="action-button delete-button"
                 title="Delete Article"
+                aria-label="Delete Article"
               >
-                🗑️
+                Delete
               </button>
             </div>
           </div>
@@ -247,11 +255,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import ArticleEditor from '../components/ArticleEditor.vue'
+import { useAuth } from '../composables/useAuth'
 
 const router = useRouter()
+const { user, requireAuth } = useAuth()
 
 // Reactive state
-const user = ref(null)
 const articles = ref([])
 const isLoading = ref(true)
 const error = ref(null)
@@ -282,18 +291,12 @@ const stats = ref({
 const currentPage = ref(1)
 
 // Methods
-async function checkAuth() {
-  try {
-    const response = await axios.get('/api/auth/status')
-    if (response.data.authenticated) {
-      user.value = response.data.user
-    } else {
-      router.push('/admin/login')
-    }
-  } catch (err) {
-    console.error('Auth check failed:', err)
-    router.push('/admin/login')
+async function checkAuthAndRedirect() {
+  const authenticated = await requireAuth('/admin/login')
+  if (!authenticated) {
+    return false
   }
+  return true
 }
 
 async function fetchArticles() {
@@ -417,17 +420,6 @@ async function deleteArticle() {
   }
 }
 
-async function handleLogout() {
-  try {
-    await axios.post('/api/auth/logout')
-    router.push('/admin/login')
-  } catch (err) {
-    console.error('Logout error:', err)
-    // Force redirect even if logout fails
-    router.push('/admin/login')
-  }
-}
-
 function formatDate(dateString) {
   if (!dateString) return ''
 
@@ -453,11 +445,13 @@ function debouncedSearch() {
 
 // Lifecycle
 onMounted(async () => {
-  await checkAuth()
-  await Promise.all([
-    fetchArticles(),
-    fetchStats()
-  ])
+  const authenticated = await checkAuthAndRedirect()
+  if (authenticated) {
+    await Promise.all([
+      fetchArticles(),
+      fetchStats()
+    ])
+  }
 })
 </script>
 
@@ -578,11 +572,11 @@ onMounted(async () => {
   font-size: 0.875rem;
 }
 
+.media-library-button,
 .create-article-button {
   padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
   border-radius: var(--radius-md);
-  background-color: var(--primary-color);
   color: white;
   font-weight: 600;
   font-size: 1rem;
@@ -592,12 +586,27 @@ onMounted(async () => {
   box-shadow: var(--shadow-sm);
 }
 
+.media-library-button {
+  background-color: var(--text-secondary);
+}
+
+.media-library-button:hover {
+  background-color: var(--text-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.create-article-button {
+  background-color: var(--primary-color);
+}
+
 .create-article-button:hover {
   background-color: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
+.media-library-button:active,
 .create-article-button:active {
   transform: translateY(0);
 }
@@ -780,20 +789,26 @@ onMounted(async () => {
 
 .action-buttons {
   display: flex;
+  flex-direction: column;
   gap: var(--spacing-xs);
+  width: 100%;
 }
 
 .action-button {
-  width: 32px;
-  height: 32px;
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .edit-button {

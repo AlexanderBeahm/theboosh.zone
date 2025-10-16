@@ -7,6 +7,11 @@ services:
       - ./.env
     environment:
       POSTGRES_HOST: db
+      UPLOADS_DIR: /usr/src/hello-perld/uploads
+      UPLOAD_MAX_SIZE: 5242880
+      UPLOAD_ALLOWED_TYPES: image/jpeg,image/png,image/gif,image/webp,image/svg+xml
+    volumes:
+      - uploads_data:/usr/src/hello-perld/uploads
     develop:
       watch:
         - action: sync+restart
@@ -87,3 +92,4 @@ volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  uploads_data:

@@ -20,10 +20,39 @@ sub startup {
     # Configure static file serving
     push @{$self->static->paths}, 'lib/HelloPerld/Public';
 
-    # Use a hook to handle static files before any routing/plugin processing
+    # Serve uploaded media files - MUST be first route to take precedence over OpenAPI
+    $self->routes->get('/uploads/*filepath' => sub {
+        my $c = shift;
+        my $filepath = $c->param('filepath');
+
+        # DEBUG: Test if route is being hit
+        $c->app->log->info("UPLOADS ROUTE HIT: $filepath");
+
+        # Prevent directory traversal attacks
+        if ($filepath =~ /\.\./ || $filepath =~ /^\//) {
+            return $c->render(text => 'Forbidden', status => 403);
+        }
+
+        my $uploads_dir = $ENV{UPLOADS_DIR} || '/usr/src/hello-perld/uploads';
+        my $full_path = "$uploads_dir/$filepath";
+
+        $c->app->log->info("Looking for file: $full_path");
+        $c->app->log->info("File exists: " . (-f $full_path ? "YES" : "NO"));
+
+        if (-f $full_path) {
+            return $c->reply->file($full_path);
+        } else {
+            return $c->reply->not_found;
+        }
+    });
+
+    # Use a hook to handle other static files
     $self->hook(before_dispatch => sub {
         my $c = shift;
         my $path = $c->req->url->path->to_string;
+
+        # Skip uploads directory - handled by dedicated route
+        return if $path =~ m{^/uploads/};
 
         # Check if this is a static file request (including .map files for source maps)
         if ($path =~ /\.(css|js|mjs|map|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf)$/i) {
@@ -59,10 +88,12 @@ sub startup {
     $self->sessions->default_expiration(86400); # 24 hours
     $self->secrets(['your-secret-key-change-in-production']); # TODO: Use environment variable
 
-    # Configure OpenAPI plugin
-    $self->plugin('OpenAPI' => {
-        url => $self->home->rel_file('swagger/swagger.json')
-    });
+    # Configure OpenAPI plugin - limit to /api routes only
+    # TEMPORARILY DISABLED to test uploads route
+    # $self->plugin('OpenAPI' => {
+    #     url => $self->home->rel_file('swagger/swagger.json'),
+    #     route => $self->routes->under('/api')
+    # });
 
     # Configure SwaggerUI plugin
     $self->plugin('SwaggerUI' => {
@@ -127,6 +158,13 @@ sub startup {
     # Protected auth management routes
     $admin->post('/auth/change-password')->to('Auth#change_password');
 
+    # Protected media management routes
+    $admin->post('/media/upload')->to('Media#upload');
+    $admin->get('/media')->to('Media#get_all');
+    $admin->get('/media/:id')->to('Media#get_by_id');
+    $admin->put('/media/:id')->to('Media#update');
+    $admin->delete('/media/:id')->to('Media#delete');
+
     # SPA fallback routing - catch all non-API routes and serve index.html
     # This allows Vue Router history mode to work correctly
     # IMPORTANT: Define this AFTER all API/Swagger routes to ensure proper route priority
@@ -134,8 +172,8 @@ sub startup {
         my $c = shift;
         my $path = $c->req->url->path->to_string;
 
-        # Skip API routes and existing routes
-        return if $path =~ m{^/(api|swagger)};
+        # Skip API routes, swagger, and uploads
+        return if $path =~ m{^/(api|swagger|uploads)};
 
         # Serve SPA index.html for all other routes
         my $index_file = $c->app->home->rel_file('lib/HelloPerld/Public/dist/index.html');

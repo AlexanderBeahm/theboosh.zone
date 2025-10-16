@@ -8,7 +8,6 @@
 
     <!-- Error State -->
     <div v-else-if="error" class="error-container">
-      <div class="error-icon">⚠️</div>
       <h2>Article not found</h2>
       <p>{{ error }}</p>
       <div class="error-actions">
@@ -89,7 +88,7 @@
       <footer class="article-footer">
         <div class="article-actions">
           <button @click="shareArticle" class="share-button" title="Share article">
-            📤 Share
+            Share
           </button>
 
           <button @click="scrollToTop" class="scroll-top-button" title="Scroll to top">

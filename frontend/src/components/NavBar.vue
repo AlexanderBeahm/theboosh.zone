@@ -10,6 +10,7 @@
         aria-label="View API documentation in Swagger UI (opens in new tab)"
         rel="noopener noreferrer"
       >Swagger</a>
+    <router-link v-if="isAuthenticated" to="/admin" :class="{ active: $route.path.startsWith('/admin') }">Admin</router-link>
     </nav>
     <div class="nav-title" aria-label="Site name">TheBoosh.Zone</div>
     <div class="nav-spacer"></div>
@@ -17,42 +18,21 @@
     <!-- Admin Logout Button (only visible when authenticated) -->
     <div v-if="isAuthenticated" class="nav-actions">
       <button @click="handleLogout" class="logout-button" title="Logout">
-        🚪 Logout
+        Logout
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { onMounted } from 'vue'
+import { useAuth } from '../composables/useAuth'
 
-const router = useRouter()
-const isAuthenticated = ref(false)
-
-// Check authentication status
-async function checkAuth() {
-  try {
-    const response = await axios.get('/api/auth/status')
-    isAuthenticated.value = response.data.authenticated || false
-  } catch (err) {
-    isAuthenticated.value = false
-  }
-}
+const { isAuthenticated, checkAuth, logout } = useAuth()
 
 // Handle logout
 async function handleLogout() {
-  try {
-    await axios.post('/api/auth/logout')
-    isAuthenticated.value = false
-    router.push('/admin/login')
-  } catch (err) {
-    console.error('Logout error:', err)
-    // Force redirect even if logout fails
-    isAuthenticated.value = false
-    router.push('/admin/login')
-  }
+  await logout('/admin/login')
 }
 
 // Check auth on mount

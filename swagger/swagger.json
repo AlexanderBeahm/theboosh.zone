@@ -449,6 +449,205 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/api/admin/media/upload": {
+      "post": {
+        "summary": "Upload Media File",
+        "description": "Upload an image or media file (admin only)",
+        "operationId": "uploadMedia",
+        "x-mojo-to": "Media#upload",
+        "tags": ["Admin - Media"],
+        "security": [{ "sessionAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The file to upload"
+                  },
+                  "alt_text": {
+                    "type": "string",
+                    "description": "Alternative text for accessibility"
+                  },
+                  "caption": {
+                    "type": "string",
+                    "description": "Caption for the media"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/admin/media": {
+      "get": {
+        "summary": "List Media Files",
+        "description": "Retrieve all uploaded media with pagination (admin only)",
+        "operationId": "getMedia",
+        "x-mojo-to": "Media#get_all",
+        "tags": ["Admin - Media"],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Media items per page",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          },
+          {
+            "name": "mime_type",
+            "in": "query",
+            "description": "Filter by MIME type",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search in filename, alt_text, or caption",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaListResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/admin/media/{id}": {
+      "get": {
+        "summary": "Get Media by ID",
+        "description": "Retrieve a single media item by ID (admin only)",
+        "operationId": "getMediaById",
+        "x-mojo-to": "Media#get_by_id",
+        "tags": ["Admin - Media"],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Media ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "summary": "Update Media Metadata",
+        "description": "Update alt_text and caption for media (admin only)",
+        "operationId": "updateMedia",
+        "x-mojo-to": "Media#update",
+        "tags": ["Admin - Media"],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Media ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "alt_text": { "type": "string" },
+                  "caption": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/MediaResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "summary": "Delete Media",
+        "description": "Delete a media file and its database record (admin only)",
+        "operationId": "deleteMedia",
+        "x-mojo-to": "Media#delete",
+        "tags": ["Admin - Media"],
+        "security": [{ "sessionAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Media ID",
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -639,6 +838,42 @@
           "success": { "type": "boolean" },
           "error": { "type": "string" }
         }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "filename": { "type": "string" },
+          "original_filename": { "type": "string" },
+          "filepath": { "type": "string" },
+          "url": { "type": "string" },
+          "mime_type": { "type": "string" },
+          "file_size": { "type": "integer" },
+          "width": { "type": "integer", "nullable": true },
+          "height": { "type": "integer", "nullable": true },
+          "uploaded_by": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "alt_text": { "type": "string", "nullable": true },
+          "caption": { "type": "string", "nullable": true }
+        }
+      },
+      "MediaResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "media": { "$ref": "#/components/schemas/Media" }
+        }
+      },
+      "MediaListResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "media": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Media" }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
       }
     },
     "responses": {
@@ -696,6 +931,10 @@
     {
       "name": "Admin - Articles",
       "description": "Admin article management operations"
+    },
+    {
+      "name": "Admin - Media",
+      "description": "Admin media file management operations"
     }
   ]
 }

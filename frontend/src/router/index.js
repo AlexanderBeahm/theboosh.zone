@@ -35,6 +35,12 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/admin/media',
+    name: 'AdminMedia',
+    component: () => import('../views/AdminMedia.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: () => import('../views/NotFoundPage.vue')

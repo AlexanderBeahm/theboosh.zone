@@ -28,7 +28,7 @@ describe('NavBar', () => {
     expect(wrapper.text()).toContain('Home')
     expect(wrapper.text()).toContain('About')
     expect(wrapper.text()).toContain('Swagger')
-    expect(wrapper.text()).toContain('Hello, Perld')
+    expect(wrapper.text()).toContain('TheBoosh.Zone')
   })
 
   it('highlights active route', async () => {
