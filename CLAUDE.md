@@ -19,6 +19,9 @@ TheBoosh.Zone is Alex Beahm's personal portfolio and blog website, built with a 
 - **Containerization**: Docker & Docker Compose
 - **Monitoring**: Prometheus & Grafana
 - **Development Environment**: VSCode DevContainer support
+- **Testing**: 
+  - Backend: Test::More, Test::Mojo, DBD::Mock (Perl TAP framework)
+  - Frontend: Vitest with Vue Test Utils
 
 ### Project Structure
 ```
@@ -76,6 +79,28 @@ TheBoosh.Zone is Alex Beahm's personal portfolio and blog website, built with a 
       migrate_debug         # Migration debugging
       create_admin_user     # Admin user creation utility
       update_admin_password # Admin password update utility
+      test                  # Run all backend tests
+      test-unit             # Run unit tests only
+      test-integration      # Run integration tests only
+   t/                       # Backend test suite (Perl TAP)
+      00-load.t             # Module loading verification
+      unit/                 # Unit tests with mocked dependencies
+         model/
+            article.t       # Article model tests
+            tag.t           # Tag model tests
+            media.t         # Media model tests
+         database/
+            postgres.t      # Database utilities tests
+      integration/          # Integration tests with real database
+         controller/
+            health.t        # Health endpoint tests
+            auth.t          # Authentication tests
+            articles.t      # Article controller tests
+            tags.t          # Tag controller tests
+            media.t         # Media controller tests
+      lib/
+         TestHelper.pm      # Shared testing utilities
+      README.md             # Testing documentation
    docker-compose.yml        # Full development environment
 ```
 
@@ -846,6 +871,229 @@ When adding new functionality:
    - [ ] File deletion removes physical files
    - [ ] Docker volume configured for persistence
 
+## Backend Testing Framework
+
+**Status**: Fully implemented (October 2025)
+
+TheBoosh.Zone uses the standard Perl TAP (Test Anything Protocol) testing ecosystem for comprehensive backend testing.
+
+### Testing Stack
+
+- **Test::More** (>= 1.302) - Core TAP-based testing framework
+- **Test::Mojo** - Built-in Mojolicious web application testing
+- **DBD::Mock** - Mock database driver for isolated unit tests
+- **Test::Exception** - Exception and error testing
+- **Test::MockModule** - Module mocking capabilities
+
+### Test Organization
+
+```
+t/
+├── 00-load.t              # Module loading verification
+├── unit/                  # Pure unit tests (mocked DB)
+│   ├── model/
+│   │   ├── article.t      # 15+ test cases
+│   │   ├── tag.t          # 20+ test cases (idempotency)
+│   │   └── media.t        # 10+ test cases
+│   └── database/
+│       └── postgres.t     # Utility function tests
+├── integration/           # Integration tests (real DB)
+│   └── controller/
+│       ├── health.t       # Health check endpoint
+│       ├── auth.t         # Authentication (8+ cases)
+│       ├── articles.t     # CRUD operations (10+ cases)
+│       ├── tags.t         # Tag management (8+ cases)
+│       └── media.t        # Media operations (5+ cases)
+└── lib/
+    └── TestHelper.pm      # Shared test utilities
+```
+
+### Running Tests
+
+**All tests**:
+```bash
+./script/test
+# Or: prove -l -r -v t/
+```
+
+**Unit tests only** (no database required):
+```bash
+./script/test-unit
+```
+
+**Integration tests only** (requires database):
+```bash
+./script/test-integration
+```
+
+**In Docker**:
+```bash
+docker exec thebooshzone-hello-perld-1 perl script/test
+```
+
+### Test Coverage
+
+**Models (Unit Tests with DBD::Mock)**:
+- Article: get_all, get_by_slug, get_by_id, create, update, delete, generate_slug, get_count
+- Tag: get_all (with ordering), get_by_name, create, update, delete, search, find_or_create_by_name, get_popular_tags
+- Media: create, get_all (with filters), get_by_id, update, delete, get_count
+
+**Controllers (Integration Tests with Test::Mojo)**:
+- Health: Endpoint availability, JSON structure, database validation
+- Auth: Login/logout, session management, rate limiting, password verification, admin middleware
+- Articles: CRUD operations, authentication checks, draft visibility, slug generation, tag associations
+- Tags: Listing with ordering, popular tags, search, CRUD operations with auth, usage counts
+- Media: Listing with pagination, search/filtering, authentication, upload validation
+
+### Test Helpers (TestHelper.pm)
+
+Shared utilities for consistent testing:
+
+```perl
+use lib 't/lib';
+use TestHelper qw(mock_dbh mock_logger create_test_article_data);
+
+my $dbh = mock_dbh();           # Mock database handle
+my $logger = mock_logger();     # Test logger (ERROR only)
+my $article = create_test_article_data(title => 'Custom');
+```
+
+**Available Helpers**:
+- `mock_dbh()` - DBD::Mock database handle
+- `mock_logger()` - Console logger for tests
+- `create_test_article_data(%overrides)` - Generate test article
+- `create_test_tag_data(%overrides)` - Generate test tag
+- `create_test_media_data(%overrides)` - Generate test media
+- `create_test_user_data(%overrides)` - Generate test user
+- `setup_mock_session($t, %session)` - Mock authentication
+- `mock_article_result(@articles)` - DBD::Mock article results
+- `mock_tag_result(@tags)` - DBD::Mock tag results
+- `mock_media_result(@media)` - DBD::Mock media results
+
+### Writing New Tests
+
+**Unit Test Template** (models with mocked DB):
+
+```perl
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Test::More;
+use Test::MockModule;
+use lib 't/lib';
+use TestHelper qw(mock_dbh mock_logger);
+
+my $postgres_mock = Test::MockModule->new('HelloPerld::Database::Postgres');
+my $mock_dbh;
+$postgres_mock->mock('get_connection', sub { return $mock_dbh; });
+
+use_ok('HelloPerld::Model::YourModel');
+
+subtest 'your test' => sub {
+    $mock_dbh = mock_dbh();
+    
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT/i,
+        results => [['id', 'name'], [1, 'Test']]
+    };
+    
+    my $model = HelloPerld::Model::YourModel->new(logger => mock_logger());
+    my $result = $model->your_method();
+    
+    ok(defined $result, 'Returns result');
+};
+
+done_testing();
+```
+
+**Integration Test Template** (controllers with Test::Mojo):
+
+```perl
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Test::More;
+use Test::Mojo;
+use FindBin;
+use lib "$FindBin::Bin/../../../lib";
+
+my $t = Test::Mojo->new('HelloPerld');
+
+subtest 'your endpoint' => sub {
+    $t->get_ok('/api/your/endpoint')
+      ->status_is(200)
+      ->json_is('/key' => 'value')
+      ->json_has('/another_key');
+};
+
+done_testing();
+```
+
+### Critical Test Patterns
+
+**Verify these patterns from CLAUDE.md bugs are not present**:
+
+1. **No return inside eval blocks**:
+```perl
+# Tests verify this pattern is followed
+my $result;
+eval { $result = $dbh->selectrow_hashref($sql); };
+return $result;  # NOT inside eval
+```
+
+2. **Always finish() before disconnect()**:
+```perl
+# Tests verify statement handles are properly finished
+$sth->finish();      # Before disconnect
+$dbh->disconnect();
+```
+
+### Environment Variables for Integration Tests
+
+```bash
+# Database
+POSTGRES_HOST=db
+POSTGRES_DB=thebooshzone_dev
+POSTGRES_USER=theboosh_user
+POSTGRES_PASSWORD=<password>
+
+# Admin credentials (for auth tests)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=<password>
+```
+
+### CI/CD Integration
+
+Tests are designed for easy CI/CD integration:
+
+```yaml
+# Example GitHub Actions
+test:
+  runs-on: ubuntu-latest
+  services:
+    postgres:
+      image: postgres:15
+      env:
+        POSTGRES_DB: thebooshzone_test
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_pass
+  steps:
+    - uses: actions/checkout@v2
+    - name: Install dependencies
+      run: cpanm --installdeps .
+    - name: Run tests
+      run: ./script/test
+```
+
+### Documentation
+
+Full testing documentation available in `t/README.md`, including:
+- Running specific test files
+- Troubleshooting common issues
+- Writing tests for new features
+- Test helper API reference
+- Coverage information
+
 ## Contact Information
 
 **Project Owner**: Alex Beahm
@@ -857,4 +1105,4 @@ When adding new functionality:
 
 *This guide should be updated as the project evolves. When implementing new features, update this documentation to reflect the current state and any architectural decisions made.*
 
-**Last Updated**: October 16, 2025 - Added media upload system documentation, updated project structure, and completed blog system features
+**Last Updated**: October 17, 2025 - Implemented comprehensive backend testing framework with Test::More, Test::Mojo, and DBD::Mock. Added 60+ test cases covering models and controllers, test runner scripts, and complete testing documentation.

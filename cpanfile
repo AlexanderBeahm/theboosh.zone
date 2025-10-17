@@ -29,3 +29,10 @@ requires 'MIME::Types';
 
 # Time Utilities
 requires 'Time::Local';
+
+# Testing
+requires 'Test::More', '>= 1.302';
+requires 'Test::Mojo';
+requires 'DBD::Mock';
+requires 'Test::Exception';
+requires 'Test::MockModule';
