@@ -5,6 +5,9 @@ MYMETA.json
 MYMETA.yml
 .claude*
 
+# Testing artifacts
+coverage/
+
 # Frontend build artifacts
 frontend/node_modules/
 frontend/dist/
