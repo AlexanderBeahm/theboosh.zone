@@ -10,6 +10,8 @@ services:
       UPLOADS_DIR: /usr/src/hello-perld/uploads
       UPLOAD_MAX_SIZE: 5242880
       UPLOAD_ALLOWED_TYPES: image/jpeg,image/png,image/gif,image/webp,image/svg+xml
+      DB_RETRY_ATTEMPTS: 30
+      DB_RETRY_INTERVAL: 5
     volumes:
       - uploads_data:/usr/src/hello-perld/uploads
     develop:
@@ -23,7 +25,14 @@ services:
         - action: rebuild
           path: ./frontend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   db:
     image: postgres:latest
@@ -35,6 +44,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   prometheus:
     build:

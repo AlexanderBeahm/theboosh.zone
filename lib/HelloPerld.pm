@@ -81,6 +81,10 @@ sub startup {
         }
     });
 
+    # Health check endpoints (outside API namespace for direct access)
+    $self->routes->get('/health')->to('Health#getHealthStatus');
+    $self->routes->get('/health/ready')->to('Health#get_readiness_status');
+
     # Configure session management
     $self->sessions->default_expiration(86400); # 24 hours
     $self->secrets(['your-secret-key-change-in-production']); # TODO: Use environment variable

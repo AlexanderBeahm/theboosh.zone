@@ -50,6 +50,33 @@
         }
       }
     },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness Check Endpoint",
+        "description": "Returns the readiness status of the application, including database connectivity.",
+        "operationId": "getReadinessStatus",
+        "x-mojo-to": "Health#get_readiness_status",
+        "tags": ["Health"],
+        "responses": {
+          "200": {
+            "description": "Application is ready",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReadinessResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Application is not ready",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ReadinessResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "summary": "Admin Login",
@@ -665,6 +692,23 @@
           "status": {
             "type": "string",
             "enum": ["healthy", "unhealthy"]
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ready", "not_ready"]
+          },
+          "database": {
+            "type": "string",
+            "enum": ["connected", "unavailable"]
           },
           "timestamp": {
             "type": "string",
