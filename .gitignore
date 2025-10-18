@@ -5,6 +5,10 @@ MYMETA.json
 MYMETA.yml
 .claude*
 
+# Perl build artifacts
+blib/
+pm_to_blib
+
 # Testing artifacts
 coverage/
 
