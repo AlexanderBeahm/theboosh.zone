@@ -2,12 +2,32 @@ package HelloPerld::Model::Media;
 use strict;
 use warnings;
 
+our $VERSION = '1.0.0';
+
 use HelloPerld::Database::Postgres;
 
-sub create {
-    my ($class, %params) = @_;
+sub new {
+    my ($class, %args) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection();
+    my $self = {
+        logger => $args{logger},
+    };
+
+    return bless $self, $class;
+}
+
+sub create {
+    my ($self, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $media_data;
+    if (ref($_[1]) eq 'HASH') {
+        $media_data = $_[1];
+    } else {
+        $media_data = \%params;
+    }
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
     my $result;
@@ -24,19 +44,20 @@ sub create {
 
         my $sth = $dbh->prepare($sql);
         $sth->execute(
-            $params{filename},
-            $params{original_filename},
-            $params{filepath},
-            $params{mime_type},
-            $params{file_size},
-            $params{width},
-            $params{height},
-            $params{uploaded_by},
-            $params{alt_text},
-            $params{caption}
+            $media_data->{filename},
+            $media_data->{original_filename},
+            $media_data->{filepath},
+            $media_data->{mime_type},
+            $media_data->{file_size},
+            $media_data->{width},
+            $media_data->{height},
+            $media_data->{uploaded_by},
+            $media_data->{alt_text},
+            $media_data->{caption}
         );
 
         $result = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
     };
 
@@ -49,9 +70,9 @@ sub create {
 }
 
 sub get_all {
-    my ($class, %params) = @_;
+    my ($self, %params) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection();
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
     my $page = $params{page} || 1;
@@ -82,6 +103,7 @@ sub get_all {
         my $count_sth = $dbh->prepare($count_sql);
         $count_sth->execute(@where_params);
         ($total_count) = $count_sth->fetchrow_array();
+        $count_sth->finish();
 
         # Get paginated results
         my $sql = qq{
@@ -101,13 +123,19 @@ sub get_all {
         while (my $row = $sth->fetchrow_hashref()) {
             push @$results, $row;
         }
-
+        $sth->finish();
         $dbh->disconnect();
     };
 
     if ($@) {
         warn "Error fetching media: $@";
         return undef;
+    }
+
+    # For simple mode (used by tests), return just the array
+    # For paginated mode (used by controllers), return pagination structure
+    if ($params{simple}) {
+        return $results;
     }
 
     # Calculate pagination info
@@ -129,11 +157,11 @@ sub get_all {
 }
 
 sub get_by_id {
-    my ($class, $id) = @_;
+    my ($self, $id) = @_;
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection();
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
     my $result;
@@ -149,6 +177,7 @@ sub get_by_id {
         my $sth = $dbh->prepare($sql);
         $sth->execute($id);
         $result = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
     };
 
@@ -161,11 +190,19 @@ sub get_by_id {
 }
 
 sub update {
-    my ($class, $id, %params) = @_;
+    my ($self, $id, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $media_data;
+    if (ref($_[2]) eq 'HASH') {
+        $media_data = $_[2];
+    } else {
+        $media_data = \%params;
+    }
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection();
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
     my $result;
@@ -181,12 +218,13 @@ sub update {
 
         my $sth = $dbh->prepare($sql);
         $sth->execute(
-            $params{alt_text},
-            $params{caption},
+            $media_data->{alt_text},
+            $media_data->{caption},
             $id
         );
 
         $result = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
     };
 
@@ -199,11 +237,11 @@ sub update {
 }
 
 sub delete {
-    my ($class, $id) = @_;
+    my ($self, $id) = @_;
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection();
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
 
     my $result;
@@ -230,6 +268,50 @@ sub delete {
     }
 
     return $result;
+}
+
+sub get_count {
+    my ($self, %params) = @_;
+
+    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    return 0 unless $dbh;
+
+    my $count;
+    eval {
+        # Build WHERE clause for filtering
+        my @where_conditions;
+        my @where_params;
+
+        if ($params{type}) {
+            push @where_conditions, "mime_type LIKE ?";
+            push @where_params, $params{type} . '%';
+        }
+
+        if ($params{search}) {
+            push @where_conditions, "(original_filename ILIKE ? OR alt_text ILIKE ? OR caption ILIKE ?)";
+            my $search_term = '%' . $params{search} . '%';
+            push @where_params, $search_term, $search_term, $search_term;
+        }
+
+        my $where_clause = @where_conditions ? "WHERE " . join(" AND ", @where_conditions) : "";
+
+        my $sql = "SELECT COUNT(*) FROM media $where_clause";
+        my $sth = $dbh->prepare($sql);
+        $sth->execute(@where_params);
+        ($count) = $sth->fetchrow_array();
+        $sth->finish();
+        $dbh->disconnect();
+    };
+
+    if ($@) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to get media count: $@");
+        }
+        $dbh->disconnect() if $dbh;
+        return 0;
+    }
+
+    return $count || 0;
 }
 
 1;

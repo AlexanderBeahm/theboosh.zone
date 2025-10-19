@@ -67,13 +67,16 @@ sub get_all {
 
         my @articles_array;
         while (my $row = $sth->fetchrow_hashref()) {
-            # Fetch tags for this article
-            $row->{tags} = $self->get_article_tags($row->{id});
             push @articles_array, $row;
         }
         $sth->finish();
-
         $dbh->disconnect();
+
+        # Fetch tags for each article after disconnecting
+        foreach my $article (@articles_array) {
+            $article->{tags} = $self->get_article_tags($article->{id});
+        }
+
         $articles = \@articles_array;
     };
 
@@ -109,12 +112,6 @@ sub get_by_slug {
 
         $article = $sth->fetchrow_hashref();
         $sth->finish();
-
-        if ($article) {
-            # Fetch tags for this article
-            $article->{tags} = $self->get_article_tags($article->{id});
-        }
-
         $dbh->disconnect();
     };
 
@@ -124,6 +121,11 @@ sub get_by_slug {
         }
         $dbh->disconnect() if $dbh;
         return undef;
+    }
+
+    # Fetch tags after successful query
+    if ($article) {
+        $article->{tags} = $self->get_article_tags($article->{id});
     }
 
     return $article;
@@ -150,12 +152,6 @@ sub get_by_id {
 
         $article = $sth->fetchrow_hashref();
         $sth->finish();
-
-        if ($article) {
-            # Fetch tags for this article
-            $article->{tags} = $self->get_article_tags($article->{id});
-        }
-
         $dbh->disconnect();
     };
 
@@ -167,11 +163,24 @@ sub get_by_id {
         return undef;
     }
 
+    # Fetch tags after successful query
+    if ($article) {
+        $article->{tags} = $self->get_article_tags($article->{id});
+    }
+
     return $article;
 }
 
 sub create {
-    my ($self, $article_data) = @_;
+    my ($self, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $article_data;
+    if (ref($_[1]) eq 'HASH') {
+        $article_data = $_[1];
+    } else {
+        $article_data = \%params;
+    }
 
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
@@ -238,7 +247,7 @@ sub create {
             if ($self->{logger}) {
                 $self->{logger}->error("Article created but failed to set tags for article ID '$article_id'");
             }
-            # Article was created successfully, so still return the ID
+            # Article was created successfully, so continue
         }
     } else {
         if ($self->{logger}) {
@@ -247,11 +256,20 @@ sub create {
         }
     }
 
-    return $article_id;
+    # Fetch and return the complete article object
+    return $self->get_by_id($article_id);
 }
 
 sub update {
-    my ($self, $id, $article_data) = @_;
+    my ($self, $id, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $article_data;
+    if (ref($_[2]) eq 'HASH') {
+        $article_data = $_[2];
+    } else {
+        $article_data = \%params;
+    }
 
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;

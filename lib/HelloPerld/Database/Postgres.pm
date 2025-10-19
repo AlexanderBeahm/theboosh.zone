@@ -179,8 +179,12 @@ sub run_migrations {
 
     my $migrations_run = 0;
     foreach my $file (@migration_files) {
-        my ($version, $description, $type) = extract_migration_info($file);
+        my ($version, $type, $name) = extract_migration_info($file);
         next unless $version;
+
+        # Convert name to description (replace underscores with spaces)
+        my $description = $name;
+        $description =~ s/_/ /g;
 
         # Skip if already applied
         if ($applied_lookup{$version}) {
@@ -232,9 +236,13 @@ sub extract_migration_info {
 
     # Extract version and description from filename like: 001_create_articles_table.sql or 001_create_articles_table.pl
     if ($filename =~ /(\d{3})_(.+)\.(sql|pl)$/) {
-        my ($version, $desc, $type) = ($1, $2, $3);
-        $desc =~ s/_/ /g;  # Replace underscores with spaces
-        return ($version, $desc, $type);
+        my ($version, $name, $ext) = ($1, $2, $3);
+
+        # Normalize file extension to migration type
+        my $type = $ext eq 'pl' ? 'perl' : $ext;
+
+        # Return in order: version, type, name (matching test expectations)
+        return ($version, $type, $name);
     }
 
     return (undef, undef, undef);

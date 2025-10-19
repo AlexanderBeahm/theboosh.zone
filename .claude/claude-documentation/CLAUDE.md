@@ -404,6 +404,37 @@ UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,image/webp,image/svg+xml
 
 ## Lessons Learned & Important Implementation Notes
 
+### Docker Development Workflow
+
+**CRITICAL**: This project uses modern Docker Compose commands and requires explicit rebuilds.
+
+1. **Use `docker compose` (not `docker-compose`)**:
+   ```bash
+   # CORRECT
+   docker compose up -d
+   docker compose down
+   
+   # INCORRECT (old syntax)
+   docker-compose up -d
+   docker-compose down
+   ```
+   The project uses Docker Compose V2 which is invoked as `docker compose` (space, not hyphen).
+
+2. **Always rebuild after code changes**:
+   ```bash
+   # Standard workflow after ANY code changes
+   docker compose down
+   docker compose up -d --build
+   ```
+   
+   **Why this matters**:
+   - The project does NOT use the `--watch` flag or volume mounting for code
+   - Code changes are baked into the Docker image during build
+   - Without `--build`, you'll be testing old code even after making changes
+   - This includes changes to Perl modules, tests, migrations, and configuration files
+   
+   **Exception**: Static files mounted via volumes (like `uploads/`) don't require rebuild.
+
 ### Admin Authentication Flow
 
 **Current Status**: Fully implemented and working

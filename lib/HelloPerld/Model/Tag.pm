@@ -51,12 +51,16 @@ sub get_all {
 
         my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
-            # Get usage count for this tag
-            $row->{usage_count} = $self->get_tag_usage_count($row->{id});
             push @tags_array, $row;
         }
-
+        $sth->finish();
         $dbh->disconnect();
+
+        # Get usage count for each tag after disconnecting
+        foreach my $tag (@tags_array) {
+            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
+        }
+
         $tags = \@tags_array;
     };
 
@@ -187,7 +191,7 @@ sub get_by_name {
     my $sql = q{
         SELECT id, name, slug, date_added
         FROM tags
-        WHERE name = ?
+        WHERE LOWER(name) = LOWER(?)
     };
 
     my $tag;
@@ -222,7 +226,15 @@ sub get_by_name {
 }
 
 sub create {
-    my ($self, $tag_data) = @_;
+    my ($self, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $tag_data;
+    if (ref($_[1]) eq 'HASH') {
+        $tag_data = $_[1];
+    } else {
+        $tag_data = \%params;
+    }
 
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
@@ -257,11 +269,20 @@ sub create {
         return undef;
     }
 
-    return $tag_id;
+    # Fetch and return the complete tag object
+    return $self->get_by_id($tag_id);
 }
 
 sub update {
-    my ($self, $id, $tag_data) = @_;
+    my ($self, $id, %params) = @_;
+
+    # Convert named parameters to hashref if not already a hashref
+    my $tag_data;
+    if (ref($_[2]) eq 'HASH') {
+        $tag_data = $_[2];
+    } else {
+        $tag_data = \%params;
+    }
 
     my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
     return undef unless $dbh;
@@ -380,8 +401,9 @@ sub get_popular_tags {
         while (my $row = $sth->fetchrow_hashref()) {
             push @tags_array, $row;
         }
-
+        $sth->finish();
         $dbh->disconnect();
+
         $tags = \@tags_array;
     };
 
@@ -419,11 +441,16 @@ sub search {
 
         my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
-            $row->{usage_count} = $self->get_tag_usage_count($row->{id});
             push @tags_array, $row;
         }
-
+        $sth->finish();
         $dbh->disconnect();
+
+        # Get usage count for each tag after disconnecting
+        foreach my $tag (@tags_array) {
+            $tag->{usage_count} = $self->get_tag_usage_count($tag->{id});
+        }
+
         $tags = \@tags_array;
     };
 

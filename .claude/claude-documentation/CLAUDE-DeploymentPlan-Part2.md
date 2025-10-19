@@ -1832,6 +1832,162 @@ After implementation, verify:
 
 ---
 
+## Phase 11: Re-enable Integration Tests
+
+**Priority**: Medium  
+**Timeline**: After Phase 4 (Test Environment) completion  
+**Dependencies**: Phase 4 must be fully implemented
+
+### Context
+
+Integration tests were temporarily disabled during initial development due to:
+- Test environment configuration issues causing timeouts
+- Lack of isolated test database infrastructure
+- Need for proper multi-environment separation per deployment plan
+
+The tests themselves are valid and important for verifying:
+- Database operations with real PostgreSQL
+- Complete request/response cycles with Test::Mojo
+- Tag, Article, and Media model integration
+- API endpoint functionality
+
+**Current Status**: Tests are disabled in `script/test-integration` with informative message output.
+
+### Prerequisites for Re-enablement
+
+Before re-enabling integration tests, Phase 4 deliverables must be complete:
+
+1. ✅ `docker-compose.test.yml` implemented with isolated test database
+2. ✅ `.env.test` configuration with test-specific settings
+3. ✅ Test database schema initialization working
+4. ✅ `Test::Mojo` configured to use test environment
+5. ✅ Tests verified to run without timeouts in isolated environment
+
+### Re-enablement Steps
+
+#### Step 1: Restore Test Script
+
+Edit `script/test-integration` to restore original functionality:
+
+```perl
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::Bin/../lib";
+
+# Run integration tests that require a running database
+# These tests use Test::Mojo to make real HTTP requests to the application
+
+print "\nRunning integration tests...\n\n";
+
+my $result = system('prove', '-l', '-r', '-v', 't/integration/');
+
+exit($result >> 8);
+```
+
+Remove the disable message code (currently preserved as comments).
+
+#### Step 2: Verify Test Environment
+
+```bash
+# Ensure test environment is clean
+docker compose -f docker-compose.test.yml down -v
+
+# Start test environment
+docker compose -f docker-compose.test.yml up -d
+
+# Wait for database to be ready
+sleep 5
+
+# Verify test database is accessible
+docker compose -f docker-compose.test.yml exec web perl -MHelloPerld::Database::Postgres -e 'print "DB OK\n"'
+```
+
+#### Step 3: Run Individual Test Files
+
+Test each integration test file individually to identify any remaining issues:
+
+```bash
+# Test tag integration
+docker compose -f docker-compose.test.yml exec web perl -Ilib t/integration/model/tag.t
+
+# Test article integration  
+docker compose -f docker-compose.test.yml exec web perl -Ilib t/integration/model/article.t
+
+# Test media integration
+docker compose -f docker-compose.test.yml exec web perl -Ilib t/integration/model/media.t
+```
+
+Fix any failures before proceeding to full test run.
+
+#### Step 4: Run Full Integration Test Suite
+
+```bash
+# Run all integration tests via script
+docker compose -f docker-compose.test.yml exec web ./script/test-integration
+
+# Expected output: All tests passing
+# Example: Result: PASS
+#          Files=3, Tests=25, [time] wallclock secs
+```
+
+#### Step 5: Update CI/CD Pipeline
+
+Update `.github/workflows/test.yml` (or equivalent) to run integration tests:
+
+```yaml
+- name: Run Integration Tests
+  run: |
+    docker compose -f docker-compose.test.yml up -d
+    sleep 5
+    docker compose -f docker-compose.test.yml exec -T web ./script/test-integration
+  timeout-minutes: 5
+```
+
+### Testing Checklist
+
+After re-enablement, verify:
+
+- [ ] Integration tests run without timeouts
+- [ ] Test database is properly isolated (doesn't affect dev data)
+- [ ] All integration test files pass (`t/integration/model/*.t`)
+- [ ] Tests can be run repeatedly without cleanup issues
+- [ ] CI/CD pipeline includes integration tests
+- [ ] Test execution time is reasonable (< 2 minutes total)
+- [ ] Test output is clear and informative
+
+### Rollback Plan
+
+If re-enablement causes issues:
+
+1. Revert `script/test-integration` to disabled state with message
+2. Document specific failure in GitHub issue
+3. Return to Phase 4 debugging
+4. Do not merge code that breaks integration tests
+
+### Success Metrics
+
+Integration tests are successfully re-enabled when:
+
+- ✅ All tests pass in test environment
+- ✅ Tests complete in < 2 minutes
+- ✅ No database connection timeouts
+- ✅ CI/CD pipeline runs tests automatically
+- ✅ Test failures are legitimate bugs, not environment issues
+
+### Documentation Updates
+
+When re-enabled, update:
+
+1. **CLAUDE.md** - Remove "DBD::Mock issue" section if resolved
+2. **README.md** - Update testing instructions to include integration tests
+3. **This file** - Mark Phase 11 as complete
+4. **Test files** - Remove SKIP blocks if DBD::Mock resolved
+
+---
+
 ## Summary
 
 This deployment plan transforms TheBoosh.Zone from a development-only setup into a production-ready application with:
