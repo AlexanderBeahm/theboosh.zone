@@ -182,7 +182,13 @@ sub _authenticate_user {
 
     $self->app->logger_instance->info("Auth attempt - username: '$username', password length: " . length($password));
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    # Use db_config if available (multi-environment support), fallback to environment variables
+    my $dbh;
+    if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->app->logger_instance, $self->db_config);
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    }
     return undef unless $dbh;
 
     my $sql = q{
@@ -224,7 +230,13 @@ sub _authenticate_user {
 sub _get_user_by_id {
     my ($self, $user_id) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    # Use db_config if available (multi-environment support), fallback to environment variables
+    my $dbh;
+    if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->app->logger_instance, $self->db_config);
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    }
     return undef unless $dbh;
 
     my $sql = q{
@@ -297,7 +309,13 @@ sub _constant_time_compare {
 sub _update_last_login {
     my ($self, $user_id) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    # Use db_config if available (multi-environment support), fallback to environment variables
+    my $dbh;
+    if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->app->logger_instance, $self->db_config);
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    }
     return 0 unless $dbh;
 
     eval {
@@ -319,7 +337,13 @@ sub _update_last_login {
 sub _update_password {
     my ($self, $user_id, $new_password) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    # Use db_config if available (multi-environment support), fallback to environment variables
+    my $dbh;
+    if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->app->logger_instance, $self->db_config);
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    }
     return 0 unless $dbh;
 
     my $password_hash = $self->_hash_password($new_password);

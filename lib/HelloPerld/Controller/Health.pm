@@ -30,8 +30,23 @@ sub get_readiness_status ($self) {
     my $timestamp = strftime("%Y-%m-%dT%H:%M:%SZ", gmtime());
 
     # Test database connectivity directly
+    # Use db_config if available (multi-environment support), fallback to environment variables
+    my $dbh;
     eval {
-        HelloPerld::Database::Postgres::validate_connection($self->app->logger_instance);
+        if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+            $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->app->logger_instance, $self->db_config);
+        } else {
+            # Fallback to validate_connection for backward compatibility
+            HelloPerld::Database::Postgres::validate_connection($self->app->logger_instance);
+            return; # Success if no exception thrown
+        }
+
+        # If using config, verify connection works
+        if ($dbh) {
+            $dbh->disconnect();
+        } else {
+            die "Failed to establish database connection";
+        }
     };
 
     if ($@) {
