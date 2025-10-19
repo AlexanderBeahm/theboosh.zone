@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use Getopt::Long;
 
 use FindBin;
 BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
@@ -9,11 +10,33 @@ BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 use HelloPerld::Database::Postgres;
 use HelloPerld::Logger::LoggerFactory;
 
+# Parse command-line options
+my $schema = $ENV{DB_SCHEMA} || 'public';
+my $help = 0;
+
+GetOptions(
+    'schema=s' => \$schema,
+    'help'     => \$help,
+) or die "Invalid options\n";
+
+if ($help) {
+    print "Usage: $0 [--schema SCHEMA_NAME]\n";
+    print "  --schema  Database schema to run migrations in (default: public or \$DB_SCHEMA)\n";
+    print "\n";
+    print "Environment variables:\n";
+    print "  DB_SCHEMA - Default schema to use if --schema not specified\n";
+    exit 0;
+}
+
 # Initialize logger
 my $logger = HelloPerld::Logger::LoggerFactory->create_default_logger();
 
 # Run migrations
 $logger->info("Starting database migrations...");
+$logger->info("Target schema: $schema");
+
+# Set DB_SCHEMA environment variable for migration system
+$ENV{DB_SCHEMA} = $schema;
 
 my $migrations_run = HelloPerld::Database::Postgres::run_migrations('migrations', $logger);
 

@@ -13,7 +13,10 @@ use JSON qw(decode_json);
 sub get_all {
     my $self = shift;
 
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
 
     # Get query parameters
     my $page = $self->param('page') || 1;
@@ -82,7 +85,10 @@ sub get_by_slug {
         }, status => 400);
     }
 
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $article = $article_model->get_by_slug($slug);
 
     unless ($article) {
@@ -118,7 +124,10 @@ sub get_by_id {
         }, status => 400);
     }
 
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $article = $article_model->get_by_id($id);
 
     unless ($article) {
@@ -182,7 +191,10 @@ sub create {
         $article_data->{published_at} = 'NOW()';
     }
 
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $article_id = $article_model->create($article_data);
 
     unless ($article_id) {
@@ -225,7 +237,10 @@ sub update {
     }
 
     # Check if article exists
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $existing_article = $article_model->get_by_id($id);
 
     unless ($existing_article) {
@@ -299,7 +314,10 @@ sub delete {
         }, status => 400);
     }
 
-    my $article_model = HelloPerld::Model::Article->new(logger => $self->app->logger_instance);
+    my $article_model = HelloPerld::Model::Article->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
 
     # Check if article exists before deleting
     my $existing_article = $article_model->get_by_id($id);
@@ -387,7 +405,10 @@ sub _process_tags {
 
     return [] unless $tag_names && ref($tag_names) eq 'ARRAY';
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my @tag_ids;
 
     foreach my $tag_name (@$tag_names) {

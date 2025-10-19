@@ -1,4 +1,20 @@
-*.env*
+# Environment files (keep only examples in repo)
+.env
+.env.local
+.env.development
+.env.test
+.env.staging
+.env.production
+.env.*.local
+
+# Keep example files
+!.env.*.example
+
+# Frontend environment files
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
 .continue/*
 Makefile
 MYMETA.json

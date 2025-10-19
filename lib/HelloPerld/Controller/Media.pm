@@ -113,7 +113,11 @@ sub upload ($self) {
     my $caption = $self->param('caption');
 
     # Create media record in database
-    my $media = HelloPerld::Model::Media->create(
+    my $media_model = HelloPerld::Model::Media->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
+    my $media = $media_model->create(
         filename => $unique_filename,
         original_filename => $original_filename,
         filepath => $filepath,
@@ -159,7 +163,11 @@ sub get_all ($self) {
     $params{mime_type} = $mime_type if $mime_type;
     $params{search} = $search if $search;
 
-    my $result = HelloPerld::Model::Media->get_all(%params);
+    my $media_model = HelloPerld::Model::Media->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
+    my $result = $media_model->get_all(%params);
 
     unless ($result) {
         return $self->render(json => {
@@ -191,7 +199,11 @@ sub get_by_id ($self) {
         }, status => 400);
     }
 
-    my $media = HelloPerld::Model::Media->get_by_id($id);
+    my $media_model = HelloPerld::Model::Media->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
+    my $media = $media_model->get_by_id($id);
 
     unless ($media) {
         return $self->render(json => {
@@ -225,7 +237,11 @@ sub update ($self) {
     my $alt_text = $self->param('alt_text') || $body->{alt_text};
     my $caption = $self->param('caption') || $body->{caption};
 
-    my $media = HelloPerld::Model::Media->update($id,
+    my $media_model = HelloPerld::Model::Media->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
+    my $media = $media_model->update($id,
         alt_text => $alt_text,
         caption => $caption
     );
@@ -257,7 +273,11 @@ sub delete ($self) {
         }, status => 400);
     }
 
-    my $result = HelloPerld::Model::Media->delete($id);
+    my $media_model = HelloPerld::Model::Media->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
+    my $result = $media_model->delete($id);
 
     unless ($result) {
         return $self->render(json => {

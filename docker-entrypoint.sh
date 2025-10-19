@@ -1,10 +1,21 @@
 #!/bin/bash
 set -e
 
+APP_ENV=${APP_ENV:-development}
+MOJO_MODE=${MOJO_MODE:-$APP_ENV}
+DB_SCHEMA=${DB_SCHEMA:-public}
+
 echo "Starting TheBoosh.Zone application..."
+echo "Environment: $APP_ENV"
+echo "Mojo Mode: $MOJO_MODE"
+echo "DB Schema: $DB_SCHEMA"
 
 # Function to wait for database to be ready with intelligent retry logic
 wait_for_database() {
+    if [ "$APP_ENV" = "test" ]; then
+        echo "Test mode: checking for database..."
+    fi
+
     local max_attempts="${DB_RETRY_ATTEMPTS:-30}"
     local retry_interval="${DB_RETRY_INTERVAL:-5}"
     local attempt=1
@@ -35,9 +46,58 @@ wait_for_database() {
     done
 }
 
+# Function to validate production environment
+validate_production_env() {
+    if [ "$APP_ENV" != "production" ] && [ "$APP_ENV" != "staging" ]; then
+        return 0
+    fi
+
+    echo "Validating $APP_ENV environment variables..."
+
+    local required_vars=(
+        "POSTGRES_HOST"
+        "POSTGRES_DB"
+        "POSTGRES_USER"
+        "POSTGRES_PASSWORD"
+        "SESSION_SECRET"
+        "ADMIN_USERNAME"
+        "ADMIN_PASSWORD"
+    )
+
+    local missing_vars=()
+
+    for var in "${required_vars[@]}"; do
+        if [ -z "${!var}" ]; then
+            missing_vars+=("$var")
+        fi
+    done
+
+    if [ ${#missing_vars[@]} -ne 0 ]; then
+        echo "FATAL: Missing required environment variables for $APP_ENV:"
+        printf '  - %s\n' "${missing_vars[@]}"
+        exit 1
+    fi
+
+    # Validate session secret is not default
+    if [ "$SESSION_SECRET" = "development-secret-change-me" ]; then
+        echo "FATAL: SESSION_SECRET cannot be the default value in $APP_ENV"
+        exit 1
+    fi
+
+    echo "$APP_ENV environment validation passed!"
+}
+
 # Function to run database migrations
 run_migrations() {
-    echo "Running database migrations..."
+    if [ "$APP_ENV" = "test" ]; then
+        echo "Test mode: skipping automatic migrations (tests will handle this)"
+        return 0
+    fi
+
+    echo "Running database migrations for $APP_ENV environment (schema: $DB_SCHEMA)..."
+
+    # Export schema for migration script
+    export DB_SCHEMA=$DB_SCHEMA
 
     if perl script/migrate; then
         echo "Database migrations completed successfully!"
@@ -50,12 +110,17 @@ run_migrations() {
 # Function to start the main application
 start_application() {
     echo "Starting TheBoosh.Zone Mojolicious application..."
+    echo "Starting application with command: $@"
+    echo "Config file: config/hello-perld.$MOJO_MODE.conf"
     exec "$@"
 }
 
 # Main startup sequence
-echo "TheBoosh.Zone Development Environment"
+echo "TheBoosh.Zone - Environment: $APP_ENV"
 echo "========================================"
+
+# Validate production environment
+validate_production_env
 
 # Wait for database to be ready
 wait_for_database

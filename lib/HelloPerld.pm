@@ -8,10 +8,40 @@ use HelloPerld::Logger::LoggerFactory;
 sub startup {
     my $self = shift;
 
+    # Load environment-specific configuration
+    my $mode = $self->mode; # Gets from MOJO_MODE env var or --mode flag
+    my $config_file = $self->home->rel_file("config/hello-perld.$mode.conf");
+
+    $self->plugin('Config' => {
+        file => $config_file,
+        default => {}
+    });
+
+    $self->log->info("Loading configuration for mode: $mode");
+    $self->log->info("Config file: $config_file");
+
+    # Validate production configuration
+    if ($mode eq 'production' || $mode eq 'staging') {
+        my $session_secret = $self->config->{session}->{secret};
+        die "SESSION_SECRET must be set for $mode!"
+            if !$session_secret || $session_secret eq 'development-secret-change-me';
+
+        die "Database configuration missing for $mode!"
+            unless $self->config->{database}->{host}
+                && $self->config->{database}->{user}
+                && $self->config->{database}->{password};
+    }
+
     # Initialize logger
     $self->helper(logger_instance => sub {
         state $logger = HelloPerld::Logger::LoggerFactory->create_default_logger();
         return $logger;
+    });
+
+    # Add helper for database config
+    $self->helper(db_config => sub {
+        my $c = shift;
+        return $c->app->config->{database};
     });
 
     # Configure template path
@@ -85,9 +115,10 @@ sub startup {
     $self->routes->get('/health')->to('Health#getHealthStatus');
     $self->routes->get('/health/ready')->to('Health#get_readiness_status');
 
-    # Configure session management
-    $self->sessions->default_expiration(86400); # 24 hours
-    $self->secrets(['your-secret-key-change-in-production']); # TODO: Use environment variable
+    # Configure session management from config
+    my $session_config = $self->config->{session};
+    $self->secrets([$session_config->{secret}]);
+    $self->sessions->default_expiration($session_config->{expiration});
 
     # Configure OpenAPI plugin - limit to /api routes only
     # TEMPORARILY DISABLED to test uploads route

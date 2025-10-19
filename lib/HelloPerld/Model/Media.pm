@@ -11,6 +11,7 @@ sub new {
 
     my $self = {
         logger => $args{logger},
+        db_config => $args{db_config} || {},
     };
 
     return bless $self, $class;
@@ -27,7 +28,12 @@ sub create {
         $media_data = \%params;
     }
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return undef unless $dbh;
 
     my $result;
@@ -72,7 +78,12 @@ sub create {
 sub get_all {
     my ($self, %params) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return undef unless $dbh;
 
     my $page = $params{page} || 1;
@@ -161,7 +172,12 @@ sub get_by_id {
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return undef unless $dbh;
 
     my $result;
@@ -202,7 +218,12 @@ sub update {
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return undef unless $dbh;
 
     my $result;
@@ -241,7 +262,12 @@ sub delete {
 
     return undef unless $id;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return undef unless $dbh;
 
     my $result;
@@ -273,7 +299,12 @@ sub delete {
 sub get_count {
     my ($self, %params) = @_;
 
-    my $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
     return 0 unless $dbh;
 
     my $count;

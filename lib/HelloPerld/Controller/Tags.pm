@@ -12,7 +12,10 @@ use JSON qw(decode_json);
 sub get_all {
     my $self = shift;
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
 
     # Get query parameters
     my $page = $self->param('page') || 1;
@@ -82,7 +85,10 @@ sub get_popular {
         }, status => 400);
     }
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $popular_tags = $tag_model->get_popular_tags($limit);
 
     unless (defined $popular_tags) {
@@ -110,7 +116,10 @@ sub get_by_slug {
         }, status => 400);
     }
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $tag = $tag_model->get_by_slug($slug);
 
     unless ($tag) {
@@ -138,7 +147,10 @@ sub get_by_id {
         }, status => 400);
     }
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $tag = $tag_model->get_by_id($id);
 
     unless ($tag) {
@@ -175,7 +187,10 @@ sub search {
         }, status => 400);
     }
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $tags = $tag_model->search($q, $limit);
 
     unless (defined $tags) {
@@ -214,7 +229,10 @@ sub create {
     }
 
     # Check if tag already exists
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $existing_tag = $tag_model->get_by_name($tag_data->{name});
 
     if ($existing_tag) {
@@ -271,7 +289,10 @@ sub update {
     }
 
     # Check if tag exists
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
     my $existing_tag = $tag_model->get_by_id($id);
 
     unless ($existing_tag) {
@@ -349,7 +370,10 @@ sub delete {
         }, status => 400);
     }
 
-    my $tag_model = HelloPerld::Model::Tag->new(logger => $self->app->logger_instance);
+    my $tag_model = HelloPerld::Model::Tag->new(
+        logger => $self->app->logger_instance,
+        db_config => $self->db_config
+    );
 
     # Check if tag exists and get usage count
     my $existing_tag = $tag_model->get_by_id($id);

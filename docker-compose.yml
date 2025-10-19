@@ -1,110 +1,116 @@
+# docker-compose.yml - Development Environment
 services:
-  hello-perld:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./.env
-    environment:
-      POSTGRES_HOST: db
-      UPLOADS_DIR: /usr/src/hello-perld/uploads
-      UPLOAD_MAX_SIZE: 5242880
-      UPLOAD_ALLOWED_TYPES: image/jpeg,image/png,image/gif,image/webp,image/svg+xml
-      DB_RETRY_ATTEMPTS: 30
-      DB_RETRY_INTERVAL: 5
-    volumes:
-      - uploads_data:/usr/src/hello-perld/uploads
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./lib
-          target: /usr/src/hello-perld/lib
-        - action: sync+restart
-          path: ./script
-          target: /usr/src/hello-perld/script
-        - action: rebuild
-          path: ./frontend
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    hello-perld:
+        build:
+            context: .
+            dockerfile: Dockerfile.development
+        ports:
+            - "3000:3000"
+        env_file:
+            - .env.development
+        environment:
+            POSTGRES_HOST: db
+            APP_ENV: development
+            MOJO_MODE: development
+            NODE_ENV: development
+            DB_SCHEMA: public
+        volumes:
+            - uploads_data:/usr/src/hello-perld/uploads
+        develop:
+            watch:
+                - action: sync+restart
+                  path: ./lib
+                  target: /usr/src/hello-perld/lib
+                - action: sync+restart
+                  path: ./script
+                  target: /usr/src/hello-perld/script
+                - action: rebuild
+                  path: ./frontend
+        depends_on:
+            db:
+                condition: service_healthy
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:3000/health/ready"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 60s
 
-  db:
-    image: postgres:latest
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+    db:
+        image: postgres:17
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB}
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test:
+                [
+                    "CMD-SHELL",
+                    "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}",
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
 
-  prometheus:
-    build:
-      context: .
-      dockerfile: Dockerfile.prometheus
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - prometheus_data:/prometheus
-    depends_on:
-      - hello-perld
+    prometheus:
+        build:
+            context: .
+            dockerfile: Dockerfile.prometheus
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
-      - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_INSTALL_PLUGINS=
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
+        ports:
+            - "9090:9090"
+        volumes:
+            - prometheus_data:/prometheus
+        depends_on:
+            - hello-perld
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    container_name: postgres-exporter
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable"
-    ports:
-      - "9187:9187"
-    depends_on:
-      - db
+    grafana:
+        image: grafana/grafana:latest
 
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    ports:
-      - "9100:9100"
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+        ports:
+            - "3001:3000"
+        environment:
+            - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+            - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+            - GF_USERS_ALLOW_SIGN_UP=false
+
+        volumes:
+            - grafana_data:/var/lib/grafana
+        depends_on:
+            - prometheus
+
+    postgres-exporter:
+        image: prometheuscommunity/postgres-exporter:latest
+
+        environment:
+            DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable"
+        ports:
+            - "9187:9187"
+        depends_on:
+            - db
+
+    node-exporter:
+        image: prom/node-exporter:latest
+
+        ports:
+            - "9100:9100"
+        volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+        command:
+            - "--path.procfs=/host/proc"
+            - "--path.rootfs=/rootfs"
+            - "--path.sysfs=/host/sys"
+            - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
 
 volumes:
-  postgres_data:
-  prometheus_data:
-  grafana_data:
-  uploads_data:
+    postgres_data:
+    prometheus_data:
+    grafana_data:
+    uploads_data:

@@ -1,35 +1,40 @@
 {
-  "name": "helloperld-frontend",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "lint": "eslint src --ext .vue,.js",
-    "lint:fix": "eslint src --ext .vue,.js --fix"
-  },
-  "dependencies": {
-    "axios": "^1.12.2",
-    "highlight.js": "^11.11.1",
-    "marked": "^16.4.0",
-    "vue": "^3.4.21",
-    "vue-router": "^4.3.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.4",
-    "@vitest/coverage-v8": "^3.2.4",
-    "@vue/test-utils": "^2.4.6",
-    "eslint": "^9.36.0",
-    "eslint-plugin-vue": "^10.5.0",
-    "happy-dom": "^19.0.2",
-    "jsdom": "^27.0.0",
-    "terser": "^5.44.0",
-    "vite": "^5.1.6",
-    "vitest": "^3.2.4"
-  }
+    "name": "helloperld-frontend",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "build:dev": "vite build --mode development",
+        "build:test": "vite build --mode test",
+        "build:staging": "vite build --mode staging",
+        "build:prod": "vite build --mode production",
+        "preview": "vite preview",
+        "test": "vitest",
+        "test:ci": "vitest run --coverage",
+        "test:ui": "vitest --ui",
+        "test:coverage": "vitest --coverage",
+        "lint": "eslint src --ext .vue,.js",
+        "lint:fix": "eslint src --ext .vue,.js --fix"
+    },
+    "dependencies": {
+        "axios": "^1.12.2",
+        "highlight.js": "^11.11.1",
+        "marked": "^16.4.0",
+        "vue": "^3.4.21",
+        "vue-router": "^4.3.0"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-vue": "^5.0.4",
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vue/test-utils": "^2.4.6",
+        "eslint": "^9.36.0",
+        "eslint-plugin-vue": "^10.5.0",
+        "happy-dom": "^19.0.2",
+        "jsdom": "^27.0.0",
+        "terser": "^5.44.0",
+        "vite": "^5.1.6",
+        "vitest": "^3.2.4"
+    }
 }

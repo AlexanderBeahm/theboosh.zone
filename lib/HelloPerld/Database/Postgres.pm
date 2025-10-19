@@ -47,25 +47,62 @@ sub validate_connection {
 }
 
 sub get_connection {
-    my ($logger) = @_;
+    my ($logger, %options) = @_;
 
-    my $dbname = $ENV{'POSTGRES_DB'};
-    my $host = $ENV{'POSTGRES_HOST'} || 'db';
-    my $port = $ENV{'POSTGRES_PORT'} || 5432;
-    my $user = $ENV{'POSTGRES_USER'};
-    my $password = $ENV{'POSTGRES_PASSWORD'};
+    # Get config from options or environment
+    my $schema = $options{schema} || $ENV{DB_SCHEMA} || 'public';
+    my $host = $options{host} || $ENV{POSTGRES_HOST} || 'db';
+    my $port = $options{port} || $ENV{POSTGRES_PORT} || 5432;
+    my $dbname = $options{dbname} || $ENV{POSTGRES_DB};
+    my $user = $options{user} || $ENV{POSTGRES_USER};
+    my $password = $options{password} || $ENV{POSTGRES_PASSWORD};
 
-    my $dbh = DBI->connect("dbi:Pg:dbname=$dbname;host=$host;port=$port", $user, $password, {
+    my $dsn = "DBI:Pg:dbname=$dbname;host=$host;port=$port";
+
+    my $dbh = DBI->connect($dsn, $user, $password, {
         RaiseError => 1,
         AutoCommit => 1,
+        PrintError => 0,
         pg_enable_utf8 => 1
     });
 
-    if (!$dbh && $logger) {
-        $logger->error("Could not establish database connection");
+    if (!$dbh) {
+        if ($logger) {
+            $logger->error("Could not establish database connection");
+        }
+        return undef;
+    }
+
+    # Set schema search path if not public
+    if ($schema ne 'public') {
+        eval {
+            $dbh->do("SET search_path TO $schema, public");
+            if ($logger) {
+                $logger->debug("Set database schema to: $schema");
+            }
+        };
+        if ($@) {
+            if ($logger) {
+                $logger->warn("Could not set schema $schema: $@");
+            }
+        }
     }
 
     return $dbh;
+}
+
+sub get_connection_from_config {
+    my ($logger, $config) = @_;
+
+    return get_connection(
+        $logger,
+        schema => $config->{schema},
+        host => $config->{host},
+        port => $config->{port},
+        dbname => $config->{dbname},
+        user => $config->{user},
+        password => $config->{password},
+    );
 }
 
 sub initialize_migrations_table {
