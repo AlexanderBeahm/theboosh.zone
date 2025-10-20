@@ -44,10 +44,20 @@ const createMockArticle = (id, overrides = {}) => ({
 
 describe("HomePage", () => {
     let router;
+    let mockIntersectionObserver;
 
     beforeEach(() => {
         router = createMockRouter();
         vi.clearAllMocks();
+
+        // Mock IntersectionObserver to prevent auto-triggering
+        mockIntersectionObserver = vi.fn();
+        mockIntersectionObserver.mockReturnValue({
+            observe: () => null,
+            unobserve: () => null,
+            disconnect: () => null,
+        });
+        global.IntersectionObserver = mockIntersectionObserver;
     });
 
     afterEach(() => {
@@ -366,6 +376,7 @@ describe("HomePage", () => {
             await wrapper.vm.loadMoreArticles();
             await flushPromises();
 
+            // Should now have 4 articles total (2 from first batch + 2 from second batch)
             expect(wrapper.findAllComponents(ArticleCard)).toHaveLength(4);
             expect(axios.get).toHaveBeenCalledTimes(2);
             expect(axios.get).toHaveBeenNthCalledWith(2, "/api/articles", {
@@ -394,10 +405,15 @@ describe("HomePage", () => {
 
             await flushPromises();
 
+            // Set isLoadingMore to true to simulate a load in progress
             wrapper.vm.isLoadingMore = true;
-            await wrapper.vm.loadMoreArticles();
+            await wrapper.vm.$nextTick();
 
-            // Should still only be called once (initial load)
+            // Try to load more while already loading
+            await wrapper.vm.loadMoreArticles();
+            await flushPromises();
+
+            // Should still only be called once (initial load), the second call should be blocked
             expect(axios.get).toHaveBeenCalledTimes(1);
         });
 
