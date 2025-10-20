@@ -475,46 +475,199 @@ Default credentials (configure in `.env`):
 
 ## Production Deployment
 
-### Building for Production
+TheBoosh.Zone includes a complete CI/CD pipeline and deployment automation for staging and production environments.
 
-```bash
-# Build frontend
-cd frontend
-npm install
-npm run build
-cd ..
+### Deployment Architecture
 
-# Build Docker image
-docker build -t thebooshzone:latest .
+**Environments:**
+- **Development**: Local Docker setup with `morbo` (port 3000)
+- **Test**: CI/CD only with ephemeral database
+- **Staging**: Cloud server with `hypnotoad` + nginx (https://staging.theboosh.zone)
+- **Production**: Cloud server with `hypnotoad` + nginx (https://theboosh.zone)
 
-# Run with docker-compose
-docker compose -f docker-compose.prod.yml up -d
+**Production Stack:**
+```
+Internet → nginx (SSL/TLS, static files) → hypnotoad (Perl app) → PostgreSQL (managed)
 ```
 
-### Production Considerations
+### Automated CI/CD Pipeline
 
-1. **Security:**
-   - Use strong passwords for all services
-   - Enable HTTPS with a reverse proxy (nginx, Caddy)
-   - Set secure session cookies
-   - Configure firewall rules
-   - Regular security updates
+**GitHub Actions Workflows:**
 
-2. **Performance:**
-   - Use production-optimized PostgreSQL settings
-   - Enable caching headers for static assets
-   - Consider CDN for media files
-   - Monitor with Prometheus/Grafana
+1. **Test Workflow** (`.github/workflows/test.yml`)
+   - Runs on every push/PR to `dev` or `main`
+   - Backend tests (Perl)
+   - Frontend tests (Vue/Vitest)
+   - Must pass before deployment
 
-3. **Backups:**
-   - Regular database backups
-   - Backup media uploads volume
-   - Store backups off-site
+2. **Staging Deployment** (`.github/workflows/deploy-staging.yml`)
+   - Automatically deploys on push to `dev` branch
+   - Builds Docker image with staging config
+   - Pushes to GitHub Container Registry (ghcr.io)
+   - Deploys to staging.theboosh.zone
+   - Health checks with automatic rollback
 
-4. **Monitoring:**
-   - Set up alerting in Prometheus
-   - Configure log aggregation
-   - Monitor disk space for media uploads
+3. **Production Deployment** (`.github/workflows/deploy-production.yml`)
+   - Automatically deploys on push to `main` branch
+   - **Requires manual approval** before deploying
+   - Creates database backup before deployment
+   - Zero-downtime deployment with hypnotoad
+   - Health checks with automatic rollback
+   - Creates GitHub release for version tags (`v*`)
+
+### Manual Deployment
+
+For first-time setup or manual deployments:
+
+```bash
+# SSH to server
+ssh user@staging.theboosh.zone  # or theboosh.zone
+
+# Navigate to project
+cd /opt/theboosh-zone
+
+# Run deployment script
+./deploy/deploy.sh staging  # or production
+```
+
+### Deployment Scripts
+
+Located in `deploy/` directory:
+
+- **`setup-server.sh`** - Initial server setup (Docker, SSL, firewall)
+- **`deploy.sh`** - Deploy application with health checks
+- **`rollback.sh`** - Rollback to previous deployment
+- **`backup.sh`** - Create database backup
+
+### Environment Configuration
+
+Each environment uses separate configuration files:
+
+**Backend Perl:**
+- `config/hello-perld.development.conf` - Development (morbo, debug logging)
+- `config/hello-perld.test.conf` - Test (minimal, error-only logging)
+- `config/hello-perld.staging.conf` - Staging (hypnotoad, 4 workers)
+- `config/hello-perld.production.conf` - Production (hypnotoad, 8 workers)
+
+**Frontend Vue:**
+- `frontend/.env.development` - Local API
+- `frontend/.env.test` - Test API
+- `frontend/.env.staging` - Staging API
+- `frontend/.env.production` - Production API
+
+**Server Environment:**
+- `.env.development.example` - Template for local dev
+- `.env.staging.example` - Template for staging
+- `.env.production.example` - Template for production
+
+### Database Schema Separation
+
+Uses managed PostgreSQL with separate schemas:
+- `public` - Development/test (local Docker)
+- `thebooshzone_staging` - Staging environment
+- `thebooshzone_prod` - Production environment
+
+Benefits: Cost-effective (one database), data isolation, easy backup/restore.
+
+### Security
+
+**Implemented:**
+- SSL/TLS via Let's Encrypt (auto-renewal)
+- nginx rate limiting (API: 10 req/s, auth: 5 req/min)
+- Security headers (X-Frame-Options, CSP, HSTS)
+- Session-based authentication with secure cookies
+- Non-root Docker containers
+- Firewall (ufw): Only SSH, HTTP, HTTPS open
+- Automated database backups (30-day retention)
+
+**Secrets Management:**
+- Environment-specific `.env` files (gitignored)
+- GitHub Secrets for CI/CD (SSH keys, server IPs)
+- Unique `SESSION_SECRET` per environment
+
+### Monitoring
+
+**Prometheus** (port 9090):
+- Application metrics
+- Database metrics (postgres-exporter)
+- System metrics (node-exporter)
+
+**Grafana** (port 3001):
+- Real-time dashboards
+- Alerting configuration
+- Performance monitoring
+
+**Logs:**
+```bash
+# View application logs
+docker compose -f docker-compose.production.yml logs -f app
+
+# View nginx logs
+docker compose -f docker-compose.production.yml logs -f nginx
+```
+
+### Backup & Recovery
+
+**Automated Backups:**
+- Run before each production deployment
+- 30-day retention policy
+- Schema-specific (pg_dump)
+- Compressed with gzip
+
+**Manual Backup:**
+```bash
+ssh user@theboosh.zone
+cd /opt/theboosh-zone
+./deploy/backup.sh production
+```
+
+**Restore:**
+```bash
+gunzip -c backup_production_YYYYMMDD_HHMMSS.sql.gz | \
+  psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
+```
+
+### Rollback Procedure
+
+If deployment causes issues:
+
+```bash
+ssh user@theboosh.zone
+cd /opt/theboosh-zone
+./deploy/rollback.sh production
+```
+
+Select previous image tag and confirm. Automatic health checks verify rollback success.
+
+### Deployment Workflow
+
+1. Create feature branch
+2. Push to GitHub → tests run automatically
+3. Create PR to `dev` → tests must pass
+4. Merge to `dev` → auto-deploy to staging
+5. Verify on https://staging.theboosh.zone
+6. Merge `dev` to `main` → wait for approval
+7. Approve → auto-deploy to production
+8. Verify on https://theboosh.zone
+
+### Setup Requirements
+
+**For CI/CD:**
+- GitHub repository secrets (SSH keys, server IPs)
+- GitHub environments: `staging` (no approval), `production` (requires approval)
+- GitHub Container Registry access (automatic)
+
+**For Servers:**
+- Ubuntu 22.04 LTS
+- Docker & Docker Compose
+- nginx with SSL (Let's Encrypt)
+- Managed PostgreSQL database
+- DNS configured (A records)
+
+**See Full Documentation:**
+- `.claude/claude-documentation/CLAUDE-DeploymentPlan-Part1.md` - Configuration
+- `.claude/claude-documentation/CLAUDE-DeploymentPlan-Part2.md` - CI/CD
+- `.claude/claude-documentation/Post-Implementation-Checklist.md` - Setup steps
 
 ## Troubleshooting
 

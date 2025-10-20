@@ -19,7 +19,7 @@ TheBoosh.Zone is Alex Beahm's personal portfolio and blog website, built with a 
 - **Containerization**: Docker & Docker Compose
 - **Monitoring**: Prometheus & Grafana
 - **Development Environment**: VSCode DevContainer support
-- **Testing**: 
+- **Testing**:
   - Backend: Test::More, Test::Mojo, DBD::Mock (Perl TAP framework)
   - Frontend: Vitest with Vue Test Utils
 
@@ -413,7 +413,7 @@ UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,image/webp,image/svg+xml
    # CORRECT
    docker compose up -d
    docker compose down
-   
+
    # INCORRECT (old syntax)
    docker-compose up -d
    docker-compose down
@@ -426,13 +426,13 @@ UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,image/webp,image/svg+xml
    docker compose down
    docker compose up -d --build
    ```
-   
+
    **Why this matters**:
    - The project does NOT use the `--watch` flag or volume mounting for code
    - Code changes are baked into the Docker image during build
    - Without `--build`, you'll be testing old code even after making changes
    - This includes changes to Perl modules, tests, migrations, and configuration files
-   
+
    **Exception**: Static files mounted via volumes (like `uploads/`) don't require rebuild.
 
 ### Admin Authentication Flow
@@ -1022,15 +1022,15 @@ use_ok('HelloPerld::Model::YourModel');
 
 subtest 'your test' => sub {
     $mock_dbh = mock_dbh();
-    
+
     $mock_dbh->{mock_add_resultset} = {
         sql => qr/SELECT/i,
         results => [['id', 'name'], [1, 'Test']]
     };
-    
+
     my $model = HelloPerld::Model::YourModel->new(logger => mock_logger());
     my $result = $model->your_method();
-    
+
     ok(defined $result, 'Returns result');
 };
 
@@ -1136,4 +1136,464 @@ Full testing documentation available in `t/README.md`, including:
 
 *This guide should be updated as the project evolves. When implementing new features, update this documentation to reflect the current state and any architectural decisions made.*
 
-**Last Updated**: October 17, 2025 - Implemented comprehensive backend testing framework with Test::More, Test::Mojo, and DBD::Mock. Added 60+ test cases covering models and controllers, test runner scripts, and complete testing documentation.
+## Multi-Environment Deployment & CI/CD
+
+**Status**: Fully implemented (October 2025)
+
+TheBoosh.Zone supports four distinct environments with proper separation of concerns, automated CI/CD pipeline, and production-ready deployment infrastructure.
+
+### Environments
+
+1. **Development** (`MOJO_MODE=development`)
+   - Local Docker Compose setup
+   - Uses `morbo` development server with hot reload
+   - Local PostgreSQL database (schema: `public`)
+   - Full monitoring stack (Prometheus, Grafana)
+   - API URL: http://localhost:3000
+
+2. **Test** (`MOJO_MODE=test`)
+   - CI/CD pipeline only (GitHub Actions)
+   - Ephemeral PostgreSQL database (tmpfs)
+   - Minimal services for fast testing
+   - Tests run automatically on PR/push
+   - Separate frontend and backend test suites
+
+3. **Staging** (`MOJO_MODE=staging`)
+   - Pre-production environment on cloud server
+   - Uses `hypnotoad` production server (4 workers)
+   - nginx reverse proxy with SSL (Let's Encrypt)
+   - Managed PostgreSQL database (schema: `thebooshzone_staging`)
+   - Full monitoring with Prometheus and Grafana
+   - Deployed automatically on push to `dev` branch
+   - URL: https://staging.theboosh.zone
+
+4. **Production** (`MOJO_MODE=production`)
+   - Live environment on cloud server
+   - Uses `hypnotoad` production server (8 workers)
+   - nginx reverse proxy with SSL and performance optimizations
+   - Managed PostgreSQL database (schema: `thebooshzone_prod`)
+   - Full monitoring with alerts
+   - Deployed on push to `main` branch or version tags
+   - Requires manual approval in GitHub Actions
+   - URL: https://theboosh.zone
+
+### Configuration Files
+
+**Backend Perl Configuration** (Mojolicious Config Plugin):
+- `config/hello-perld.development.conf` - Development settings (morbo, debug logging)
+- `config/hello-perld.test.conf` - Test settings (minimal workers, error-only logging)
+- `config/hello-perld.staging.conf` - Staging settings (hypnotoad, info logging)
+- `config/hello-perld.production.conf` - Production settings (optimized hypnotoad, warn logging)
+
+Each config file includes:
+- Hypnotoad server settings (workers, listeners, timeouts, graceful restart)
+- Database connection details (schema, host, credentials)
+- Logging levels (debug/error/info/warn)
+- Session configuration (secret, expiration)
+- Upload directory settings
+
+**Frontend Vue/Vite Environment Files**:
+- `frontend/.env.development` - Local API (http://localhost:3000)
+- `frontend/.env.test` - Test API (http://localhost:3000)
+- `frontend/.env.staging` - Staging API (https://staging.theboosh.zone)
+- `frontend/.env.production` - Production API (https://theboosh.zone)
+
+Variables exposed to frontend:
+- `VITE_API_URL` - Backend API endpoint
+- `VITE_ENVIRONMENT` - Current environment name
+- `VITE_ENABLE_DEBUG` - Debug mode toggle
+
+**Docker Environment Files**:
+- `.env.development.example` - Template for local development
+- `.env.test.example` - Template for CI/CD testing
+- `.env.staging.example` - Template for staging (secrets encrypted on server)
+- `.env.production.example` - Template for production (secrets encrypted on server)
+
+**Important**: Actual `.env.*` files (without `.example`) are gitignored and contain real credentials.
+
+### Database Schema Separation
+
+The managed PostgreSQL instance hosts multiple schemas on the same database:
+- `public` - Development and test data (local Docker PostgreSQL or ephemeral test DB)
+- `thebooshzone_staging` - Staging data (managed database)
+- `thebooshzone_prod` - Production data (managed database)
+
+**Benefits**:
+- Cost-effective (one managed database for staging + production)
+- Data isolation between environments
+- Simplified connection management
+- Easy to backup/restore specific environments
+
+**Schema Configuration**:
+Set via `DB_SCHEMA` environment variable and `database.schema` in config files. The database connection logic in `lib/HelloPerld/Database/Postgres.pm` automatically sets the PostgreSQL search path:
+
+```perl
+if ($schema ne 'public') {
+    $dbh->do("SET search_path TO $schema, public");
+}
+```
+
+### CI/CD Pipeline
+
+**GitHub Actions Workflows**:
+
+1. **`.github/workflows/test.yml`** - Runs on all PRs and pushes to `dev`/`main`
+   - Backend tests (Perl with Test::More, Test::Mojo)
+   - Frontend tests (Vitest with Vue Test Utils)
+   - Code linting (ESLint)
+   - Coverage reports (optional Codecov integration)
+   - Must pass before merging
+
+2. **`.github/workflows/deploy-staging.yml`** - Deploys to staging
+   - Triggered on push to `dev` branch (or manual)
+   - Runs full test suite first
+   - Builds Docker image with staging frontend
+   - Pushes to GitHub Container Registry (ghcr.io)
+   - SSH to staging server and runs deployment script
+   - Health checks with automatic rollback on failure
+
+3. **`.github/workflows/deploy-production.yml`** - Deploys to production
+   - Triggered on push to `main` branch or version tags (`v*`)
+   - Runs full test suite first
+   - **Requires manual approval** (GitHub environment protection)
+   - Builds optimized production Docker image
+   - Creates GitHub release (if tagged)
+   - Backs up database before deployment
+   - SSH to production server and runs deployment script
+   - Health checks with automatic rollback on failure
+   - Notifications on success/failure
+
+**Required GitHub Secrets**:
+```
+STAGING_HOST          # staging.theboosh.zone
+STAGING_USER          # SSH username
+STAGING_SSH_KEY       # SSH private key
+
+PRODUCTION_HOST       # theboosh.zone
+PRODUCTION_USER       # SSH username
+PRODUCTION_SSH_KEY    # SSH private key
+```
+
+**GitHub Token** (`GITHUB_TOKEN`) is automatically provided for Container Registry access.
+
+### Production Server Architecture
+
+```
+Internet
+   ↓
+nginx (port 80/443)
+   ├─ SSL/TLS termination (Let's Encrypt)
+   ├─ Static file serving (/uploads/, /dist/)
+   ├─ Rate limiting (API: 10 req/s, auth: 5 req/min)
+   ├─ Gzip compression
+   ├─ Security headers (X-Frame-Options, CSP, etc.)
+   └─ Reverse proxy to backend
+       ↓
+hypnotoad (port 8080)
+   ├─ 8 worker processes (production)
+   ├─ Hot deployment support (zero-downtime updates)
+   ├─ Process management and health monitoring
+   ├─ Graceful restart (15s timeout)
+   └─ Perl application (Mojolicious)
+       ↓
+Managed PostgreSQL Database
+   └─ Schema: thebooshzone_prod (or thebooshzone_staging)
+```
+
+**Key Benefits**:
+- nginx handles TLS, static files, and acts as a protective layer
+- hypnotoad provides production-grade Perl application serving
+- Hot deployment allows zero-downtime updates
+- Managed database ensures high availability and automated backups
+
+### Hypnotoad vs Morbo
+
+| Feature | morbo (Development) | hypnotoad (Production) |
+|---------|-------------------|----------------------|
+| Workers | Single-threaded | Multi-worker (configurable) |
+| Auto-reload | Yes (watches files) | No (use hot deployment) |
+| Performance | Low (for development) | High (production-optimized) |
+| Process management | None | Built-in (restarts crashed workers) |
+| Hot deployment | No | Yes (zero-downtime updates) |
+| Use case | Local development | Staging, Production |
+
+**Starting hypnotoad**:
+```bash
+# Foreground (for Docker)
+hypnotoad -f ./script/hello-perld
+
+# Background (traditional deployment)
+hypnotoad ./script/hello-perld
+
+# Hot reload (zero-downtime update) - just run same command again
+hypnotoad ./script/hello-perld
+```
+
+### Deployment Process
+
+**Standard Workflow**:
+1. Create feature branch and make changes
+2. Open Pull Request to `dev` branch
+3. GitHub Actions runs tests automatically
+4. Merge to `dev` after review and passing tests
+5. Automatic deployment to staging
+6. Verify on https://staging.theboosh.zone
+7. Merge `dev` to `main` when ready for production
+8. Approve production deployment in GitHub Actions
+9. Automatic deployment to production
+10. Verify on https://theboosh.zone
+
+**Automated Deployment Steps**:
+1. Run full test suite
+2. Build Docker image with environment-specific frontend
+3. Push image to GitHub Container Registry
+4. SSH to target server
+5. Pull latest image
+6. Create database backup (production only)
+7. Run database migrations
+8. Graceful restart with health checks
+9. Automatic rollback on health check failure
+
+**Manual Deployment** (if needed):
+```bash
+# SSH to server
+ssh user@staging.theboosh.zone  # or production
+
+# Navigate to project directory
+cd /opt/theboosh-zone
+
+# Run deployment script
+./deploy/deploy.sh staging  # or production
+```
+
+### Deployment Scripts
+
+Located in `deploy/` directory:
+
+1. **`setup-server.sh`** - Initial server configuration (run once)
+   - Installs Docker, Docker Compose, certbot
+   - Configures firewall (ufw)
+   - Generates SSL certificates (Let's Encrypt)
+   - Sets up log rotation
+   - Creates directory structure
+   ```bash
+   ./deploy/setup-server.sh staging  # or production
+   ```
+
+2. **`deploy.sh`** - Deployment automation (run on every deployment)
+   - Validates environment and loads `.env` file
+   - Pulls latest Docker images
+   - Runs database migrations
+   - Deploys with docker-compose up -d
+   - Health check with 30 retries (5s intervals)
+   - Automatic rollback on health check failure
+   - Cleanup old Docker images
+   ```bash
+   ./deploy/deploy.sh staging  # or production
+   ```
+
+3. **`rollback.sh`** - Emergency rollback to previous deployment
+   - Lists available Docker image tags
+   - Interactive image selection
+   - Confirmation prompt ("yes" required)
+   - Stops current containers and starts with selected image
+   - Health check validation
+   ```bash
+   ./deploy/rollback.sh staging  # or production
+   ```
+
+4. **`backup.sh`** - Database backup automation
+   - Determines schema based on environment
+   - Uses pg_dump with schema-specific backup
+   - Compresses with gzip
+   - Timestamp-based filenames
+   - 30-day retention policy (auto-cleanup)
+   ```bash
+   ./deploy/backup.sh staging  # or production
+   ```
+
+### Rollback Procedure
+
+If a deployment causes issues:
+
+```bash
+# SSH to server
+ssh user@production.theboosh.zone
+
+# Navigate to project
+cd /opt/theboosh-zone
+
+# Run rollback script
+./deploy/rollback.sh production
+
+# Script will:
+# - Show available image tags
+# - Prompt for rollback target
+# - Stop current containers
+# - Start with specified image tag
+# - Verify health
+```
+
+**Automatic Rollback**: Production deployment workflow includes automatic rollback if health checks fail after deployment.
+
+### Environment Variables Reference
+
+**Critical Production Variables** (must be unique per environment):
+- `POSTGRES_HOST` - Managed database hostname
+- `POSTGRES_PASSWORD` - Database password
+- `SESSION_SECRET` - Session encryption key (generate with `openssl rand -hex 32`)
+- `ADMIN_PASSWORD` - Admin user password
+
+**Generate Secure Secrets**:
+```bash
+# Generate session secret
+openssl rand -hex 32
+
+# Generate admin password
+openssl rand -base64 24
+```
+
+See `.env.*.example` files for complete list of required variables.
+
+### Security Considerations
+
+1. **Never commit `.env.*` files** (except `.example` templates) - enforced via `.gitignore`
+2. **Use unique secrets per environment** - especially `SESSION_SECRET`
+3. **Rotate secrets regularly** - at least annually, or after any suspected compromise
+4. **Encrypt sensitive values** - use cloud platform's secrets management
+5. **Enable HSTS** in production nginx config after SSL is working
+6. **Restrict Swagger UI** in production (add basic auth or remove entirely)
+7. **Monitor security advisories** - GitHub Dependabot enabled
+8. **Database backups** - automated daily with 30-day retention
+9. **Firewall rules** - only ports 22 (SSH), 80 (HTTP), 443 (HTTPS) open
+10. **Non-root containers** - production Dockerfile uses `appuser` (UID 1000)
+11. **Rate limiting** - nginx configured with limits on API and auth endpoints
+12. **Security headers** - X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, etc.
+
+### Monitoring & Logging
+
+**Prometheus** (port 9090):
+- Application metrics from Mojolicious
+- Database metrics (via postgres-exporter)
+- System metrics (via node-exporter)
+- Custom business metrics
+
+**Grafana** (port 3001):
+- Pre-configured dashboards
+- Real-time monitoring
+- Alerting capabilities (configure as needed)
+- Default credentials from `.env` file
+
+**Application Logs**:
+```bash
+# View live logs
+docker compose -f docker-compose.production.yml logs -f app
+
+# View nginx access logs
+docker compose -f docker-compose.production.yml logs -f nginx
+
+# View last 100 lines
+docker compose -f docker-compose.production.yml logs --tail=100 app
+```
+
+**Log Rotation**: Configured via logrotate (14 days retention, daily rotation).
+
+### Backup & Recovery
+
+**Automated Backups**:
+- Run automatically before each production deployment (via CI/CD)
+- 30-day retention policy (older backups auto-deleted)
+- Stored in `/opt/theboosh-zone/backups/` on server
+
+**Manual Backup**:
+```bash
+ssh user@production.theboosh.zone
+cd /opt/theboosh-zone
+./deploy/backup.sh production
+```
+
+**Restore from Backup**:
+```bash
+# List available backups
+ls -lh /opt/theboosh-zone/backups/
+
+# Restore specific backup
+gunzip -c /opt/theboosh-zone/backups/backup_production_YYYYMMDD_HHMMSS.sql.gz | \
+  PGPASSWORD=$POSTGRES_PASSWORD psql \
+    -h $POSTGRES_HOST \
+    -U $POSTGRES_USER \
+    -d $POSTGRES_DB
+```
+
+### Troubleshooting
+
+**Application won't start**:
+```bash
+# Check logs
+docker compose -f docker-compose.production.yml logs app
+
+# Common issues:
+# - Database connection failed: Verify POSTGRES_* env vars in .env.production
+# - Missing SESSION_SECRET: Check .env.production has unique secret
+# - Port conflict: Ensure 8080 is available (check with netstat or ss)
+```
+
+**Deployment failed in GitHub Actions**:
+- Check workflow run logs in GitHub Actions tab
+- Verify SSH keys are correct in GitHub Secrets
+- Ensure server is accessible (test with `ssh user@hostname`)
+- Check server has enough disk space (`df -h`)
+- Review application logs on server
+
+**Database connection issues**:
+```bash
+# Test connection from server
+PGPASSWORD=$POSTGRES_PASSWORD psql \
+  -h $POSTGRES_HOST \
+  -U $POSTGRES_USER \
+  -d $POSTGRES_DB \
+  -c "SELECT version();"
+
+# Verify server IP is whitelisted in managed database firewall
+# Check schema exists: \dn
+```
+
+**SSL certificate issues**:
+```bash
+# Check certificate status
+sudo certbot certificates
+
+# Renew manually
+sudo certbot renew
+
+# Check auto-renewal timer
+sudo systemctl status certbot.timer
+
+# Certificates should auto-renew via systemd timer
+```
+
+**High memory/CPU usage**:
+- Check resource usage: `docker stats`
+- Reduce hypnotoad workers in `config/hello-perld.production.conf`
+- Review Prometheus metrics for bottlenecks
+- Check for memory leaks in application code
+
+**Need to rollback**:
+```bash
+cd /opt/theboosh-zone
+./deploy/rollback.sh production
+```
+
+### References & Documentation
+- **Post-Implementation Checklist**: `.claude/claude-documentation/Post-Implementation-Checklist.md` (Setup Steps)
+- **Mojolicious Documentation**: https://docs.mojolicious.org/
+- **Hypnotoad Guide**: https://docs.mojolicious.org/Mojo/Server/Hypnotoad
+- **Vite Environment Variables**: https://vite.dev/guide/env-and-mode
+- **Docker Compose**: https://docs.docker.com/compose/
+- **GitHub Actions**: https://docs.github.com/en/actions
+- **nginx Documentation**: https://nginx.org/en/docs/
+- **Let's Encrypt**: https://letsencrypt.org/docs/
+
+---
+
+**Last Updated**: October 20, 2025 - Implemented comprehensive backend testing framework with Test::More, Test::Mojo, and DBD::Mock. Added 60+ test cases covering models and controllers. Deployed multi-environment setup with dev/test/staging/production environments, CI/CD pipeline via GitHub Actions, nginx reverse proxy, hypnotoad production server, and comprehensive deployment automation scripts.
