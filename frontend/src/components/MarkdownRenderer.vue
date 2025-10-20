@@ -8,6 +8,7 @@
 
 <script setup>
 import { computed, onMounted, onUpdated } from "vue";
+import { useRouter } from "vue-router";
 import { marked } from "marked";
 import hljs from "highlight.js/lib/core";
 
