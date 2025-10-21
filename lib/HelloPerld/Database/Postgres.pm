@@ -212,7 +212,13 @@ sub run_migrations {
     # Find migration files (both .sql and .pl)
     my @sql_files = bsd_glob("$migration_dir/*.sql");
     my @pl_files = bsd_glob("$migration_dir/*.pl");
-    my @migration_files = sort (@sql_files, @pl_files);
+
+    # Sort by version number (numeric) instead of lexicographic
+    my @migration_files = sort {
+        my ($ver_a) = extract_migration_info($a);
+        my ($ver_b) = extract_migration_info($b);
+        ($ver_a || 0) <=> ($ver_b || 0)  # Numeric sort by version
+    } (@sql_files, @pl_files);
 
     my $migrations_run = 0;
     foreach my $file (@migration_files) {
@@ -247,7 +253,7 @@ sub run_migrations {
 
             # Apply SQL migration
             $success = apply_migration($dbh, $version, $description, $sql, $logger);
-        } elsif ($type eq 'pl') {
+        } elsif ($type eq 'perl') {
             # Execute Perl migration script
             $success = execute_perl_migration($dbh, $file, $version, $description, $logger);
         }
