@@ -1,19 +1,12 @@
 <template>
   <div class="content about-page">
-    <h1>About HelloPerld</h1>
+    <h1>TheBoosh.Zone</h1>
     <div class="about-content">
       <section>
-        <h2>What is HelloPerld?</h2>
-        <p>HelloPerld is a modern Mojolicious-based web application that demonstrates best practices for Perl web development.</p>
-      </section>
-      <section>
-        <h2>Features</h2>
+        <h2>Alex Beahm</h2>
         <ul>
-          <li>RESTful API endpoints with OpenAPI specification</li>
-          <li>Multiple logging backends (Console, Database, JSON file)</li>
-          <li>Health check endpoints for monitoring</li>
-          <li>Swagger UI for API documentation</li>
-          <li>Single-page application architecture with Vue 3</li>
+          <li><a href="https://github.com/AlexanderBeahm" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
         </ul>
       </section>
       <section>
