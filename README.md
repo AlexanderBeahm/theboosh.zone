@@ -2,7 +2,8 @@
 
 Alex Beahm's personal portfolio and blog website built with modern full-stack architecture.
 
-[![Docker Image CI](https://github.com/AlexanderBeahm/hello-perld/actions/workflows/docker-image.yml/badge.svg)](https://github.com/AlexanderBeahm/hello-perld/actions/workflows/docker-image.yml)
+[![Test](https://github.com/AlexanderBeahm/theboosh.zone/blob/main/.github/workflows/test.yml/badge.svg)](https://github.com/AlexanderBeahm/theboosh.zone/blob/main/.github/workflows/test.yml)
+[![Docker Image Build](https://github.com/AlexanderBeahm/theboosh.zone/blob/main/.github/workflows/docker-image.yml/badge.svg)](https://github.com/AlexanderBeahm/theboosh.zone/blob/main/.github/workflows/docker-image.yml)
 
 ## About
 
