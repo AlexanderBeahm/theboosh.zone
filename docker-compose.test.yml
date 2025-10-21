@@ -29,4 +29,4 @@ services:
         depends_on:
             test-db:
                 condition: service_healthy
-        command: ["perl", "script/test"]
+        command: ["perl", "script/test-with-setup"]

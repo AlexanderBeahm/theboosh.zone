@@ -247,14 +247,13 @@ sub get_by_name {
 }
 
 sub create {
-    my ($self, %params) = @_;
+    my ($self, $tag_data) = @_;
 
-    # Convert named parameters to hashref if not already a hashref
-    my $tag_data;
-    if (ref($_[1]) eq 'HASH') {
-        $tag_data = $_[1];
-    } else {
-        $tag_data = \%params;
+    # If not passed as a hashref, assume it's named parameters
+    unless (ref($tag_data) eq 'HASH') {
+        my @args = @_;
+        shift @args; # Remove $self
+        $tag_data = { @args };
     }
 
     my $dbh;
@@ -300,14 +299,14 @@ sub create {
 }
 
 sub update {
-    my ($self, $id, %params) = @_;
+    my ($self, $id, $tag_data) = @_;
 
-    # Convert named parameters to hashref if not already a hashref
-    my $tag_data;
-    if (ref($_[2]) eq 'HASH') {
-        $tag_data = $_[2];
-    } else {
-        $tag_data = \%params;
+    # If not passed as a hashref, assume it's named parameters
+    unless (ref($tag_data) eq 'HASH') {
+        my @args = @_;
+        shift @args; # Remove $self
+        shift @args; # Remove $id
+        $tag_data = { @args };
     }
 
     my $dbh;
@@ -585,6 +584,7 @@ sub get_count {
         $sth->execute();
 
         ($count) = $sth->fetchrow_array();
+        $sth->finish();
         $dbh->disconnect();
     };
 

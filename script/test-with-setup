@@ -1,0 +1,92 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+use Cwd 'abs_path';
+
+# Get the project root directory
+my $project_root = abs_path("$FindBin::Bin/..");
+
+# Change to project root
+chdir $project_root or die "Cannot chdir to $project_root: $!";
+
+# Set default environment variables for testing
+$ENV{APP_ENV} ||= 'test';
+$ENV{MOJO_MODE} ||= 'test';
+$ENV{DB_SCHEMA} ||= 'public';
+
+print "Starting test environment setup...\n";
+print "Environment: $ENV{APP_ENV}\n";
+print "Mojo Mode: $ENV{MOJO_MODE}\n";
+print "DB Schema: $ENV{DB_SCHEMA}\n";
+print "=" x 60 . "\n";
+
+# Function to wait for database to be ready
+sub wait_for_database {
+    my $max_attempts = $ENV{DB_RETRY_ATTEMPTS} || 30;
+    my $retry_interval = $ENV{DB_RETRY_INTERVAL} || 5;
+    my $attempt = 1;
+
+    print "Waiting for database to be ready...\n";
+    print "Configuration: max_attempts=${max_attempts}, retry_interval=${retry_interval}s\n";
+
+    while ($attempt <= $max_attempts) {
+        print "Attempt $attempt/$max_attempts: Testing database connection...\n";
+
+        # Test database connection using the same method as docker-entrypoint.sh
+        my $connection_test = system("perl -I$project_root/lib -MHelloPerld::Database::Postgres -e 'HelloPerld::Database::Postgres::validate_connection()' 2>/dev/null");
+
+        if ($connection_test == 0) {
+            print "Database connection established successfully!\n";
+            return 1;
+        }
+
+        if ($attempt == $max_attempts) {
+            print "FATAL: Database connection failed after $max_attempts attempts\n";
+            print "Please check:\n";
+            print "  1. Database service is running\n";
+            print "  2. Database credentials are correct\n";
+            print "  3. Network connectivity between containers\n";
+            exit 1;
+        }
+
+        print "Database not ready, waiting ${retry_interval}s before retry...\n";
+        sleep $retry_interval;
+        $attempt++;
+    }
+}
+
+# Function to run database migrations
+sub run_migrations {
+    print "Running database migrations for test environment (schema: $ENV{DB_SCHEMA})...\n";
+
+    my $migration_result = system("perl script/migrate");
+
+    if ($migration_result == 0) {
+        print "Database migrations completed successfully!\n";
+        return 1;
+    } else {
+        print "Database migrations failed!\n";
+        exit 1;
+    }
+}
+
+# Function to run tests
+sub run_tests {
+    print "Starting test execution...\n";
+    print "=" x 60 . "\n";
+
+    # Execute the existing test script
+    exec("perl script/test") or die "Cannot execute test script: $!";
+}
+
+# Main execution flow
+print "Test Setup: Waiting for database...\n";
+wait_for_database();
+
+print "Test Setup: Running migrations...\n";
+run_migrations();
+
+print "Test Setup: Starting tests...\n";
+run_tests();

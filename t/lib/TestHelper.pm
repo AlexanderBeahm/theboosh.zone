@@ -143,7 +143,6 @@ sub mock_article_result {
             $article->{id},
             $article->{title},
             $article->{slug},
-            $article->{content},
             $article->{excerpt},
             $article->{author},
             $article->{published_at},
@@ -158,7 +157,7 @@ sub mock_article_result {
     return {
         sql => qr/SELECT.*FROM articles/i,
         results => [
-            ['id', 'title', 'slug', 'content', 'excerpt', 'author',
+            ['id', 'title', 'slug', 'excerpt', 'author',
              'published_at', 'date_added', 'date_updated', 'is_published',
              'meta_description', 'featured_image'],
             @rows

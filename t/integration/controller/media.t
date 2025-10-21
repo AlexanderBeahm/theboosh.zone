@@ -63,8 +63,8 @@ subtest 'media pagination and filtering' => sub {
     # Test pagination parameters
     $t->get_ok('/api/admin/media?page=1&limit=10')
       ->status_is(200)
-      ->json_is('/pagination/page' => 1, 'Page parameter accepted')
-      ->json_is('/pagination/limit' => 10, 'Limit parameter accepted');
+      ->json_is('/pagination/current_page' => 1, 'Page parameter accepted')
+      ->json_is('/pagination/per_page' => 10, 'Limit parameter accepted');
 
     # Test search parameter
     $t->get_ok('/api/admin/media?search=test')
