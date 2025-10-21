@@ -430,7 +430,7 @@ sub get_popular_tags {
                COUNT(at.article_id) as usage_count
         FROM tags t
         LEFT JOIN article_tags at ON t.id = at.tag_id
-        LEFT JOIN articles a ON at.article_id = a.id AND a.is_published = true
+        JOIN articles a ON at.article_id = a.id AND a.is_published = true
         GROUP BY t.id, t.name, t.slug, t.date_added
         HAVING COUNT(at.article_id) > 0
         ORDER BY usage_count DESC, t.name ASC

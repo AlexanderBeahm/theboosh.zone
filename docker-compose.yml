@@ -24,6 +24,9 @@ services:
                 - action: sync+restart
                   path: ./script
                   target: /usr/src/hello-perld/script
+                - action: sync+restart
+                  path: ./t
+                  target: /usr/src/hello-perld/t
                 - action: rebuild
                   path: ./frontend
         depends_on:

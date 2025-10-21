@@ -115,6 +115,76 @@ subtest 'get_all - with published filter' => sub {
     like($statement, qr/is_published/i, 'Published filter applied in SQL');
 };
 
+subtest 'get_all - with draft filter' => sub {
+    $mock_dbh = mock_dbh();
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*articles.*is_published/is,
+        results => [
+            ['id', 'title', 'slug', 'excerpt', 'author',
+             'published_at', 'date_added', 'date_updated', 'is_published',
+             'meta_description', 'featured_image'],
+        ]
+    };
+
+    my $results = $model->get_all(published_only => 0);
+
+    ok(defined $results, 'get_all with draft filter returns result');
+    is(ref $results, 'ARRAY', 'Returns arrayref');
+
+    my $history = $mock_dbh->{mock_all_history};
+    my $statement = $history->[0]->statement;
+    like($statement, qr/is_published/i, 'Draft filter applied in SQL');
+};
+
+subtest 'get_all - no published filter (all articles)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $published_article = create_test_article_data(
+        id => 1,
+        title => 'Published Article',
+        is_published => 1
+    );
+    my $draft_article = create_test_article_data(
+        id => 2,
+        title => 'Draft Article',
+        is_published => 0
+    );
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*articles/is,
+        results => [
+            ['id', 'title', 'slug', 'excerpt', 'author',
+             'published_at', 'date_added', 'date_updated', 'is_published',
+             'meta_description', 'featured_image'],
+            [
+                $published_article->{id}, $published_article->{title}, $published_article->{slug},
+                $published_article->{excerpt}, $published_article->{author},
+                $published_article->{published_at}, $published_article->{date_added},
+                $published_article->{date_updated}, $published_article->{is_published},
+                $published_article->{meta_description}, $published_article->{featured_image}
+            ],
+            [
+                $draft_article->{id}, $draft_article->{title}, $draft_article->{slug},
+                $draft_article->{excerpt}, $draft_article->{author},
+                $draft_article->{published_at}, $draft_article->{date_added},
+                $draft_article->{date_updated}, $draft_article->{is_published},
+                $draft_article->{meta_description}, $draft_article->{featured_image}
+            ]
+        ]
+    };
+
+    my $results = $model->get_all(published_only => undef);
+
+    ok(defined $results, 'get_all with no filter returns result');
+    is(ref $results, 'ARRAY', 'Returns arrayref');
+    is(scalar @$results, 2, 'Returns both published and draft articles');
+
+    my $history = $mock_dbh->{mock_all_history};
+    my $statement = $history->[0]->statement;
+    unlike($statement, qr/WHERE.*is_published.*ORDER.*/i, 'No published filter applied in SQL when undef');
+};
+
 subtest 'get_by_slug' => sub {
     $mock_dbh = mock_dbh();
 
@@ -273,6 +343,57 @@ subtest 'get_count' => sub {
     my $count = $model->get_count();
 
     is($count, 42, 'get_count returns correct count');
+};
+
+subtest 'get_count - with published filter' => sub {
+    $mock_dbh = mock_dbh();
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT COUNT.*is_published/is,
+        results => [['count'], [10]]
+    };
+
+    my $count = $model->get_count(published_only => 1);
+
+    is($count, 10, 'get_count with published filter returns correct count');
+
+    my $history = $mock_dbh->{mock_all_history};
+    my $statement = $history->[0]->statement;
+    like($statement, qr/is_published/i, 'Published filter applied in count SQL');
+};
+
+subtest 'get_count - with draft filter' => sub {
+    $mock_dbh = mock_dbh();
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT COUNT.*is_published/is,
+        results => [['count'], [5]]
+    };
+
+    my $count = $model->get_count(published_only => 0);
+
+    is($count, 5, 'get_count with draft filter returns correct count');
+
+    my $history = $mock_dbh->{mock_all_history};
+    my $statement = $history->[0]->statement;
+    like($statement, qr/is_published/i, 'Draft filter applied in count SQL');
+};
+
+subtest 'get_count - no filter (all articles)' => sub {
+    $mock_dbh = mock_dbh();
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT COUNT/i,
+        results => [['count'], [15]]
+    };
+
+    my $count = $model->get_count(published_only => undef);
+
+    is($count, 15, 'get_count with no filter returns all articles count');
+
+    my $history = $mock_dbh->{mock_all_history};
+    my $statement = $history->[0]->statement;
+    unlike($statement, qr/is_published/i, 'No published filter applied in count SQL when undef');
 };
 
 # DBD::Mock tests now working correctly

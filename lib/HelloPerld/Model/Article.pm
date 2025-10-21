@@ -31,7 +31,7 @@ sub get_all {
 
     my $limit = $params{limit} || 20;
     my $offset = $params{offset} || 0;
-    my $published_only = $params{published_only} // 1;
+    my $published_only = $params{published_only};
     my $tag_filter = $params{tag_filter};
 
     my $sql = q{
@@ -44,9 +44,9 @@ sub get_all {
     my @where_conditions;
     my @bind_params;
 
-    if ($published_only) {
+    if (defined $published_only) {
         push @where_conditions, "a.is_published = ?";
-        push @bind_params, 1;
+        push @bind_params, $published_only ? 1 : 0;
     }
 
     if ($tag_filter) {
@@ -499,16 +499,16 @@ sub get_count {
     }
     return 0 unless $dbh;
 
-    my $published_only = $params{published_only} // 1;
+    my $published_only = $params{published_only};
     my $tag_filter = $params{tag_filter};
 
     my $sql = "SELECT COUNT(DISTINCT a.id) FROM articles a";
     my @where_conditions;
     my @bind_params;
 
-    if ($published_only) {
+    if (defined $published_only) {
         push @where_conditions, "a.is_published = ?";
-        push @bind_params, 1;
+        push @bind_params, $published_only ? 1 : 0;
     }
 
     if ($tag_filter) {
