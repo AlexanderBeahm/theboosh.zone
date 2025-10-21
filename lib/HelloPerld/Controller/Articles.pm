@@ -30,9 +30,8 @@ sub get_all {
     if (defined($self->param('published'))) {
         $published_only = $self->param('published');
     } else {
-        # Check if this is the admin route by inspecting the request path
-        my $path = $self->req->url->path->to_string;
-        my $is_admin_route = $path =~ m{^/api/admin/};
+        # Check if this is the admin route using stash value set by router
+        my $is_admin_route = $self->stash('is_admin_route') // 0;
 
         # Default to published only for public routes, or all for admin routes
         $published_only = $is_admin_route ? undef : 1;

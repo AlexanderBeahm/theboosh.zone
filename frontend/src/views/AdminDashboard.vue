@@ -356,13 +356,16 @@ async function fetchArticles() {
             limit: 20,
         };
 
-        // Add published filter based on status selection
-        if (statusFilter.value === "published") {
-            params.published = 1;
-        } else if (statusFilter.value === "draft") {
-            params.published = 0;
+        // Add published filter based on status selection using declarative mapping
+        const statusMap = {
+            published: 1,
+            draft: 0,
+        };
+
+        if (statusFilter.value in statusMap) {
+            params.published = statusMap[statusFilter.value];
         }
-        // When statusFilter is "all", don't include published param at all
+        // When statusFilter is "" (all), don't include published param at all
 
         const response = await axios.get("/api/admin/articles", { params });
 
