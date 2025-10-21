@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use FindBin;
+use Cwd 'abs_path';
+
+# Get the project root directory
+my $project_root = abs_path("$FindBin::Bin/..");
+
+# Change to project root
+chdir $project_root or die "Cannot chdir to $project_root: $!";
+
+# Run all tests with prove
+print "Running all tests...\n";
+print "=" x 60 . "\n";
+
+my @prove_args = (
+    '-l',           # Add lib/ to path
+    '-r',           # Recursive
+    '-v',           # Verbose
+    't/',           # Test directory
+);
+
+# Add color if terminal supports it
+if (-t STDOUT) {
+    push @prove_args, '--color';
+}
+
+# Execute prove
+exec('prove', @prove_args) or die "Cannot execute prove: $!";

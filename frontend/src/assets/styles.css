@@ -3,8 +3,13 @@
   /* Primary Colors */
   --primary-color: #3498db;
   --primary-dark: #2980b9;
+  --primary-color-light: rgba(52, 152, 219, 0.1);
+  --primary-color-dark: rgba(41, 128, 185, 0.1);
 
-  /* Background Colors */
+  /* Background Colors - Pearl White Theme */
+  --bg-color: #f8f9fa;
+  --card-bg: #ffffff;
+  --light-bg: #f8f9fa;
   --dark-bg: #2c3e50;
   --darker-bg: #34495e;
 
@@ -14,23 +19,38 @@
   --text-primary: #333;
   --text-secondary: #666;
 
-  /* Error Colors */
+  /* Status Colors */
   --error-color: #e74c3c;
+  --error-bg: #fee;
+  --error-text: #c33;
+  --error-border: #fcc;
+
+  --success-bg: #d4edda;
+  --success-text: #155724;
+
+  --warning-bg: #fff3cd;
+  --warning-text: #856404;
 
   /* Border and Shadow */
   --border-color: #ddd;
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 
   /* Spacing */
   --spacing-xs: 0.5rem;
   --spacing-sm: 1rem;
   --spacing-md: 1.5rem;
   --spacing-lg: 2rem;
+  --spacing-xl: 3rem;
+  --spacing-xxl: 4rem;
 
   /* Border Radius */
   --radius-sm: 4px;
   --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
 
   /* Transitions */
   --transition-fast: 0.2s;

@@ -1,0 +1,29 @@
+# Build stage for frontend
+FROM node:lts-alpine AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build:test
+
+# Test stage for Perl application
+FROM perl:5.42
+WORKDIR /usr/src/hello-perld
+
+# Install test dependencies
+COPY Makefile.PL cpanfile* /usr/src/hello-perld/
+RUN cpanm --installdeps .
+
+# Copy application files
+COPY . /usr/src/hello-perld
+
+# Copy built frontend
+COPY --from=frontend-builder /frontend/dist /usr/src/hello-perld/lib/HelloPerld/Public/dist
+
+# Create test uploads directory
+RUN mkdir -p /tmp/test-uploads
+
+EXPOSE 3000
+
+# Run tests by default
+CMD ["perl", "script/test"]

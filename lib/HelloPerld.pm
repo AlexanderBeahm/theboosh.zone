@@ -8,10 +8,40 @@ use HelloPerld::Logger::LoggerFactory;
 sub startup {
     my $self = shift;
 
+    # Load environment-specific configuration
+    my $mode = $self->mode; # Gets from MOJO_MODE env var or --mode flag
+    my $config_file = $self->home->rel_file("config/hello-perld.$mode.conf");
+
+    $self->plugin('Config' => {
+        file => $config_file,
+        default => {}
+    });
+
+    $self->log->info("Loading configuration for mode: $mode");
+    $self->log->info("Config file: $config_file");
+
+    # Validate production configuration
+    if ($mode eq 'production' || $mode eq 'staging') {
+        my $session_secret = $self->config->{session}->{secret};
+        die "SESSION_SECRET must be set for $mode!"
+            if !$session_secret || $session_secret eq 'development-secret-change-me';
+
+        die "Database configuration missing for $mode!"
+            unless $self->config->{database}->{host}
+                && $self->config->{database}->{user}
+                && $self->config->{database}->{password};
+    }
+
     # Initialize logger
     $self->helper(logger_instance => sub {
         state $logger = HelloPerld::Logger::LoggerFactory->create_default_logger();
         return $logger;
+    });
+
+    # Add helper for database config
+    $self->helper(db_config => sub {
+        my $c = shift;
+        return $c->app->config->{database};
     });
 
     # Configure template path
@@ -20,10 +50,36 @@ sub startup {
     # Configure static file serving
     push @{$self->static->paths}, 'lib/HelloPerld/Public';
 
-    # Use a hook to handle static files before any routing/plugin processing
+    # Serve uploaded media files - MUST be first route to take precedence over OpenAPI
+    $self->routes->get('/uploads/*filepath' => sub {
+        my $c = shift;
+        my $filepath = $c->param('filepath');
+
+        # Prevent directory traversal attacks
+        if ($filepath =~ /\.\./ || $filepath =~ /^\//) {
+            return $c->render(text => 'Forbidden', status => 403);
+        }
+
+        my $uploads_dir = $ENV{UPLOADS_DIR} || '/usr/src/hello-perld/uploads';
+        my $full_path = "$uploads_dir/$filepath";
+
+        $c->app->log->info("Looking for file: $full_path");
+        $c->app->log->info("File exists: " . (-f $full_path ? "YES" : "NO"));
+
+        if (-f $full_path) {
+            return $c->reply->file($full_path);
+        } else {
+            return $c->reply->not_found;
+        }
+    });
+
+    # Use a hook to handle other static files
     $self->hook(before_dispatch => sub {
         my $c = shift;
         my $path = $c->req->url->path->to_string;
+
+        # Skip uploads directory - handled by dedicated route
+        return if $path =~ m{^/uploads/};
 
         # Check if this is a static file request (including .map files for source maps)
         if ($path =~ /\.(css|js|mjs|map|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf)$/i) {
@@ -55,16 +111,27 @@ sub startup {
         }
     });
 
-    # Configure OpenAPI plugin
-    $self->plugin('OpenAPI' => {
-        url => $self->home->rel_file('swagger/swagger.json')
-    });
+    # Health check endpoints (outside API namespace for direct access)
+    $self->routes->get('/health')->to('Health#getHealthStatus');
+    $self->routes->get('/health/ready')->to('Health#get_readiness_status');
+
+    # Configure session management from config
+    my $session_config = $self->config->{session};
+    $self->secrets([$session_config->{secret}]);
+    $self->sessions->default_expiration($session_config->{expiration});
+
+    # Configure OpenAPI plugin - limit to /api routes only
+    # TEMPORARILY DISABLED to test uploads route
+    # $self->plugin('OpenAPI' => {
+    #     url => $self->home->rel_file('swagger/swagger.json'),
+    #     route => $self->routes->under('/api')
+    # });
 
     # Configure SwaggerUI plugin
     $self->plugin('SwaggerUI' => {
         route => $self->routes->any('/swagger'),
         url => '/swagger.json',
-        favicon => '/helloperld.ico'
+        favicon => '/thebooshzone.ico'
     });
 
     # Serve the swagger.json file
@@ -73,6 +140,64 @@ sub startup {
         $c->reply->file($c->app->home->rel_file('swagger/swagger.json'));
     });
 
+    # API Routes
+    my $api = $self->routes->under('/api');
+
+    # Authentication routes
+    $api->post('/auth/login')->to('Auth#login');
+    $api->post('/auth/logout')->to('Auth#logout');
+    $api->get('/auth/status')->to('Auth#status');
+
+    # Public article routes
+    $api->get('/articles')->to('Articles#get_all');
+    $api->get('/articles/:slug')->to('Articles#get_by_slug');
+
+    # Public tag routes
+    $api->get('/tags')->to('Tags#get_all');
+    $api->get('/tags/popular')->to('Tags#get_popular');
+    $api->get('/tags/search')->to('Tags#search');
+    $api->get('/tags/:slug')->to('Tags#get_by_slug');
+
+    # Admin routes (protected)
+    my $admin = $api->under('/admin')->to(cb => sub {
+        my $c = shift;
+
+        # Check if user is authenticated
+        my $user_id = $c->session('admin_user_id');
+        unless ($user_id) {
+            $c->render(json => {
+                success => 0,
+                error => 'Authentication required'
+            }, status => 401);
+            return 0; # Stop processing - don't continue to controller
+        }
+
+        return 1;
+    });
+
+    # Protected article management routes
+    $admin->get('/articles')->to('Articles#get_all'); # Admin can see unpublished
+    $admin->get('/articles/:id')->to('Articles#get_by_id');
+    $admin->post('/articles')->to('Articles#create');
+    $admin->put('/articles/:id')->to('Articles#update');
+    $admin->delete('/articles/:id')->to('Articles#delete');
+
+    # Protected tag management routes
+    $admin->get('/tags/:id')->to('Tags#get_by_id');
+    $admin->post('/tags')->to('Tags#create');
+    $admin->put('/tags/:id')->to('Tags#update');
+    $admin->delete('/tags/:id')->to('Tags#delete');
+
+    # Protected auth management routes
+    $admin->post('/auth/change-password')->to('Auth#change_password');
+
+    # Protected media management routes
+    $admin->post('/media/upload')->to('Media#upload');
+    $admin->get('/media')->to('Media#get_all');
+    $admin->get('/media/:id')->to('Media#get_by_id');
+    $admin->put('/media/:id')->to('Media#update');
+    $admin->delete('/media/:id')->to('Media#delete');
+
     # SPA fallback routing - catch all non-API routes and serve index.html
     # This allows Vue Router history mode to work correctly
     # IMPORTANT: Define this AFTER all API/Swagger routes to ensure proper route priority
@@ -80,8 +205,8 @@ sub startup {
         my $c = shift;
         my $path = $c->req->url->path->to_string;
 
-        # Skip API routes and existing routes
-        return if $path =~ m{^/(api|swagger)};
+        # Skip API routes, swagger, and uploads
+        return if $path =~ m{^/(api|swagger|uploads)};
 
         # Serve SPA index.html for all other routes
         my $index_file = $c->app->home->rel_file('lib/HelloPerld/Public/dist/index.html');

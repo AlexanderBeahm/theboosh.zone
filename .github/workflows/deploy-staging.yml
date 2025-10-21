@@ -1,0 +1,103 @@
+name: Deploy to Staging
+
+# CURRENTLY DISABLED: Only manual triggers allowed
+# To enable automatic deployment to staging, uncomment the lines below:
+#
+# on:
+#   push:
+#     branches: [ dev ]
+#   workflow_dispatch:
+
+# Manual trigger only (for testing before infrastructure is ready)
+on:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    name: Run Tests
+    uses: ./.github/workflows/test.yml
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=staging-latest
+            type=sha,prefix=staging-
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.production
+          build-args: |
+            BUILD_ENV=staging
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: staging
+      url: https://staging.theboosh.zone
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/theboosh-zone
+
+            # Pull latest image
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-latest
+
+            # Run deployment script
+            ./deploy/deploy.sh staging
+
+            # Health check
+            sleep 10
+            curl -f https://staging.theboosh.zone/health || exit 1
+
+      - name: Notify on success
+        if: success()
+        run: echo "Staging deployment successful!"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Staging deployment failed!"
+          # Add Slack/Discord/Email notification here if desired

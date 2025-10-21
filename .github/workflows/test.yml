@@ -1,0 +1,82 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ dev, main ]
+  pull_request:
+    branches: [ dev, main ]
+
+jobs:
+  backend-tests:
+    name: Backend Tests (Perl)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create test environment file
+        run: |
+          cat > .env.test << EOF
+          POSTGRES_DB=thebooshzone_test
+          POSTGRES_USER=test_user
+          POSTGRES_PASSWORD=test_password
+          POSTGRES_HOST=test-db
+          ADMIN_USERNAME=admin
+          ADMIN_EMAIL=test@example.com
+          ADMIN_PASSWORD=test_password
+          SESSION_SECRET=test-secret-static
+          UPLOADS_DIR=/tmp/test-uploads
+          UPLOAD_MAX_SIZE=1048576
+          UPLOAD_ALLOWED_TYPES=image/jpeg,image/png
+          APP_ENV=test
+          MOJO_MODE=test
+          NODE_ENV=test
+          DB_SCHEMA=public
+          EOF
+
+      - name: Run backend tests
+        run: |
+          docker compose -f docker-compose.test.yml up \
+            --build \
+            --abort-on-container-exit \
+            --exit-code-from test-app
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
+  frontend-tests:
+    name: Frontend Tests (Vue/Vitest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run linter
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run tests with coverage
+        working-directory: ./frontend
+        run: npm run test:ci
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+        if: always()

@@ -1,0 +1,32 @@
+# docker-compose.test.yml - Test Environment (CI/CD)
+services:
+    test-db:
+        image: postgres:17
+        environment:
+            POSTGRES_USER: test_user
+            POSTGRES_PASSWORD: test_password
+            POSTGRES_DB: thebooshzone_test
+        tmpfs:
+            - /var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U test_user -d thebooshzone_test"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+    test-app:
+        build:
+            context: .
+            dockerfile: Dockerfile.test
+        env_file:
+            - .env.test
+        environment:
+            POSTGRES_HOST: test-db
+            APP_ENV: test
+            MOJO_MODE: test
+            NODE_ENV: test
+            DB_SCHEMA: public
+        depends_on:
+            test-db:
+                condition: service_healthy
+        command: ["perl", "script/test"]
