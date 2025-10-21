@@ -29,9 +29,9 @@ subtest 'get tags returns JSON array' => sub {
 subtest 'tags pagination metadata' => sub {
     $t->get_ok('/api/tags')
       ->status_is(200)
-      ->json_has('/pagination/page', 'Has page')
-      ->json_has('/pagination/limit', 'Has limit')
-      ->json_has('/pagination/total', 'Has total');
+      ->json_has('/pagination/current_page', 'Has current_page')
+      ->json_has('/pagination/per_page', 'Has per_page')
+      ->json_has('/pagination/total_count', 'Has total_count');
 };
 
 subtest 'tags with order_by parameter' => sub {
@@ -62,7 +62,7 @@ subtest 'search tags endpoint' => sub {
     $t->get_ok('/api/tags/search?q=test')
       ->status_is(200, 'Search endpoint accepts query')
       ->json_has('/tags', 'Response has tags array')
-      ->json_has('/query', 'Response includes query param');
+      ->json_has('/search_query', 'Response includes query param');
 };
 
 subtest 'search tags - empty query' => sub {
@@ -106,31 +106,31 @@ subtest 'admin tag CRUD - with authentication' => sub {
         name => $test_name
     })
       ->status_is(201, 'Tag created successfully')
-      ->json_has('/id', 'Response includes tag ID')
-      ->json_is('/name' => $test_name, 'Name matches')
-      ->json_has('/slug', 'Slug was auto-generated');
+      ->json_has('/tag/id', 'Response includes tag ID')
+      ->json_is('/tag/name' => $test_name, 'Name matches')
+      ->json_has('/tag/slug', 'Slug was auto-generated');
 
-    $tag_id = $t->tx->res->json->{id};
-    my $slug = $t->tx->res->json->{slug};
+    $tag_id = $t->tx->res->json->{tag}->{id};
+    my $slug = $t->tx->res->json->{tag}->{slug};
     ok($tag_id, 'Got tag ID');
 
-    # Get the tag by ID
-    $t->get_ok("/api/tags/$tag_id")
+    # Get the tag by ID (admin route)
+    $t->get_ok("/api/admin/tags/$tag_id")
       ->status_is(200, 'Can retrieve tag by ID')
-      ->json_is('/id' => $tag_id, 'ID matches')
-      ->json_is('/name' => $test_name, 'Name matches');
+      ->json_is('/tag/id' => $tag_id, 'ID matches')
+      ->json_is('/tag/name' => $test_name, 'Name matches');
 
     # Get the tag by slug
     $t->get_ok("/api/tags/$slug")
       ->status_is(200, 'Can retrieve tag by slug')
-      ->json_is('/slug' => $slug, 'Slug matches');
+      ->json_is('/tag/slug' => $slug, 'Slug matches');
 
     # Update the tag
     $t->put_ok("/api/admin/tags/$tag_id" => json => {
         name => "$test_name Updated"
     })
       ->status_is(200, 'Tag updated successfully')
-      ->json_is('/name' => "$test_name Updated", 'Name was updated');
+      ->json_is('/tag/name' => "$test_name Updated", 'Name was updated');
 
     # Delete the tag
     $t->delete_ok("/api/admin/tags/$tag_id")
@@ -138,7 +138,7 @@ subtest 'admin tag CRUD - with authentication' => sub {
       ->json_has('/message', 'Delete confirmation message');
 
     # Verify tag is gone
-    $t->get_ok("/api/tags/$tag_id")
+    $t->get_ok("/api/admin/tags/$tag_id")
       ->status_is(404, 'Deleted tag not found');
 
     # Logout
@@ -165,7 +165,7 @@ subtest 'tag usage count reflects article associations' => sub {
         name => $tag_name
     })->status_is(201);
 
-    my $tag_id = $t->tx->res->json->{id};
+    my $tag_id = $t->tx->res->json->{tag}->{id};
 
     # Create an article with this tag
     $t->post_ok('/api/admin/articles' => json => {
@@ -175,12 +175,12 @@ subtest 'tag usage count reflects article associations' => sub {
         tags => [$tag_name]
     })->status_is(201);
 
-    my $article_id = $t->tx->res->json->{id};
+    my $article_id = $t->tx->res->json->{article}->{id};
 
     # Get the tag and verify usage_count
-    $t->get_ok("/api/tags/$tag_id")
+    $t->get_ok("/api/admin/tags/$tag_id")
       ->status_is(200)
-      ->json_is('/usage_count' => 1, 'Usage count is 1 after associating with article');
+      ->json_is('/tag/usage_count' => 1, 'Usage count is 1 after associating with article');
 
     # Clean up
     $t->delete_ok("/api/admin/articles/$article_id")->status_is(200);

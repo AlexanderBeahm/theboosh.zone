@@ -165,10 +165,11 @@ sub startup {
         # Check if user is authenticated
         my $user_id = $c->session('admin_user_id');
         unless ($user_id) {
-            return $c->render(json => {
+            $c->render(json => {
                 success => 0,
                 error => 'Authentication required'
             }, status => 401);
+            return 0; # Stop processing - don't continue to controller
         }
 
         return 1;

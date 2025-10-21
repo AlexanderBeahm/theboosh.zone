@@ -72,14 +72,14 @@ subtest 'login with admin credentials (if available)' => sub {
     })
       ->status_is(200, 'Login with correct credentials succeeds')
       ->json_is('/success' => 1, 'Success flag is true')
-      ->json_has('/message', 'Success message included');
+      ->json_has('/user', 'User object included');
 
     # Check that session is now authenticated
     $t->get_ok('/api/auth/status')
       ->status_is(200)
       ->json_is('/authenticated' => 1, 'Now authenticated')
-      ->json_is('/username' => $admin_user, 'Username matches')
-      ->json_has('/email', 'Email included in status');
+      ->json_is('/user/username' => $admin_user, 'Username matches')
+      ->json_has('/user/email', 'Email included in status');
 
     # Logout
     $t->post_ok('/api/auth/logout')

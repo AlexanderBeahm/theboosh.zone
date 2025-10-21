@@ -30,29 +30,29 @@ subtest 'get articles returns JSON array' => sub {
 subtest 'articles pagination metadata' => sub {
     $t->get_ok('/api/articles')
       ->status_is(200)
-      ->json_has('/pagination/page', 'Has page')
-      ->json_has('/pagination/limit', 'Has limit')
-      ->json_has('/pagination/total', 'Has total')
+      ->json_has('/pagination/current_page', 'Has current_page')
+      ->json_has('/pagination/per_page', 'Has per_page')
+      ->json_has('/pagination/total_count', 'Has total_count')
       ->json_has('/pagination/total_pages', 'Has total_pages');
 };
 
 subtest 'articles pagination with custom limit' => sub {
     $t->get_ok('/api/articles?limit=5')
       ->status_is(200)
-      ->json_is('/pagination/limit' => 5, 'Custom limit applied');
+      ->json_is('/pagination/per_page' => 5, 'Custom limit applied');
 };
 
 subtest 'articles pagination limit validation' => sub {
-    # Test max limit (should cap at 100)
+    # Test max limit (should return error when exceeding 100)
     $t->get_ok('/api/articles?limit=200')
-      ->status_is(200)
-      ->json_is('/pagination/limit' => 100, 'Limit capped at 100');
+      ->status_is(400, 'Excessive limit returns 400')
+      ->json_has('/error', 'Error message included');
 };
 
 subtest 'articles pagination with page parameter' => sub {
     $t->get_ok('/api/articles?page=2&limit=10')
       ->status_is(200)
-      ->json_is('/pagination/page' => 2, 'Page parameter accepted');
+      ->json_is('/pagination/current_page' => 2, 'Page parameter accepted');
 };
 
 subtest 'articles tag filtering' => sub {
@@ -105,19 +105,19 @@ subtest 'admin article CRUD - with authentication' => sub {
         tags => ['test', 'automated']
     })
       ->status_is(201, 'Article created successfully')
-      ->json_has('/id', 'Response includes article ID')
-      ->json_is('/title' => $test_title, 'Title matches')
-      ->json_has('/slug', 'Slug was auto-generated')
-      ->json_is('/is_published' => 0, 'Article is draft');
+      ->json_has('/article/id', 'Response includes article ID')
+      ->json_is('/article/title' => $test_title, 'Title matches')
+      ->json_has('/article/slug', 'Slug was auto-generated')
+      ->json_is('/article/is_published' => 0, 'Article is draft');
 
-    $article_id = $t->tx->res->json->{id};
+    $article_id = $t->tx->res->json->{article}->{id};
     ok($article_id, 'Got article ID');
 
     # Get the article by ID (admin-only)
     $t->get_ok("/api/admin/articles/$article_id")
       ->status_is(200, 'Can retrieve article by ID')
-      ->json_is('/id' => $article_id, 'ID matches')
-      ->json_is('/title' => $test_title, 'Title matches');
+      ->json_is('/article/id' => $article_id, 'ID matches')
+      ->json_is('/article/title' => $test_title, 'Title matches');
 
     # Update the article
     $t->put_ok("/api/admin/articles/$article_id" => json => {
@@ -125,16 +125,16 @@ subtest 'admin article CRUD - with authentication' => sub {
         is_published => 1
     })
       ->status_is(200, 'Article updated successfully')
-      ->json_is('/title' => "$test_title Updated", 'Title was updated')
-      ->json_is('/is_published' => 1, 'Article now published');
+      ->json_is('/article/title' => "$test_title Updated", 'Title was updated')
+      ->json_is('/article/is_published' => 1, 'Article now published');
 
     # Get the article's slug
-    my $slug = $t->tx->res->json->{slug};
+    my $slug = $t->tx->res->json->{article}->{slug};
 
     # Verify article is now visible via public endpoint
     $t->get_ok("/api/articles/$slug")
       ->status_is(200, 'Published article visible via public endpoint')
-      ->json_is('/title' => "$test_title Updated", 'Title matches');
+      ->json_is('/article/title' => "$test_title Updated", 'Title matches');
 
     # Delete the article
     $t->delete_ok("/api/admin/articles/$article_id")
@@ -171,13 +171,13 @@ subtest 'article creation with auto-slug generation' => sub {
         is_published => 0
     })
       ->status_is(201)
-      ->json_has('/slug', 'Slug auto-generated');
+      ->json_has('/article/slug', 'Slug auto-generated');
 
-    my $slug = $t->tx->res->json->{slug};
+    my $slug = $t->tx->res->json->{article}->{slug};
     like($slug, qr/^auto-slug-test-\d+$/, 'Slug follows expected pattern');
 
     # Clean up
-    my $id = $t->tx->res->json->{id};
+    my $id = $t->tx->res->json->{article}->{id};
     $t->delete_ok("/api/admin/articles/$id")->status_is(200);
 
     $t->post_ok('/api/auth/logout')->status_is(200);
@@ -206,8 +206,8 @@ subtest 'draft articles not visible to public' => sub {
     })
       ->status_is(201);
 
-    my $draft_slug = $t->tx->res->json->{slug};
-    my $draft_id = $t->tx->res->json->{id};
+    my $draft_slug = $t->tx->res->json->{article}->{slug};
+    my $draft_id = $t->tx->res->json->{article}->{id};
 
     # Logout
     $t->post_ok('/api/auth/logout')->status_is(200);

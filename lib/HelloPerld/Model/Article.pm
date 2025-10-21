@@ -188,14 +188,13 @@ sub get_by_id {
 }
 
 sub create {
-    my ($self, %params) = @_;
+    my ($self, $article_data) = @_;
 
-    # Convert named parameters to hashref if not already a hashref
-    my $article_data;
-    if (ref($_[1]) eq 'HASH') {
-        $article_data = $_[1];
-    } else {
-        $article_data = \%params;
+    # If not passed as a hashref, assume it's named parameters
+    unless (ref($article_data) eq 'HASH') {
+        my %params = @_;
+        shift @_;  # Remove $self
+        $article_data = { @_ };
     }
 
     my $dbh;
@@ -282,14 +281,14 @@ sub create {
 }
 
 sub update {
-    my ($self, $id, %params) = @_;
+    my ($self, $id, $article_data) = @_;
 
-    # Convert named parameters to hashref if not already a hashref
-    my $article_data;
-    if (ref($_[2]) eq 'HASH') {
-        $article_data = $_[2];
-    } else {
-        $article_data = \%params;
+    # If not passed as a hashref, assume it's named parameters
+    unless (ref($article_data) eq 'HASH') {
+        my @args = @_;
+        shift @args; # Remove $self
+        shift @args; # Remove $id
+        $article_data = { @args };
     }
 
     my $dbh;
@@ -307,27 +306,24 @@ sub update {
     eval {
         $dbh->begin_work();
 
-        my $sql = q{
-            UPDATE articles
-            SET title = ?, slug = ?, content = ?, excerpt = ?, author = ?,
-                published_at = ?, is_published = ?, meta_description = ?,
-                featured_image = ?, date_updated = CURRENT_TIMESTAMP
-            WHERE id = ?
-        };
+        # Build dynamic SQL to only update provided fields
+        my @set_clauses = ('date_updated = CURRENT_TIMESTAMP');
+        my @bind_params = ();
+
+        my @valid_fields = qw(title slug content excerpt author published_at is_published meta_description featured_image);
+
+        foreach my $field (@valid_fields) {
+            if (exists $article_data->{$field}) {
+                push @set_clauses, "$field = ?";
+                push @bind_params, $article_data->{$field};
+            }
+        }
+
+        my $sql = "UPDATE articles SET " . join(', ', @set_clauses) . " WHERE id = ?";
+        push @bind_params, $id;
 
         my $sth = $dbh->prepare($sql);
-        $rows_affected = $sth->execute(
-            $article_data->{title},
-            $article_data->{slug},
-            $article_data->{content},
-            $article_data->{excerpt},
-            $article_data->{author},
-            $article_data->{published_at},
-            $article_data->{is_published},
-            $article_data->{meta_description},
-            $article_data->{featured_image},
-            $id
-        );
+        $rows_affected = $sth->execute(@bind_params);
 
         $dbh->commit();
         $dbh->disconnect();
@@ -528,15 +524,14 @@ sub get_count {
         $sql .= " WHERE " . join(" AND ", @where_conditions);
     }
 
+    my $count;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute(@bind_params);
 
-        my ($count) = $sth->fetchrow_array();
+        ($count) = $sth->fetchrow_array();
         $sth->finish();
         $dbh->disconnect();
-
-        return $count || 0;
     };
 
     if ($@) {
@@ -546,6 +541,8 @@ sub get_count {
         $dbh->disconnect() if $dbh;
         return 0;
     }
+
+    return $count || 0;
 }
 
 1;

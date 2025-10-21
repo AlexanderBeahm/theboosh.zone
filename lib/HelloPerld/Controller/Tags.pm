@@ -210,13 +210,7 @@ sub search {
 sub create {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     # Get tag data from request
     my $tag_data = $self->_parse_tag_request();
@@ -247,19 +241,16 @@ sub create {
         $tag_data->{slug} = $tag_model->generate_slug($tag_data->{name});
     }
 
-    my $tag_id = $tag_model->create($tag_data);
+    my $created_tag = $tag_model->create($tag_data);
 
-    unless ($tag_id) {
+    unless ($created_tag) {
         return $self->render(json => {
             success => 0,
             error => 'Failed to create tag'
         }, status => 500);
     }
 
-    # Return created tag
-    my $created_tag = $tag_model->get_by_id($tag_id);
-
-    $self->app->logger_instance->info("Tag created with ID $tag_id by admin user " . $self->session('admin_username'));
+    $self->app->logger_instance->info("Tag created with ID " . $created_tag->{id} . " by admin user " . $self->session('admin_username'));
 
     return $self->render(json => {
         success => 1,
@@ -271,13 +262,7 @@ sub create {
 sub update {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     my $id = $self->param('id');
 
@@ -353,13 +338,7 @@ sub update {
 sub delete {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     my $id = $self->param('id');
 

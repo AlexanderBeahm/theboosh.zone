@@ -154,13 +154,7 @@ sub get_by_id {
 sub create {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     # Get article data from request
     my $article_data = $self->_parse_article_request();
@@ -195,19 +189,16 @@ sub create {
         logger => $self->app->logger_instance,
         db_config => $self->db_config
     );
-    my $article_id = $article_model->create($article_data);
+    my $created_article = $article_model->create($article_data);
 
-    unless ($article_id) {
+    unless ($created_article) {
         return $self->render(json => {
             success => 0,
             error => 'Failed to create article'
         }, status => 500);
     }
 
-    # Return created article
-    my $created_article = $article_model->get_by_id($article_id);
-
-    $self->app->logger_instance->info("Article created with ID $article_id by admin user " . $self->session('admin_username'));
+    $self->app->logger_instance->info("Article created with ID " . $created_article->{id} . " by admin user " . $self->session('admin_username'));
 
     return $self->render(json => {
         success => 1,
@@ -219,13 +210,7 @@ sub create {
 sub update {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     my $id = $self->param('id');
 
@@ -297,13 +282,7 @@ sub update {
 sub delete {
     my $self = shift;
 
-    # Admin authentication required
-    unless ($self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Admin authentication required'
-        }, status => 401);
-    }
+    # Note: Authentication is handled by the /admin route middleware
 
     my $id = $self->param('id');
 

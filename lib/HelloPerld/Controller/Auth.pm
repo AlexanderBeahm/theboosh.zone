@@ -399,10 +399,11 @@ sub require_auth {
     my ($self, $controller, $action) = @_;
 
     unless ($self->_is_authenticated()) {
-        return $self->render(json => {
+        $self->render(json => {
             success => 0,
             error => 'Authentication required'
         }, status => 401);
+        return undef;  # Explicitly stop further processing
     }
 
     # Continue to the intended action
