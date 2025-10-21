@@ -25,5 +25,5 @@ RUN mkdir -p /tmp/test-uploads
 
 EXPOSE 3000
 
-# Run tests by default
-CMD ["perl", "script/test"]
+# Run tests with setup (migrations) by default
+CMD ["perl", "script/test-with-setup"]
