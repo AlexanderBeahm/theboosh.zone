@@ -14,7 +14,7 @@ apt-get install -y perl
 curl -L https://cpanmin.us | perl - --sudo App::cpanminus
 
 # Install cpan deps from cpanfile (if it exists)
-if [ -f "cpanfile" ]; then
+if [ -f "Makefile.PL" ]; then
     cpanm --installdeps --notest .
 fi
 
