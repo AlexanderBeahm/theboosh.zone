@@ -7,6 +7,17 @@ on:
     pull_request:
         branches: ["main", "dev"]
     workflow_dispatch:
+    workflow_call:
+        outputs:
+            image_tags:
+                description: "Docker image tags that were built"
+                value: ${{ jobs.build-and-push.outputs.image_tags }}
+            image_digest:
+                description: "Docker image digest"
+                value: ${{ jobs.build-and-push.outputs.image_digest }}
+            build_env:
+                description: "Build environment used"
+                value: ${{ jobs.build-and-push.outputs.build_env }}
 
 env:
     REGISTRY: registry.digitalocean.com
@@ -29,6 +40,10 @@ jobs:
         if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
         permissions:
             contents: read
+        outputs:
+            image_tags: ${{ steps.meta.outputs.tags }}
+            image_digest: ${{ steps.build.outputs.digest }}
+            build_env: ${{ steps.env.outputs.BUILD_ENV }}
 
         steps:
             - name: Checkout code
@@ -85,6 +100,7 @@ jobs:
                       type=ref,event=pr
 
             - name: Build and push Docker image
+              id: build
               uses: docker/build-push-action@v5
               with:
                   context: .
