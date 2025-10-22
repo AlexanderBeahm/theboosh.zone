@@ -197,6 +197,26 @@ sub create {
         $article_data = { @_ };
     }
 
+    # Security: Validate input lengths to prevent DoS via memory exhaustion
+    if (defined $article_data->{content} && length($article_data->{content}) > 1_000_000) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article content exceeds maximum length of 1MB");
+        }
+        return undef;
+    }
+    if (defined $article_data->{title} && length($article_data->{title}) > 500) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article title exceeds maximum length of 500 characters");
+        }
+        return undef;
+    }
+    if (defined $article_data->{excerpt} && length($article_data->{excerpt}) > 2000) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article excerpt exceeds maximum length of 2000 characters");
+        }
+        return undef;
+    }
+
     my $dbh;
     if ($self->{db_config} && %{$self->{db_config}}) {
         $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
@@ -289,6 +309,26 @@ sub update {
         shift @args; # Remove $self
         shift @args; # Remove $id
         $article_data = { @args };
+    }
+
+    # Security: Validate input lengths to prevent DoS via memory exhaustion
+    if (defined $article_data->{content} && length($article_data->{content}) > 1_000_000) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article content exceeds maximum length of 1MB");
+        }
+        return undef;
+    }
+    if (defined $article_data->{title} && length($article_data->{title}) > 500) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article title exceeds maximum length of 500 characters");
+        }
+        return undef;
+    }
+    if (defined $article_data->{excerpt} && length($article_data->{excerpt}) > 2000) {
+        if ($self->{logger}) {
+            $self->{logger}->error("Article excerpt exceeds maximum length of 2000 characters");
+        }
+        return undef;
     }
 
     my $dbh;
@@ -577,6 +617,26 @@ HelloPerld::Model::Article - Article data model and database operations
 This module provides database operations for articles in the HelloPerld application.
 It handles CRUD operations, tag associations, and provides methods for retrieving
 articles with various filtering and pagination options.
+
+=head1 SECURITY
+
+This module implements several security best practices:
+
+=over 4
+
+=item * B<SQL Injection Prevention>: All database queries use prepared statements with
+parameterized queries. User input is never interpolated directly into SQL.
+
+=item * B<Input Length Validation>: Content is limited to 1MB, titles to 500 characters,
+and excerpts to 2000 characters to prevent memory exhaustion attacks.
+
+=item * B<Error Handling>: Database errors are logged but generic errors are returned
+to prevent information disclosure.
+
+=item * B<Access Control>: Published/unpublished status is enforced at the model level
+to ensure proper authorization checks in controllers.
+
+=back
 
 =head1 METHODS
 

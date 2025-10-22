@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Test::Exception;
 use lib 't/lib';
-use TestHelper qw(mock_dbh mock_logger create_test_article_data);
+use TestHelper qw(mock_dbh mock_logger create_test_article_data create_oversized_content);
 use Test::MockModule;
 
 # =============================================================================
@@ -397,5 +397,137 @@ subtest 'get_count - no filter (all articles)' => sub {
 };
 
 # DBD::Mock tests now working correctly
+
+# ====== SECURITY TESTS: Input Length Validation ======
+
+subtest 'create - rejects oversized content (1MB+)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_content = create_oversized_content(2);  # 2MB content
+
+    my $result = $model->create(
+        title => 'Test Article',
+        content => $oversized_content,
+        is_published => 1
+    );
+
+    ok(!defined $result, 'create returns undef for oversized content');
+
+    # Verify no database interaction occurred
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when content is too large');
+};
+
+subtest 'create - rejects oversized title (500+ chars)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_title = "A" x 501;  # 501 characters
+
+    my $result = $model->create(
+        title => $oversized_title,
+        content => 'Normal content',
+        is_published => 1
+    );
+
+    ok(!defined $result, 'create returns undef for oversized title');
+
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when title is too long');
+};
+
+subtest 'create - rejects oversized excerpt (2000+ chars)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_excerpt = "A" x 2001;  # 2001 characters
+
+    my $result = $model->create(
+        title => 'Test Article',
+        content => 'Normal content',
+        excerpt => $oversized_excerpt,
+        is_published => 1
+    );
+
+    ok(!defined $result, 'create returns undef for oversized excerpt');
+
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when excerpt is too long');
+};
+
+subtest 'create - accepts content at exact limit (1MB)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $exact_limit_content = "A" x 1_000_000;  # Exactly 1MB
+    my $new_article = create_test_article_data(id => 99);
+
+    # Mock the INSERT and subsequent SELECT
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/INSERT INTO articles/i,
+        results => [['id'], [99]]
+    };
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*articles.*id/is,
+        results => [
+            ['id', 'title', 'slug', 'content', 'excerpt', 'author',
+             'published_at', 'date_added', 'date_updated', 'is_published',
+             'meta_description', 'featured_image'],
+            [
+                $new_article->{id}, $new_article->{title}, $new_article->{slug},
+                $new_article->{content}, $new_article->{excerpt}, $new_article->{author},
+                $new_article->{published_at}, $new_article->{date_added},
+                $new_article->{date_updated}, $new_article->{is_published},
+                $new_article->{meta_description}, $new_article->{featured_image}
+            ]
+        ]
+    };
+
+    my $result = $model->create(
+        title => 'Test Article',
+        content => $exact_limit_content,
+        is_published => 1
+    );
+
+    ok(defined $result, 'create accepts content at exact 1MB limit');
+    is($result->{id}, 99, 'Article created successfully');
+};
+
+subtest 'update - rejects oversized content (1MB+)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_content = create_oversized_content(2);  # 2MB
+
+    my $result = $model->update(1, content => $oversized_content);
+
+    ok(!defined $result, 'update returns undef for oversized content');
+
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when content is too large');
+};
+
+subtest 'update - rejects oversized title (500+ chars)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_title = "A" x 501;
+
+    my $result = $model->update(1, title => $oversized_title);
+
+    ok(!defined $result, 'update returns undef for oversized title');
+
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when title is too long');
+};
+
+subtest 'update - rejects oversized excerpt (2000+ chars)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $oversized_excerpt = "A" x 2001;
+
+    my $result = $model->update(1, excerpt => $oversized_excerpt);
+
+    ok(!defined $result, 'update returns undef for oversized excerpt');
+
+    my $history = $mock_dbh->{mock_all_history};
+    is(scalar @$history, 0, 'No SQL executed when excerpt is too long');
+};
 
 done_testing();
