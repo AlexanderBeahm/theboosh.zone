@@ -1,3 +1,21 @@
+# Staging Deployment Workflow
+#
+# Deploys the application to the staging environment (https://staging.theboosh.zone)
+#
+# Process:
+# 1. Calls ci.yml to run tests and build Docker image
+# 2. SSHs to staging server
+# 3. Pulls latest image from DigitalOcean Container Registry
+# 4. Runs deployment script
+# 5. Performs health check
+#
+# Security:
+# - Uses base64-encoded Docker credentials for safe transport
+# - Credentials automatically cleaned up via bash trap
+# - Registry URL uses environment variables for consistency
+#
+# See .github/workflows/README.md for detailed documentation.
+
 name: Deploy to Staging
 
 # CURRENTLY DISABLED: Only manual triggers allowed
@@ -11,6 +29,10 @@ name: Deploy to Staging
 # Manual trigger only (for testing before infrastructure is ready)
 on:
     workflow_dispatch:
+
+permissions:
+    contents: read
+    id-token: write # Required for OIDC token generation
 
 jobs:
     # Call the CI workflow which handles tests and building
@@ -42,11 +64,10 @@ jobs:
             - name: Get Docker registry credentials
               id: registry-creds
               run: |
-                  # Generate a short-lived registry token
+                  # Generate a short-lived registry token and encode with base64 for safe transport
                   DOCKER_CONFIG=$(doctl registry docker-config --read-write)
-                  echo "docker_config<<EOF" >> $GITHUB_OUTPUT
-                  echo "$DOCKER_CONFIG" >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
+                  DOCKER_CONFIG_B64=$(echo "$DOCKER_CONFIG" | base64 -w 0)
+                  echo "docker_config_b64=$DOCKER_CONFIG_B64" >> $GITHUB_OUTPUT
 
             - name: Deploy to server
               uses: appleboy/ssh-action@v1.0.0
@@ -54,19 +75,24 @@ jobs:
                   host: ${{ secrets.STAGING_HOST }}
                   username: ${{ secrets.STAGING_USER }}
                   key: ${{ secrets.STAGING_SSH_KEY }}
-                  envs: DOCKER_CONFIG_JSON,DO_REGISTRY_NAME
+                  envs: DOCKER_CONFIG_B64,DO_REGISTRY_NAME,REGISTRY
                   script: |
+                      set -e  # Exit on any error
+
+                      # Setup cleanup trap to ensure credentials are always removed
+                      cleanup() {
+                          rm -f ~/.docker/config.json
+                      }
+                      trap cleanup EXIT
+
                       cd /opt/theboosh-zone
 
-                      # Create temporary docker config directory
+                      # Decode and write docker credentials
                       mkdir -p ~/.docker
-                      echo "$DOCKER_CONFIG_JSON" > ~/.docker/config.json
+                      echo "$DOCKER_CONFIG_B64" | base64 -d > ~/.docker/config.json
 
                       # Pull latest image from DigitalOcean registry
-                      docker pull registry.digitalocean.com/${DO_REGISTRY_NAME}/theboosh-zone:staging-latest
-
-                      # Clean up credentials
-                      rm -f ~/.docker/config.json
+                      docker pull ${REGISTRY}/${DO_REGISTRY_NAME}/theboosh-zone:staging-latest
 
                       # Run deployment script
                       ./deploy/deploy.sh staging
@@ -75,8 +101,9 @@ jobs:
                       sleep 10
                       curl -f https://staging.theboosh.zone/health || exit 1
               env:
-                  DOCKER_CONFIG_JSON: ${{ steps.registry-creds.outputs.docker_config }}
+                  DOCKER_CONFIG_B64: ${{ steps.registry-creds.outputs.docker_config_b64 }}
                   DO_REGISTRY_NAME: ${{ secrets.DO_REGISTRY_NAME }}
+                  REGISTRY: registry.digitalocean.com
 
             - name: Notify on success
               if: success()

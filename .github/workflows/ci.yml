@@ -1,3 +1,13 @@
+# CI Pipeline - Test, Build, and Push Docker Images
+#
+# This is the main Continuous Integration workflow that:
+# - Runs tests (conditionally, to avoid duplicates)
+# - Builds Docker images with environment-specific configs
+# - Pushes images to DigitalOcean Container Registry
+#
+# This workflow is reusable and called by deployment workflows.
+# See .github/workflows/README.md for detailed documentation.
+
 name: Build and Push to DigitalOcean Container Registry
 
 on:
@@ -24,6 +34,11 @@ env:
     # Set your DigitalOcean registry name here (e.g., your-registry-name)
     DO_REGISTRY_NAME: ${{ secrets.DO_REGISTRY_NAME }}
     IMAGE_NAME: theboosh-zone
+
+permissions:
+    contents: read
+    packages: write # Required to push to container registry
+    id-token: write # Required for OIDC token generation
 
 jobs:
     test:
@@ -64,22 +79,31 @@ jobs:
             - name: Determine build environment
               id: env
               run: |
-                  # For PRs, use the target branch (base_ref), otherwise use the ref
+                  # For PRs, use the target branch (base_ref) to determine environment
+                  # For push events, use the current branch (ref)
+                  # This ensures PRs are built with the environment they'll deploy to
                   if [[ "${{ github.event_name }}" == "pull_request" ]]; then
                     REF="refs/heads/${{ github.base_ref }}"
+                    echo "::notice::PR detected, using target branch: ${{ github.base_ref }}"
                   else
                     REF="${{ github.ref }}"
+                    echo "::notice::Using ref: ${REF}"
                   fi
 
+                  # Map branches/tags to build environments
+                  # BUILD_ENV must match npm scripts: build:prod, build:staging, build:dev
                   if [[ "$REF" == "refs/heads/main" ]] || [[ "$REF" == refs/tags/* ]]; then
                     echo "BUILD_ENV=prod" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=production" >> $GITHUB_OUTPUT
+                    echo "::notice::Environment: production (BUILD_ENV=prod)"
                   elif [[ "$REF" == "refs/heads/dev" ]]; then
                     echo "BUILD_ENV=staging" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=staging" >> $GITHUB_OUTPUT
+                    echo "::notice::Environment: staging (BUILD_ENV=staging)"
                   else
                     echo "BUILD_ENV=dev" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=dev" >> $GITHUB_OUTPUT
+                    echo "::notice::Environment: development (BUILD_ENV=dev)"
                   fi
 
             - name: Extract metadata
