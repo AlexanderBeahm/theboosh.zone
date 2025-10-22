@@ -133,20 +133,8 @@ TheBoosh.Zone is Alex Beahm's personal portfolio and blog website, built with a 
   - Metadata management (alt text, captions)
   - Organized storage (YYYY/MM directory structure)
 
-### Missing for Full Portfolio Site
-- **Portfolio Features**: Project showcase, skills listing, work experience display
-- **SEO/Meta**: Enhanced meta tags, OpenGraph, structured data
-- **RSS/Feeds**: Blog feed generation
-- **Search**: Full-text content search functionality
-- **Comments**: Comment system for articles (if desired)
-
 ## Development Priorities
-
-### Completed Phases
-- Phase 1: Database Foundation - COMPLETE
-- Phase 2: Backend API Development - COMPLETE
-- Phase 3: Frontend Enhancement - COMPLETE (for blog)
-- Phase 4: Content Management - COMPLETE
+See CLAUDE-FEATURE-TODO.md for detailed feature requests and priorities.
 
 ### Next Steps
 1. **Portfolio Features**:
