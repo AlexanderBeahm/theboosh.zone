@@ -39,18 +39,34 @@ jobs:
             - name: Log in to DigitalOcean Container Registry
               run: doctl registry login --expiry-seconds 1200
 
+            - name: Get Docker registry credentials
+              id: registry-creds
+              run: |
+                  # Generate a short-lived registry token
+                  DOCKER_CONFIG=$(doctl registry docker-config --read-write)
+                  echo "docker_config<<EOF" >> $GITHUB_OUTPUT
+                  echo "$DOCKER_CONFIG" >> $GITHUB_OUTPUT
+                  echo "EOF" >> $GITHUB_OUTPUT
+
             - name: Deploy to server
               uses: appleboy/ssh-action@v1.0.0
               with:
                   host: ${{ secrets.STAGING_HOST }}
                   username: ${{ secrets.STAGING_USER }}
                   key: ${{ secrets.STAGING_SSH_KEY }}
+                  envs: DOCKER_CONFIG_JSON,DO_REGISTRY_NAME
                   script: |
                       cd /opt/theboosh-zone
 
+                      # Create temporary docker config directory
+                      mkdir -p ~/.docker
+                      echo "$DOCKER_CONFIG_JSON" > ~/.docker/config.json
+
                       # Pull latest image from DigitalOcean registry
-                      doctl registry login --expiry-seconds 1200
-                      docker pull registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/theboosh-zone:staging-latest
+                      docker pull registry.digitalocean.com/${DO_REGISTRY_NAME}/theboosh-zone:staging-latest
+
+                      # Clean up credentials
+                      rm -f ~/.docker/config.json
 
                       # Run deployment script
                       ./deploy/deploy.sh staging
@@ -58,6 +74,9 @@ jobs:
                       # Health check
                       sleep 10
                       curl -f https://staging.theboosh.zone/health || exit 1
+              env:
+                  DOCKER_CONFIG_JSON: ${{ steps.registry-creds.outputs.docker_config }}
+                  DO_REGISTRY_NAME: ${{ secrets.DO_REGISTRY_NAME }}
 
             - name: Notify on success
               if: success()

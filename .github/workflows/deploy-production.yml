@@ -40,6 +40,15 @@ jobs:
             - name: Log in to DigitalOcean Container Registry
               run: doctl registry login --expiry-seconds 1200
 
+            - name: Get Docker registry credentials
+              id: registry-creds
+              run: |
+                  # Generate a short-lived registry token
+                  DOCKER_CONFIG=$(doctl registry docker-config --read-write)
+                  echo "docker_config<<EOF" >> $GITHUB_OUTPUT
+                  echo "$DOCKER_CONFIG" >> $GITHUB_OUTPUT
+                  echo "EOF" >> $GITHUB_OUTPUT
+
             - name: Create GitHub Release
               if: startsWith(github.ref, 'refs/tags/')
               uses: softprops/action-gh-release@v1
@@ -52,12 +61,19 @@ jobs:
                   host: ${{ secrets.PRODUCTION_HOST }}
                   username: ${{ secrets.PRODUCTION_USER }}
                   key: ${{ secrets.PRODUCTION_SSH_KEY }}
+                  envs: DOCKER_CONFIG_JSON,DO_REGISTRY_NAME
                   script: |
                       cd /opt/theboosh-zone
 
+                      # Create temporary docker config directory
+                      mkdir -p ~/.docker
+                      echo "$DOCKER_CONFIG_JSON" > ~/.docker/config.json
+
                       # Pull latest image from DigitalOcean registry
-                      doctl registry login --expiry-seconds 1200
-                      docker pull registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/theboosh-zone:production-latest
+                      docker pull registry.digitalocean.com/${DO_REGISTRY_NAME}/theboosh-zone:production-latest
+
+                      # Clean up credentials
+                      rm -f ~/.docker/config.json
 
                       # Backup current deployment
                       ./deploy/backup.sh production
@@ -72,6 +88,9 @@ jobs:
                         ./deploy/rollback.sh production
                         exit 1
                       fi
+              env:
+                  DOCKER_CONFIG_JSON: ${{ steps.registry-creds.outputs.docker_config }}
+                  DO_REGISTRY_NAME: ${{ secrets.DO_REGISTRY_NAME }}
 
             - name: Notify on success
               if: success()
