@@ -226,4 +226,80 @@ subtest 'draft articles not visible to public' => sub {
     $t->post_ok('/api/auth/logout')->status_is(200);
 };
 
+subtest 'admin can retrieve all articles regardless of published status' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create a published article
+    my $published_title = "Published for All Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $published_title,
+        content => 'Published content',
+        is_published => 1
+    })->status_is(201);
+    my $published_id = $t->tx->res->json->{article}->{id};
+
+    # Create a draft article
+    my $draft_title = "Draft for All Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $draft_title,
+        content => 'Draft content',
+        is_published => 0
+    })->status_is(201);
+    my $draft_id = $t->tx->res->json->{article}->{id};
+
+    # Get all articles without published filter (admin default behavior)
+    $t->get_ok('/api/admin/articles')
+      ->status_is(200, 'Admin can retrieve articles without filter');
+
+    my $json = $t->tx->res->json;
+    my @articles = @{$json->{articles}};
+
+    # Check that we have both published and draft articles
+    my @test_articles = grep {
+        $_->{id} == $published_id || $_->{id} == $draft_id
+    } @articles;
+
+    is(scalar @test_articles, 2, 'Admin gets both published and draft articles by default');
+
+    # Verify we can filter to just published
+    $t->get_ok('/api/admin/articles?published=1')
+      ->status_is(200, 'Admin can filter to published articles');
+
+    my $published_json = $t->tx->res->json;
+    my @published_articles = @{$published_json->{articles}};
+    my @published_test = grep { $_->{id} == $published_id } @published_articles;
+    my @draft_test_in_published = grep { $_->{id} == $draft_id } @published_articles;
+
+    ok(scalar @published_test > 0, 'Published article found when filtering published=1');
+    is(scalar @draft_test_in_published, 0, 'Draft article not found when filtering published=1');
+
+    # Verify we can filter to just drafts
+    $t->get_ok('/api/admin/articles?published=0')
+      ->status_is(200, 'Admin can filter to draft articles');
+
+    my $draft_json = $t->tx->res->json;
+    my @draft_articles = @{$draft_json->{articles}};
+    my @draft_test = grep { $_->{id} == $draft_id } @draft_articles;
+    my @published_test_in_drafts = grep { $_->{id} == $published_id } @draft_articles;
+
+    ok(scalar @draft_test > 0, 'Draft article found when filtering published=0');
+    is(scalar @published_test_in_drafts, 0, 'Published article not found when filtering published=0');
+
+    # Clean up
+    $t->delete_ok("/api/admin/articles/$published_id")->status_is(200);
+    $t->delete_ok("/api/admin/articles/$draft_id")->status_is(200);
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
 done_testing();

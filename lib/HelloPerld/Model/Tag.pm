@@ -430,7 +430,7 @@ sub get_popular_tags {
                COUNT(at.article_id) as usage_count
         FROM tags t
         LEFT JOIN article_tags at ON t.id = at.tag_id
-        LEFT JOIN articles a ON at.article_id = a.id AND a.is_published = true
+        JOIN articles a ON at.article_id = a.id AND a.is_published = true
         GROUP BY t.id, t.name, t.slug, t.date_added
         HAVING COUNT(at.article_id) > 0
         ORDER BY usage_count DESC, t.name ASC
@@ -476,6 +476,9 @@ sub search {
     }
     return [] unless $dbh;
 
+    # Security: Escape SQL wildcards to prevent wildcard injection
+    my $escaped_term = $self->_escape_sql_wildcards($search_term);
+
     my $sql = q{
         SELECT id, name, slug, date_added
         FROM tags
@@ -487,7 +490,7 @@ sub search {
     my $tags;
     eval {
         my $sth = $dbh->prepare($sql);
-        $sth->execute("%$search_term%", $limit);
+        $sth->execute("%$escaped_term%", $limit);
 
         my @tags_array;
         while (my $row = $sth->fetchrow_hashref()) {
@@ -599,6 +602,20 @@ sub get_count {
     return $count || 0;
 }
 
+# Security: Escape SQL wildcard characters in user input
+# Prevents users from using % or _ as wildcards in LIKE/ILIKE queries
+sub _escape_sql_wildcards {
+    my ($self, $term) = @_;
+    return '' unless defined $term;
+
+    # Escape backslash first, then % and _
+    $term =~ s/\\/\\\\/g;
+    $term =~ s/%/\\%/g;
+    $term =~ s/_/\\_/g;
+
+    return $term;
+}
+
 1;
 
 __END__
@@ -633,6 +650,26 @@ HelloPerld::Model::Tag - Tag data model and database operations
 This module provides database operations for tags in the HelloPerld application.
 It handles CRUD operations and provides methods for retrieving tags with usage
 statistics and search capabilities.
+
+=head1 SECURITY
+
+This module implements several security best practices:
+
+=over 4
+
+=item * B<SQL Injection Prevention>: All database queries use prepared statements with
+parameterized queries. User input is never interpolated directly into SQL.
+
+=item * B<Wildcard Escaping>: Search queries escape SQL wildcards (%, _, \) to prevent
+users from performing unintended wildcard searches or causing performance issues.
+
+=item * B<Case-Insensitive Matching>: Uses ILIKE for searches and LOWER() for name
+matching to provide consistent behavior while preventing case-based bypass attempts.
+
+=item * B<Error Handling>: Database errors are logged but generic errors are returned
+to prevent information disclosure.
+
+=back
 
 =head1 METHODS
 

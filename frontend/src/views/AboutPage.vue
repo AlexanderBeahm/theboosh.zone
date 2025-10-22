@@ -5,8 +5,20 @@
       <section>
         <h2>Alex Beahm</h2>
         <ul>
-          <li><a href="https://github.com/AlexanderBeahm" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-          <li><a href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+          <li>
+            <a
+              href="https://github.com/AlexanderBeahm"
+              target="_blank"
+              rel="noopener noreferrer"
+            >GitHub</a>
+          </li>
+          <li>
+            <a
+              href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >LinkedIn</a>
+          </li>
         </ul>
       </section>
       <section>

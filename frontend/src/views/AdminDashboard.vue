@@ -1,303 +1,387 @@
 <template>
-    <div class="admin-dashboard">
-        <!-- Header -->
-        <div class="dashboard-header">
-            <div class="header-content">
-                <h1>Admin Dashboard</h1>
-                <p class="welcome-message">
-                    Welcome back, {{ user?.username || "Admin" }}
-                </p>
-            </div>
-        </div>
-
-        <!-- Stats Overview -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-number">{{ stats.totalArticles }}</div>
-                <div class="stat-label">Total Articles</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-number">{{ stats.publishedArticles }}</div>
-                <div class="stat-label">Published</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-number">{{ stats.draftArticles }}</div>
-                <div class="stat-label">Drafts</div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-number">{{ stats.totalTags }}</div>
-                <div class="stat-label">Tags</div>
-            </div>
-        </div>
-
-        <!-- Filters and Search -->
-        <div class="filters-section">
-            <div class="search-box">
-                <input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search articles..."
-                    class="search-input"
-                    @input="debouncedSearch"
-                />
-            </div>
-
-            <div class="filter-controls">
-                <select
-                    v-model="statusFilter"
-                    class="filter-select"
-                    @change="fetchArticles"
-                >
-                    <option value="">All Status</option>
-                    <option value="published">Published</option>
-                    <option value="draft">Drafts</option>
-                </select>
-
-                <select
-                    v-model="sortBy"
-                    class="filter-select"
-                    @change="fetchArticles"
-                >
-                    <option value="date_updated">Recently Updated</option>
-                    <option value="date_added">Recently Created</option>
-                    <option value="published_at">Recently Published</option>
-                    <option value="title">Title A-Z</option>
-                </select>
-
-                <button
-                    @click="$router.push('/admin/media')"
-                    class="media-library-button"
-                >
-                    Media Library
-                </button>
-
-                <button
-                    @click="showCreateArticle = true"
-                    class="create-article-button"
-                >
-                    New Article
-                </button>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div v-if="isLoading" class="loading-container">
-            <div class="loading-spinner"></div>
-            <p>Loading articles...</p>
-        </div>
-
-        <!-- Error State -->
-        <div v-else-if="error" class="error-container">
-            <div class="error-icon">⚠️</div>
-            <h3>Failed to load articles</h3>
-            <p>{{ error }}</p>
-            <button @click="fetchArticles" class="retry-button">
-                Try Again
-            </button>
-        </div>
-
-        <!-- Articles Table -->
-        <div v-else class="articles-section">
-            <div class="section-header">
-                <h2>Articles ({{ pagination.total_count }})</h2>
-            </div>
-
-            <!-- Empty State -->
-            <div v-if="articles.length === 0" class="empty-container">
-                <div class="empty-icon">📝</div>
-                <h3>No articles found</h3>
-                <p v-if="searchQuery">
-                    No articles match your search "{{ searchQuery }}".
-                </p>
-                <p v-else-if="statusFilter">
-                    No {{ statusFilter }} articles found.
-                </p>
-                <p v-else>Get started by creating your first article!</p>
-                <button @click="showCreateArticle = true" class="create-button">
-                    Create Article
-                </button>
-            </div>
-
-            <!-- Articles List -->
-            <div v-else class="articles-table">
-                <div class="table-header">
-                    <div class="col-title">Title</div>
-                    <div class="col-status">Status</div>
-                    <div class="col-updated">Updated</div>
-                    <div class="col-actions">Actions</div>
-                </div>
-
-                <div
-                    v-for="article in articles"
-                    :key="article.id"
-                    class="table-row"
-                >
-                    <div class="col-title">
-                        <div class="article-info">
-                            <h4 class="article-title">{{ article.title }}</h4>
-                            <p class="article-excerpt" v-if="article.excerpt">
-                                {{ article.excerpt }}
-                            </p>
-                            <div class="article-meta">
-                                <span class="slug">/{{ article.slug }}</span>
-                                <div
-                                    class="tags"
-                                    v-if="
-                                        article.tags && article.tags.length > 0
-                                    "
-                                >
-                                    <span
-                                        v-for="tag in article.tags"
-                                        :key="tag.id"
-                                        class="tag"
-                                    >
-                                        #{{ tag.name }}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-status">
-                        <span
-                            class="status-badge"
-                            :class="{
-                                published: article.is_published,
-                                draft: !article.is_published,
-                            }"
-                        >
-                            {{ article.is_published ? "Published" : "Draft" }}
-                        </span>
-                        <div class="publish-date" v-if="article.published_at">
-                            {{ formatDate(article.published_at) }}
-                        </div>
-                    </div>
-
-                    <div class="col-updated">
-                        {{ formatDate(article.date_updated) }}
-                    </div>
-
-                    <div class="col-actions">
-                        <div class="action-buttons">
-                            <button
-                                @click="editArticle(article)"
-                                class="action-button edit-button"
-                                title="Edit Article"
-                                aria-label="Edit Article"
-                            >
-                                Edit
-                            </button>
-
-                            <button
-                                @click="viewArticle(article)"
-                                class="action-button view-button"
-                                title="View Article"
-                                aria-label="View Article"
-                            >
-                                View
-                            </button>
-
-                            <button
-                                @click="togglePublish(article)"
-                                class="action-button publish-button"
-                                :title="
-                                    article.is_published
-                                        ? 'Unpublish Article'
-                                        : 'Publish Article'
-                                "
-                                :aria-label="
-                                    article.is_published
-                                        ? 'Unpublish Article'
-                                        : 'Publish Article'
-                                "
-                            >
-                                {{
-                                    article.is_published
-                                        ? "Unpublish"
-                                        : "Publish"
-                                }}
-                            </button>
-
-                            <button
-                                @click="confirmDelete(article)"
-                                class="action-button delete-button"
-                                title="Delete Article"
-                                aria-label="Delete Article"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pagination -->
-            <div class="pagination" v-if="pagination.total_pages > 1">
-                <button
-                    class="pagination-button"
-                    :disabled="!pagination.has_prev"
-                    @click="changePage(pagination.current_page - 1)"
-                >
-                    ← Previous
-                </button>
-
-                <div class="pagination-info">
-                    <span class="pagination-current">{{
-                        pagination.current_page
-                    }}</span>
-                    <span class="pagination-separator">of</span>
-                    <span class="pagination-total">{{
-                        pagination.total_pages
-                    }}</span>
-                </div>
-
-                <button
-                    class="pagination-button"
-                    :disabled="!pagination.has_next"
-                    @click="changePage(pagination.current_page + 1)"
-                >
-                    Next →
-                </button>
-            </div>
-        </div>
-
-        <!-- Create/Edit Article Modal -->
-        <ArticleEditor
-            v-if="showCreateArticle || editingArticle"
-            :article="editingArticle"
-            :is-visible="showCreateArticle || !!editingArticle"
-            @close="closeEditor"
-            @saved="handleArticleSaved"
-        />
-
-        <!-- Delete Confirmation Modal -->
-        <div
-            v-if="deleteConfirmation"
-            class="modal-overlay"
-            @click="cancelDelete"
-        >
-            <div class="modal-content" @click.stop>
-                <h3>Delete Article</h3>
-                <p>
-                    Are you sure you want to delete "<strong>{{
-                        deleteConfirmation.title
-                    }}</strong
-                    >"? This action cannot be undone.
-                </p>
-                <div class="modal-actions">
-                    <button @click="cancelDelete" class="cancel-button">
-                        Cancel
-                    </button>
-                    <button @click="deleteArticle" class="delete-button">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        </div>
+  <div class="admin-dashboard">
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div class="header-content">
+        <h1>Admin Dashboard</h1>
+        <p class="welcome-message">
+          Welcome back, {{ user?.username || "Admin" }}
+        </p>
+      </div>
     </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-number">
+          {{ stats.totalArticles }}
+        </div>
+        <div class="stat-label">
+          Total Articles
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-number">
+          {{ stats.publishedArticles }}
+        </div>
+        <div class="stat-label">
+          Published
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-number">
+          {{ stats.draftArticles }}
+        </div>
+        <div class="stat-label">
+          Drafts
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-number">
+          {{ stats.totalTags }}
+        </div>
+        <div class="stat-label">
+          Tags
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="filters-section">
+      <div class="search-box">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Search articles..."
+          class="search-input"
+          @input="debouncedSearch"
+        >
+      </div>
+
+      <div class="filter-controls">
+        <select
+          v-model="statusFilter"
+          class="filter-select"
+          @change="fetchArticles"
+        >
+          <option value="">
+            All Status
+          </option>
+          <option value="published">
+            Published
+          </option>
+          <option value="draft">
+            Drafts
+          </option>
+        </select>
+
+        <select
+          v-model="sortBy"
+          class="filter-select"
+          @change="fetchArticles"
+        >
+          <option value="date_updated">
+            Recently Updated
+          </option>
+          <option value="date_added">
+            Recently Created
+          </option>
+          <option value="published_at">
+            Recently Published
+          </option>
+          <option value="title">
+            Title A-Z
+          </option>
+        </select>
+
+        <button
+          class="media-library-button"
+          @click="$router.push('/admin/media')"
+        >
+          Media Library
+        </button>
+
+        <button
+          class="create-article-button"
+          @click="showCreateArticle = true"
+        >
+          New Article
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div
+      v-if="isLoading"
+      class="loading-container"
+    >
+      <div class="loading-spinner" />
+      <p>Loading articles...</p>
+    </div>
+
+    <!-- Error State -->
+    <div
+      v-else-if="error"
+      class="error-container"
+    >
+      <div class="error-icon">
+        ⚠️
+      </div>
+      <h3>Failed to load articles</h3>
+      <p>{{ error }}</p>
+      <button
+        class="retry-button"
+        @click="fetchArticles"
+      >
+        Try Again
+      </button>
+    </div>
+
+    <!-- Articles Table -->
+    <div
+      v-else
+      class="articles-section"
+    >
+      <div class="section-header">
+        <h2>Articles ({{ pagination.total_count }})</h2>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-if="articles.length === 0"
+        class="empty-container"
+      >
+        <div class="empty-icon">
+          📝
+        </div>
+        <h3>No articles found</h3>
+        <p v-if="searchQuery">
+          No articles match your search "{{ searchQuery }}".
+        </p>
+        <p v-else-if="statusFilter">
+          No {{ statusFilter }} articles found.
+        </p>
+        <p v-else>
+          Get started by creating your first article!
+        </p>
+        <button
+          class="create-button"
+          @click="showCreateArticle = true"
+        >
+          Create Article
+        </button>
+      </div>
+
+      <!-- Articles List -->
+      <div
+        v-else
+        class="articles-table"
+      >
+        <div class="table-header">
+          <div class="col-title">
+            Title
+          </div>
+          <div class="col-status">
+            Status
+          </div>
+          <div class="col-updated">
+            Updated
+          </div>
+          <div class="col-actions">
+            Actions
+          </div>
+        </div>
+
+        <div
+          v-for="article in articles"
+          :key="article.id"
+          class="table-row"
+        >
+          <div class="col-title">
+            <div class="article-info">
+              <h4 class="article-title">
+                {{ article.title }}
+              </h4>
+              <p
+                v-if="article.excerpt"
+                class="article-excerpt"
+              >
+                {{ article.excerpt }}
+              </p>
+              <div class="article-meta">
+                <span class="slug">/{{ article.slug }}</span>
+                <div
+                  v-if="
+                    article.tags && article.tags.length > 0
+                  "
+                  class="tags"
+                >
+                  <span
+                    v-for="tag in article.tags"
+                    :key="tag.id"
+                    class="tag"
+                  >
+                    #{{ tag.name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-status">
+            <span
+              class="status-badge"
+              :class="{
+                published: article.is_published,
+                draft: !article.is_published,
+              }"
+            >
+              {{ article.is_published ? "Published" : "Draft" }}
+            </span>
+            <div
+              v-if="article.published_at"
+              class="publish-date"
+            >
+              {{ formatDate(article.published_at) }}
+            </div>
+          </div>
+
+          <div class="col-updated">
+            {{ formatDate(article.date_updated) }}
+          </div>
+
+          <div class="col-actions">
+            <div class="action-buttons">
+              <button
+                class="action-button edit-button"
+                title="Edit Article"
+                aria-label="Edit Article"
+                @click="editArticle(article)"
+              >
+                Edit
+              </button>
+
+              <button
+                class="action-button view-button"
+                title="View Article"
+                aria-label="View Article"
+                @click="viewArticle(article)"
+              >
+                View
+              </button>
+
+              <button
+                class="action-button publish-button"
+                :title="
+                  article.is_published
+                    ? 'Unpublish Article'
+                    : 'Publish Article'
+                "
+                :aria-label="
+                  article.is_published
+                    ? 'Unpublish Article'
+                    : 'Publish Article'
+                "
+                @click="togglePublish(article)"
+              >
+                {{
+                  article.is_published
+                    ? "Unpublish"
+                    : "Publish"
+                }}
+              </button>
+
+              <button
+                class="action-button delete-button"
+                title="Delete Article"
+                aria-label="Delete Article"
+                @click="confirmDelete(article)"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div
+        v-if="pagination.total_pages > 1"
+        class="pagination"
+      >
+        <button
+          class="pagination-button"
+          :disabled="!pagination.has_prev"
+          @click="changePage(pagination.current_page - 1)"
+        >
+          ← Previous
+        </button>
+
+        <div class="pagination-info">
+          <span class="pagination-current">{{
+            pagination.current_page
+          }}</span>
+          <span class="pagination-separator">of</span>
+          <span class="pagination-total">{{
+            pagination.total_pages
+          }}</span>
+        </div>
+
+        <button
+          class="pagination-button"
+          :disabled="!pagination.has_next"
+          @click="changePage(pagination.current_page + 1)"
+        >
+          Next →
+        </button>
+      </div>
+    </div>
+
+    <!-- Create/Edit Article Modal -->
+    <ArticleEditor
+      v-if="showCreateArticle || editingArticle"
+      :article="editingArticle"
+      :is-visible="showCreateArticle || !!editingArticle"
+      @close="closeEditor"
+      @saved="handleArticleSaved"
+    />
+
+    <!-- Delete Confirmation Modal -->
+    <div
+      v-if="deleteConfirmation"
+      class="modal-overlay"
+      @click="cancelDelete"
+    >
+      <div
+        class="modal-content"
+        @click.stop
+      >
+        <h3>Delete Article</h3>
+        <p>
+          Are you sure you want to delete "<strong>{{
+            deleteConfirmation.title
+          }}</strong>"? This action cannot be undone.
+        </p>
+        <div class="modal-actions">
+          <button
+            class="cancel-button"
+            @click="cancelDelete"
+          >
+            Cancel
+          </button>
+          <button
+            class="delete-button"
+            @click="deleteArticle"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -354,18 +438,18 @@ async function fetchArticles() {
         const params = {
             page: currentPage.value,
             limit: 20,
-            published:
-                statusFilter.value === "published"
-                    ? 1
-                    : statusFilter.value === "draft"
-                      ? 0
-                      : undefined,
         };
 
-        // Remove undefined values
-        Object.keys(params).forEach(
-            (key) => params[key] === undefined && delete params[key],
-        );
+        // Add published filter based on status selection using declarative mapping
+        const statusMap = {
+            published: 1,
+            draft: 0,
+        };
+
+        if (statusFilter.value in statusMap) {
+            params.published = statusMap[statusFilter.value];
+        }
+        // When statusFilter is "" (all), don't include published param at all
 
         const response = await axios.get("/api/admin/articles", { params });
 
@@ -385,7 +469,6 @@ async function fetchArticles() {
             throw new Error(response.data.error || "Failed to fetch articles");
         }
     } catch (err) {
-        console.error("Error fetching articles:", err);
         error.value =
             err.response?.data?.error ||
             err.message ||
@@ -405,8 +488,8 @@ async function fetchStats() {
                 tagsResponse.data.tags?.length ||
                 0;
         }
-    } catch (err) {
-        console.error("Error fetching stats:", err);
+    } catch {
+        // Failed to fetch stats - non-critical
     }
 }
 
@@ -452,8 +535,7 @@ async function togglePublish(article) {
                 articles.value[index] = response.data.article;
             }
         }
-    } catch (err) {
-        console.error("Error toggling publish status:", err);
+    } catch {
         alert("Failed to update article status");
     }
 }
@@ -484,8 +566,7 @@ async function deleteArticle() {
             // Refresh stats
             fetchArticles();
         }
-    } catch (err) {
-        console.error("Error deleting article:", err);
+    } catch {
         alert("Failed to delete article");
     }
 }

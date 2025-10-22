@@ -1,134 +1,166 @@
 <template>
-    <div class="article-page">
-        <!-- Loading State -->
-        <div v-if="isLoading" class="loading-container">
-            <div class="loading-spinner"></div>
-            <p>Loading article...</p>
+  <div class="article-page">
+    <!-- Loading State -->
+    <div
+      v-if="isLoading"
+      class="loading-container"
+    >
+      <div class="loading-spinner" />
+      <p>Loading article...</p>
+    </div>
+
+    <!-- Error State -->
+    <div
+      v-else-if="error"
+      class="error-container"
+    >
+      <h2>Article not found</h2>
+      <p>{{ error }}</p>
+      <div class="error-actions">
+        <button
+          class="back-button"
+          @click="$router.push('/articles')"
+        >
+          ← Back to Articles
+        </button>
+        <button
+          class="retry-button"
+          @click="fetchArticle"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+
+    <!-- Article Content -->
+    <article
+      v-else
+      class="article-container"
+    >
+      <!-- Article Header -->
+      <header class="article-header">
+        <div class="breadcrumb">
+          <router-link
+            to="/articles"
+            class="breadcrumb-link"
+          >
+            Articles
+          </router-link>
+          <span class="breadcrumb-separator">→</span>
+          <span class="breadcrumb-current">{{ article.title }}</span>
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="error" class="error-container">
-            <h2>Article not found</h2>
-            <p>{{ error }}</p>
-            <div class="error-actions">
-                <button @click="$router.push('/articles')" class="back-button">
-                    ← Back to Articles
-                </button>
-                <button @click="fetchArticle" class="retry-button">
-                    Try Again
-                </button>
-            </div>
+        <h1 class="article-title">
+          {{ article.title }}
+        </h1>
+
+        <div class="article-meta">
+          <div class="meta-item">
+            <span class="meta-label">Published:</span>
+            <time
+              :datetime="
+                article.published_at || article.date_added
+              "
+            >
+              {{
+                formatDate(
+                  article.published_at || article.date_added,
+                )
+              }}
+            </time>
+          </div>
+
+          <div class="meta-item">
+            <span class="meta-label">Author:</span>
+            <span class="meta-value">{{ article.author }}</span>
+          </div>
+
+          <div
+            v-if="article.date_updated !== article.date_added"
+            class="meta-item"
+          >
+            <span class="meta-label">Updated:</span>
+            <time :datetime="article.date_updated">
+              {{ formatDate(article.date_updated) }}
+            </time>
+          </div>
         </div>
 
-        <!-- Article Content -->
-        <article v-else class="article-container">
-            <!-- Article Header -->
-            <header class="article-header">
-                <div class="breadcrumb">
-                    <router-link to="/articles" class="breadcrumb-link"
-                        >Articles</router-link
-                    >
-                    <span class="breadcrumb-separator">→</span>
-                    <span class="breadcrumb-current">{{ article.title }}</span>
-                </div>
+        <div
+          v-if="article.tags && article.tags.length > 0"
+          class="article-tags"
+        >
+          <router-link
+            v-for="tag in article.tags"
+            :key="tag.id"
+            :to="{ path: '/articles', query: { tag: tag.slug } }"
+            class="article-tag"
+          >
+            #{{ tag.name }}
+          </router-link>
+        </div>
 
-                <h1 class="article-title">{{ article.title }}</h1>
+        <div
+          v-if="article.excerpt"
+          class="article-excerpt"
+        >
+          <p>{{ article.excerpt }}</p>
+        </div>
+      </header>
 
-                <div class="article-meta">
-                    <div class="meta-item">
-                        <span class="meta-label">Published:</span>
-                        <time
-                            :datetime="
-                                article.published_at || article.date_added
-                            "
-                        >
-                            {{
-                                formatDate(
-                                    article.published_at || article.date_added,
-                                )
-                            }}
-                        </time>
-                    </div>
+      <!-- Featured Image -->
+      <div
+        v-if="article.featured_image"
+        class="featured-image"
+      >
+        <img
+          :src="article.featured_image"
+          :alt="article.title"
+          loading="eager"
+        >
+      </div>
 
-                    <div class="meta-item">
-                        <span class="meta-label">Author:</span>
-                        <span class="meta-value">{{ article.author }}</span>
-                    </div>
+      <!-- Article Content -->
+      <div class="article-body">
+        <MarkdownRenderer
+          :content="article.content"
+          :sanitize="true"
+        />
+      </div>
 
-                    <div
-                        class="meta-item"
-                        v-if="article.date_updated !== article.date_added"
-                    >
-                        <span class="meta-label">Updated:</span>
-                        <time :datetime="article.date_updated">
-                            {{ formatDate(article.date_updated) }}
-                        </time>
-                    </div>
-                </div>
+      <!-- Article Footer -->
+      <footer class="article-footer">
+        <div class="article-actions">
+          <button
+            class="share-button"
+            title="Share article"
+            @click="shareArticle"
+          >
+            Share
+          </button>
 
-                <div
-                    class="article-tags"
-                    v-if="article.tags && article.tags.length > 0"
-                >
-                    <router-link
-                        v-for="tag in article.tags"
-                        :key="tag.id"
-                        :to="{ path: '/articles', query: { tag: tag.slug } }"
-                        class="article-tag"
-                    >
-                        #{{ tag.name }}
-                    </router-link>
-                </div>
+          <button
+            class="scroll-top-button"
+            title="Scroll to top"
+            @click="scrollToTop"
+          >
+            ↑ Top
+          </button>
+        </div>
 
-                <div class="article-excerpt" v-if="article.excerpt">
-                    <p>{{ article.excerpt }}</p>
-                </div>
-            </header>
+        <div class="article-navigation">
+          <router-link
+            to="/articles"
+            class="back-to-articles"
+          >
+            ← Back to Articles
+          </router-link>
+        </div>
+      </footer>
+    </article>
 
-            <!-- Featured Image -->
-            <div class="featured-image" v-if="article.featured_image">
-                <img
-                    :src="article.featured_image"
-                    :alt="article.title"
-                    loading="eager"
-                />
-            </div>
-
-            <!-- Article Content -->
-            <div class="article-body">
-                <MarkdownRenderer :content="article.content" :sanitize="true" />
-            </div>
-
-            <!-- Article Footer -->
-            <footer class="article-footer">
-                <div class="article-actions">
-                    <button
-                        @click="shareArticle"
-                        class="share-button"
-                        title="Share article"
-                    >
-                        Share
-                    </button>
-
-                    <button
-                        @click="scrollToTop"
-                        class="scroll-top-button"
-                        title="Scroll to top"
-                    >
-                        ↑ Top
-                    </button>
-                </div>
-
-                <div class="article-navigation">
-                    <router-link to="/articles" class="back-to-articles">
-                        ← Back to Articles
-                    </router-link>
-                </div>
-            </footer>
-        </article>
-
-        <!-- Related Articles (if we implement it later) -->
-        <!-- <aside class="related-articles" v-if="relatedArticles.length > 0">
+    <!-- Related Articles (if we implement it later) -->
+    <!-- <aside class="related-articles" v-if="relatedArticles.length > 0">
       <h3>Related Articles</h3>
       <div class="related-grid">
         <router-link
@@ -142,7 +174,7 @@
         </router-link>
       </div>
     </aside> -->
-    </div>
+  </div>
 </template>
 
 <script setup>
@@ -185,7 +217,6 @@ async function fetchArticle() {
             throw new Error(response.data.error || "Article not found");
         }
     } catch (err) {
-        console.error("Error fetching article:", err);
         error.value =
             err.response?.data?.error ||
             err.message ||
@@ -224,8 +255,7 @@ function shareArticle() {
                 text: article.value.excerpt || article.value.title,
                 url: window.location.href,
             })
-            .catch((err) => {
-                console.log("Error sharing:", err);
+            .catch(() => {
                 fallbackShare();
             });
     } else {
@@ -251,8 +281,8 @@ function fallbackShare() {
             try {
                 document.execCommand("copy");
                 alert("Article URL copied to clipboard!");
-            } catch (err) {
-                console.error("Could not copy URL:", err);
+            } catch {
+                // Clipboard copy failed
             }
             document.body.removeChild(textArea);
         });

@@ -1,11 +1,17 @@
 <template>
-  <article class="article-card" @click="$emit('click')">
-    <div class="article-image" v-if="article.featured_image">
+  <article
+    class="article-card"
+    @click="$emit('click')"
+  >
+    <div
+      v-if="article.featured_image"
+      class="article-image"
+    >
       <img
         :src="article.featured_image"
         :alt="article.title"
         loading="lazy"
-      />
+      >
     </div>
 
     <div class="article-content">
@@ -13,16 +19,27 @@
         <time :datetime="article.published_at || article.date_added">
           {{ formatDate(article.published_at || article.date_added) }}
         </time>
-        <span class="author" v-if="article.author">by {{ article.author }}</span>
+        <span
+          v-if="article.author"
+          class="author"
+        >by {{ article.author }}</span>
       </div>
 
-      <h2 class="article-title">{{ article.title }}</h2>
+      <h2 class="article-title">
+        {{ article.title }}
+      </h2>
 
-      <p class="article-excerpt" v-if="article.excerpt">
+      <p
+        v-if="article.excerpt"
+        class="article-excerpt"
+      >
         {{ article.excerpt }}
       </p>
 
-      <div class="article-tags" v-if="article.tags && article.tags.length > 0">
+      <div
+        v-if="article.tags && article.tags.length > 0"
+        class="article-tags"
+      >
         <span
           v-for="tag in article.tags"
           :key="tag.id"

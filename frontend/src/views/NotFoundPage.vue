@@ -3,7 +3,10 @@
     <h1>404</h1>
     <h2>Page Not Found</h2>
     <p>The page you're looking for doesn't exist.</p>
-    <router-link to="/" class="home-link">
+    <router-link
+      to="/"
+      class="home-link"
+    >
       Go back home
     </router-link>
   </div>

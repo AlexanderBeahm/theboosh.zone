@@ -1,15 +1,19 @@
 <template>
-    <div
-        class="markdown-content"
-        v-html="renderedContent"
-        @click="handleLinkClick"
-    ></div>
+  <!-- v-html is safe here: content is sanitized with DOMPurify -->
+  <!-- eslint-disable vue/no-v-html -->
+  <div
+    class="markdown-content"
+    @click="handleLinkClick"
+    v-html="renderedContent"
+  />
+  <!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup>
 import { computed, onMounted, onUpdated } from "vue";
 import { useRouter } from "vue-router";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
 
 // Import commonly used languages for syntax highlighting
@@ -70,8 +74,8 @@ renderer.code = function (token) {
         try {
             const highlighted = hljs.highlight(code, { language }).value;
             return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
-        } catch (err) {
-            console.warn("Syntax highlighting failed:", err);
+        } catch {
+            // Syntax highlighting failed, fall back to escaped code
         }
     }
 
@@ -131,8 +135,8 @@ marked.setOptions({
         if (language && hljs.getLanguage(language)) {
             try {
                 return hljs.highlight(code, { language }).value;
-            } catch (err) {
-                console.warn("Syntax highlighting failed:", err);
+            } catch {
+                // Syntax highlighting failed, return plain code
             }
         }
         return code;
@@ -154,24 +158,79 @@ const renderedContent = computed(() => {
     try {
         let html = marked(props.content);
 
-        // Basic sanitization if enabled
+        // Sanitize with DOMPurify if enabled
         if (props.sanitize) {
-            // Remove potentially dangerous elements and attributes
-            html = html.replace(
-                /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-                "",
-            );
-            html = html.replace(
-                /<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi,
-                "",
-            );
-            html = html.replace(/on\w+="[^"]*"/gi, ""); // Remove event handlers
-            html = html.replace(/javascript:/gi, ""); // Remove javascript: urls
+            html = DOMPurify.sanitize(html, {
+                ALLOWED_TAGS: [
+                    // Typography
+                    "p",
+                    "br",
+                    "strong",
+                    "em",
+                    "u",
+                    "s",
+                    "del",
+                    "ins",
+                    "sub",
+                    "sup",
+                    // Headings
+                    "h1",
+                    "h2",
+                    "h3",
+                    "h4",
+                    "h5",
+                    "h6",
+                    // Lists
+                    "ul",
+                    "ol",
+                    "li",
+                    // Links and media
+                    "a",
+                    "img",
+                    // Code
+                    "code",
+                    "pre",
+                    "span",
+                    // Quotes and blocks
+                    "blockquote",
+                    "hr",
+                    // Tables
+                    "table",
+                    "thead",
+                    "tbody",
+                    "tfoot",
+                    "tr",
+                    "th",
+                    "td",
+                    // Divs for error messages and structure
+                    "div",
+                ],
+                ALLOWED_ATTR: [
+                    // Link attributes
+                    "href",
+                    "target",
+                    "rel",
+                    // Image attributes
+                    "src",
+                    "alt",
+                    "title",
+                    "loading",
+                    // Code highlighting classes (critical!)
+                    "class",
+                    // Table alignment
+                    "align",
+                ],
+                /*eslint-disable no-useless-escape*/
+                ALLOWED_URI_REGEXP:
+                    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+                /*eslint-enable no-useless-escape*/
+                KEEP_CONTENT: true,
+                RETURN_TRUSTED_TYPE: false,
+            });
         }
 
         return html;
-    } catch (error) {
-        console.error("Markdown rendering failed:", error);
+    } catch {
         return `<div class="error">Failed to render markdown content</div>`;
     }
 });

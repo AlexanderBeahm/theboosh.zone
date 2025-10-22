@@ -36,6 +36,10 @@ sub create {
     }
     return undef unless $dbh;
 
+    # Security: Sanitize user-submitted text metadata
+    my $sanitized_alt_text = $self->_sanitize_text($media_data->{alt_text}, 1000);
+    my $sanitized_caption = $self->_sanitize_text($media_data->{caption}, 1000);
+
     my $result;
     eval {
         my $sql = q{
@@ -58,8 +62,8 @@ sub create {
             $media_data->{width},
             $media_data->{height},
             $media_data->{uploaded_by},
-            $media_data->{alt_text},
-            $media_data->{caption}
+            $sanitized_alt_text,
+            $sanitized_caption
         );
 
         $result = $sth->fetchrow_hashref();
@@ -103,7 +107,9 @@ sub get_all {
 
         if ($params{search}) {
             push @where_conditions, "(original_filename ILIKE ? OR alt_text ILIKE ? OR caption ILIKE ?)";
-            my $search_term = '%' . $params{search} . '%';
+            # Security: Escape SQL wildcards to prevent wildcard injection
+            my $escaped_search = $self->_escape_sql_wildcards($params{search});
+            my $search_term = '%' . $escaped_search . '%';
             push @where_params, $search_term, $search_term, $search_term;
         }
 
@@ -226,6 +232,10 @@ sub update {
     }
     return undef unless $dbh;
 
+    # Security: Sanitize user-submitted text metadata
+    my $sanitized_alt_text = $self->_sanitize_text($media_data->{alt_text}, 1000);
+    my $sanitized_caption = $self->_sanitize_text($media_data->{caption}, 1000);
+
     my $result;
     eval {
         my $sql = q{
@@ -239,8 +249,8 @@ sub update {
 
         my $sth = $dbh->prepare($sql);
         $sth->execute(
-            $media_data->{alt_text},
-            $media_data->{caption},
+            $sanitized_alt_text,
+            $sanitized_caption,
             $id
         );
 
@@ -320,7 +330,9 @@ sub get_count {
 
         if ($params{search}) {
             push @where_conditions, "(original_filename ILIKE ? OR alt_text ILIKE ? OR caption ILIKE ?)";
-            my $search_term = '%' . $params{search} . '%';
+            # Security: Escape SQL wildcards to prevent wildcard injection
+            my $escaped_search = $self->_escape_sql_wildcards($params{search});
+            my $search_term = '%' . $escaped_search . '%';
             push @where_params, $search_term, $search_term, $search_term;
         }
 
@@ -343,6 +355,42 @@ sub get_count {
     }
 
     return $count || 0;
+}
+
+# Security: Escape SQL wildcard characters in user input
+# Prevents users from using % or _ as wildcards in LIKE/ILIKE queries
+sub _escape_sql_wildcards {
+    my ($self, $term) = @_;
+    return '' unless defined $term;
+
+    # Escape backslash first, then % and _
+    $term =~ s/\\/\\\\/g;
+    $term =~ s/%/\\%/g;
+    $term =~ s/_/\\_/g;
+
+    return $term;
+}
+
+# Security: Sanitize text input to prevent control characters and limit length
+# Used for user-submitted metadata like alt_text and caption
+sub _sanitize_text {
+    my ($self, $text, $max_length) = @_;
+    return undef unless defined $text;
+
+    $max_length ||= 1000;
+
+    # Strip control characters (except newlines and tabs which may be desired)
+    $text =~ s/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]//g;
+
+    # Trim whitespace
+    $text =~ s/^\s+|\s+$//g;
+
+    # Limit length
+    if (length($text) > $max_length) {
+        $text = substr($text, 0, $max_length);
+    }
+
+    return $text;
 }
 
 1;
@@ -387,5 +435,28 @@ HelloPerld::Model::Media - Media file database operations
 =head1 DESCRIPTION
 
 This module provides database operations for managing media file metadata.
+
+=head1 SECURITY
+
+This module implements several security best practices:
+
+=over 4
+
+=item * B<SQL Injection Prevention>: All database queries use prepared statements with
+parameterized queries. User input is never interpolated directly into SQL.
+
+=item * B<Wildcard Escaping>: Search queries escape SQL wildcards (%, _, \) to prevent
+users from performing unintended wildcard searches or causing performance issues.
+
+=item * B<Text Sanitization>: User-submitted metadata (alt_text, caption) is sanitized
+to remove control characters and limited to 1000 characters to prevent abuse.
+
+=item * B<Error Handling>: Database errors are logged but generic errors are returned
+to prevent information disclosure.
+
+=item * B<Input Validation>: File-related operations validate IDs and required fields
+before processing to prevent errors and potential attacks.
+
+=back
 
 =cut

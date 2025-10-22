@@ -176,7 +176,7 @@ sub startup {
     });
 
     # Protected article management routes
-    $admin->get('/articles')->to('Articles#get_all'); # Admin can see unpublished
+    $admin->get('/articles')->to('Articles#get_all', is_admin_route => 1); # Admin can see unpublished
     $admin->get('/articles/:id')->to('Articles#get_by_id');
     $admin->post('/articles')->to('Articles#create');
     $admin->put('/articles/:id')->to('Articles#update');

@@ -22,7 +22,20 @@ sub get_all {
     my $page = $self->param('page') || 1;
     my $limit = $self->param('limit') || 20;
     my $tag_filter = $self->param('tag');
-    my $published_only = defined($self->param('published')) ? $self->param('published') : 1;
+
+    # Default behavior based on route:
+    # - Public route (/api/articles): always show only published (1)
+    # - Admin route (/api/admin/articles): show all articles (undef) unless filtered
+    my $published_only;
+    if (defined($self->param('published'))) {
+        $published_only = $self->param('published');
+    } else {
+        # Check if this is the admin route using stash value set by router
+        my $is_admin_route = $self->stash('is_admin_route') // 0;
+
+        # Default to published only for public routes, or all for admin routes
+        $published_only = $is_admin_route ? undef : 1;
+    }
 
     # Calculate offset
     my $offset = ($page - 1) * $limit;

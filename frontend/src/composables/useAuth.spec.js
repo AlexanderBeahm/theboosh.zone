@@ -248,7 +248,7 @@ describe("useAuth Composable", () => {
 
             try {
                 await auth.login("admin", "wrong");
-            } catch (err) {
+            } catch {
                 expect(auth.isAuthenticated.value).toBe(false);
                 expect(auth.user.value).toBeNull();
             }
@@ -279,8 +279,8 @@ describe("useAuth Composable", () => {
 
             try {
                 await auth.login("admin", "password");
-            } catch (err) {
-                expect(err.message).toBe("Account locked");
+            } catch (error) {
+                expect(error.message).toBe("Account locked");
             }
         });
     });
