@@ -60,7 +60,6 @@ describe("AdminLogin", () => {
             global: { plugins: [router] },
         });
 
-        const submitButton = wrapper.find('button[type="submit"]');
         const usernameInput = wrapper.find('input[type="text"]');
         const passwordInput = wrapper.find('input[type="password"]');
 
