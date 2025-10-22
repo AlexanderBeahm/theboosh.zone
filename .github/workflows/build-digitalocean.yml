@@ -48,14 +48,21 @@ jobs:
             - name: Determine build environment
               id: env
               run: |
-                  if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
-                    echo "BUILD_ENV=production" >> $GITHUB_OUTPUT
+                  # For PRs, use the target branch (base_ref), otherwise use the ref
+                  if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+                    REF="refs/heads/${{ github.base_ref }}"
+                  else
+                    REF="${{ github.ref }}"
+                  fi
+
+                  if [[ "$REF" == "refs/heads/main" ]] || [[ "$REF" == refs/tags/* ]]; then
+                    echo "BUILD_ENV=prod" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=production" >> $GITHUB_OUTPUT
-                  elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+                  elif [[ "$REF" == "refs/heads/dev" ]]; then
                     echo "BUILD_ENV=staging" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=staging" >> $GITHUB_OUTPUT
                   else
-                    echo "BUILD_ENV=development" >> $GITHUB_OUTPUT
+                    echo "BUILD_ENV=dev" >> $GITHUB_OUTPUT
                     echo "ENV_TAG=dev" >> $GITHUB_OUTPUT
                   fi
 
