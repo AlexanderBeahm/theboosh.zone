@@ -17,6 +17,9 @@ our @EXPORT_OK = qw(
     mock_article_result
     mock_tag_result
     mock_media_result
+    create_oversized_content
+    create_control_character_string
+    create_wildcard_test_string
 );
 
 # Create a mock database handle with DBD::Mock
@@ -222,6 +225,64 @@ sub mock_media_result {
     };
 }
 
+# Generate oversized content for testing input validation
+sub create_oversized_content {
+    my ($size_mb) = @_;
+    $size_mb ||= 2;  # Default 2MB (exceeds 1MB limit)
+
+    my $target_size = $size_mb * 1_000_000;
+    my $chunk = "A" x 1000;  # 1KB chunks
+    my $content = "";
+
+    while (length($content) < $target_size) {
+        $content .= $chunk;
+    }
+
+    return $content;
+}
+
+# Generate string with control characters for testing sanitization
+sub create_control_character_string {
+    my ($type) = @_;
+    $type ||= 'mixed';
+
+    if ($type eq 'null') {
+        return "Test\x00String";  # NULL byte
+    } elsif ($type eq 'bell') {
+        return "Test\x07String";  # Bell character
+    } elsif ($type eq 'escape') {
+        return "Test\x1BString";  # Escape character
+    } elsif ($type eq 'mixed') {
+        return "Test\x00\x01\x02\x07\x1BString";  # Multiple control chars
+    } elsif ($type eq 'safe') {
+        return "Test\nWith\tWhitespace";  # Newline and tab (should be preserved)
+    }
+
+    return "TestString";
+}
+
+# Generate string with SQL wildcard characters for testing escaping
+sub create_wildcard_test_string {
+    my ($type) = @_;
+    $type ||= 'percent';
+
+    if ($type eq 'percent') {
+        return "test%value";
+    } elsif ($type eq 'underscore') {
+        return "test_value";
+    } elsif ($type eq 'backslash') {
+        return "test\\value";
+    } elsif ($type eq 'all') {
+        return "test%_\\value";
+    } elsif ($type eq 'leading') {
+        return "%test";
+    } elsif ($type eq 'trailing') {
+        return "test%";
+    }
+
+    return "test";
+}
+
 1;
 
 __END__
@@ -285,6 +346,20 @@ Creates a DBD::Mock result set for tag queries.
 =head2 mock_media_result(@media)
 
 Creates a DBD::Mock result set for media queries.
+
+=head2 create_oversized_content($size_mb)
+
+Generates oversized content for testing input validation. Default is 2MB.
+
+=head2 create_control_character_string($type)
+
+Generates strings with control characters for testing sanitization.
+Types: 'null', 'bell', 'escape', 'mixed', 'safe'
+
+=head2 create_wildcard_test_string($type)
+
+Generates strings with SQL wildcard characters for testing escaping.
+Types: 'percent', 'underscore', 'backslash', 'all', 'leading', 'trailing'
 
 =head1 AUTHOR
 

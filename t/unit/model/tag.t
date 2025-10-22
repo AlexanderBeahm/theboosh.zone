@@ -5,7 +5,7 @@ use warnings;
 use Test::More;
 use Test::Exception;
 use lib 't/lib';
-use TestHelper qw(mock_dbh mock_logger create_test_tag_data);
+use TestHelper qw(mock_dbh mock_logger create_test_tag_data create_wildcard_test_string);
 use Test::MockModule;
 
 # =============================================================================
@@ -395,5 +395,112 @@ subtest 'get_count' => sub {
 };
 
 # DBD::Mock tests now working correctly
+
+# ====== SECURITY TESTS: SQL Wildcard Escaping ======
+
+subtest 'search - escapes SQL wildcards (%)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $wildcard_string = create_wildcard_test_string('percent');  # "test%value"
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*id.*name.*slug.*date_added.*FROM tags.*WHERE.*name.*ILIKE/is,
+        results => [
+            ['id', 'name', 'slug', 'date_added'],
+        ]
+    };
+
+    my $results = $model->search($wildcard_string);
+
+    ok(defined $results, 'search returns result');
+    is(ref $results, 'ARRAY', 'Returns arrayref');
+
+    # Verify the SQL contains escaped wildcard
+    my $history = $mock_dbh->{mock_all_history};
+    my $bound_params = $history->[0]->bound_params;
+
+    # The search term should be wrapped with % for ILIKE, but internal % should be escaped
+    like($bound_params->[0], qr/test\\%value/, 'Percent sign is escaped in bound parameter');
+};
+
+subtest 'search - escapes SQL wildcards (_)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $wildcard_string = create_wildcard_test_string('underscore');  # "test_value"
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*id.*name.*slug.*date_added.*FROM tags.*WHERE.*name.*ILIKE/is,
+        results => [
+            ['id', 'name', 'slug', 'date_added'],
+        ]
+    };
+
+    my $results = $model->search($wildcard_string);
+
+    ok(defined $results, 'search returns result');
+
+    # Verify underscore is escaped
+    my $history = $mock_dbh->{mock_all_history};
+    my $bound_params = $history->[0]->bound_params;
+    like($bound_params->[0], qr/test\\_value/, 'Underscore is escaped in bound parameter');
+};
+
+subtest 'search - escapes SQL wildcards (\)' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $wildcard_string = create_wildcard_test_string('backslash');  # "test\value"
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*id.*name.*slug.*date_added.*FROM tags.*WHERE.*name.*ILIKE/is,
+        results => [
+            ['id', 'name', 'slug', 'date_added'],
+        ]
+    };
+
+    my $results = $model->search($wildcard_string);
+
+    ok(defined $results, 'search returns result');
+
+    # Verify backslash is escaped
+    my $history = $mock_dbh->{mock_all_history};
+    my $bound_params = $history->[0]->bound_params;
+    like($bound_params->[0], qr/test\\\\value/, 'Backslash is escaped in bound parameter');
+};
+
+subtest 'search - normal search still works' => sub {
+    $mock_dbh = mock_dbh();
+
+    my $tag = create_test_tag_data(name => 'JavaScript');
+
+    $mock_dbh->{mock_add_resultset} = {
+        sql => qr/SELECT.*id.*name.*slug.*date_added.*FROM tags.*WHERE.*name.*ILIKE/is,
+        results => [
+            ['id', 'name', 'slug', 'date_added'],
+            [$tag->{id}, $tag->{name}, $tag->{slug}, $tag->{date_added}]
+        ]
+    };
+
+    my $results = $model->search('java');
+
+    ok(defined $results, 'search returns result');
+    is(scalar @$results, 1, 'Returns one matching tag');
+    is($results->[0]->{name}, 'JavaScript', 'Found correct tag');
+
+    # Verify normal search term is not mangled
+    my $history = $mock_dbh->{mock_all_history};
+    my $bound_params = $history->[0]->bound_params;
+    like($bound_params->[0], qr/%java%/, 'Normal search term wrapped with % for ILIKE');
+};
+
+subtest '_escape_sql_wildcards - unit test' => sub {
+    # Test the helper method directly
+    is($model->_escape_sql_wildcards('test%value'), 'test\\%value', 'Escapes %');
+    is($model->_escape_sql_wildcards('test_value'), 'test\\_value', 'Escapes _');
+    is($model->_escape_sql_wildcards('test\\value'), 'test\\\\value', 'Escapes \\');
+    is($model->_escape_sql_wildcards('test%_\\value'), 'test\\%\\_\\\\value', 'Escapes all wildcards');
+    is($model->_escape_sql_wildcards('normal'), 'normal', 'Leaves normal strings unchanged');
+    is($model->_escape_sql_wildcards(''), '', 'Handles empty string');
+    is($model->_escape_sql_wildcards(undef), '', 'Handles undef');
+};
 
 done_testing();
