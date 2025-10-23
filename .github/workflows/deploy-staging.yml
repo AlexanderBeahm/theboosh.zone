@@ -18,16 +18,11 @@
 
 name: Deploy to Staging
 
-# CURRENTLY DISABLED: Only manual triggers allowed
-# To enable automatic deployment to staging, uncomment the lines below:
-#
-# on:
-#   push:
-#     branches: [ dev ]
-#   workflow_dispatch:
-
-# Manual trigger only (for testing before infrastructure is ready)
+# Automatic deployment to staging on dev branch push
+# Manual deployment also available via workflow_dispatch
 on:
+    push:
+        branches: [dev]
     workflow_dispatch:
 
 permissions:

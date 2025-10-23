@@ -127,18 +127,35 @@ sub startup {
     #     route => $self->routes->under('/api')
     # });
 
-    # Configure SwaggerUI plugin
-    $self->plugin('SwaggerUI' => {
-        route => $self->routes->any('/swagger'),
-        url => '/swagger.json',
-        favicon => '/thebooshzone.ico'
-    });
+    # Configure SwaggerUI plugin - only in development
+    if ($self->config->{swagger_enabled}) {
+        $self->plugin('SwaggerUI' => {
+            route => $self->routes->any('/swagger'),
+            url => '/swagger.json',
+            favicon => '/thebooshzone.ico'
+        });
 
-    # Serve the swagger.json file
-    $self->routes->get('/swagger.json')->to(cb => sub {
-        my $c = shift;
-        $c->reply->file($c->app->home->rel_file('swagger/swagger.json'));
-    });
+        # Serve the swagger.json file
+        $self->routes->get('/swagger.json')->to(cb => sub {
+            my $c = shift;
+            $c->reply->file($c->app->home->rel_file('swagger/swagger.json'));
+        });
+
+        $self->log->info("Swagger UI enabled at /swagger");
+    } else {
+        # Return 404 for swagger routes in production/staging
+        $self->routes->get('/swagger')->to(cb => sub {
+            my $c = shift;
+            $c->reply->not_found;
+        });
+
+        $self->routes->get('/swagger.json')->to(cb => sub {
+            my $c = shift;
+            $c->reply->not_found;
+        });
+
+        $self->log->info("Swagger UI disabled for this environment");
+    }
 
     # API Routes
     my $api = $self->routes->under('/api');

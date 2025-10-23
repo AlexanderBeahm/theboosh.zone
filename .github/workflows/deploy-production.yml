@@ -21,17 +21,12 @@
 
 name: Deploy to Production
 
-# CURRENTLY DISABLED: Only manual triggers allowed
-# To enable automatic deployment to production, uncomment the lines below:
-#
-# on:
-#   push:
-#     branches: [ main ]
-#     tags: [ 'v*' ]
-#   workflow_dispatch:
-
-# Manual trigger only (for testing before infrastructure is ready)
+# Automatic deployment to production on main branch push or version tags
+# Manual deployment also available via workflow_dispatch
 on:
+    push:
+        branches: [main]
+        tags: ["v*"]
     workflow_dispatch:
 
 permissions:
