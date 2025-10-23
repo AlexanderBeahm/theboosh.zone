@@ -34,6 +34,16 @@ if [ ! -f "docker-compose.$ENVIRONMENT.yml" ]; then
     exit 1
 fi
 
+# Stop existing containers and clean up networks
+echo ""
+echo "Stopping existing containers..."
+docker compose -f docker-compose.$ENVIRONMENT.yml down --remove-orphans 2>/dev/null || true
+
+# Clean up stale Docker networks
+echo ""
+echo "Cleaning up stale Docker networks..."
+docker network prune -f
+
 # Pull latest images
 echo ""
 echo "Pulling latest Docker images..."

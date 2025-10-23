@@ -18,6 +18,8 @@ services:
             DB_SCHEMA: thebooshzone_staging
         volumes:
             - uploads_data:/usr/src/hello-perld/uploads
+        networks:
+            - theboosh-staging-network
         restart: unless-stopped
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
@@ -43,6 +45,8 @@ services:
             - uploads_data:/usr/share/nginx/html/uploads:ro
             - letsencrypt:/etc/letsencrypt:ro
             - letsencrypt-www:/var/www/certbot:ro
+        networks:
+            - theboosh-staging-network
         depends_on:
             - app
         restart: unless-stopped
@@ -57,6 +61,8 @@ services:
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.retention.time=200h"
+        networks:
+            - theboosh-staging-network
         restart: unless-stopped
 
     grafana:
@@ -69,9 +75,16 @@ services:
             - GF_USERS_ALLOW_SIGN_UP=false
         volumes:
             - grafana_data:/var/lib/grafana
+        networks:
+            - theboosh-staging-network
         depends_on:
             - prometheus
         restart: unless-stopped
+
+networks:
+    theboosh-staging-network:
+        driver: bridge
+        name: theboosh-staging-network
 
 volumes:
     uploads_data:
