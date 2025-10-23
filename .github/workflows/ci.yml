@@ -37,8 +37,7 @@ env:
 
 permissions:
     contents: read
-    packages: write # Required to push to container registry
-    id-token: write # Required for OIDC token generation
+    id-token: write # Required for OIDC token generation with doctl
 
 jobs:
     test:

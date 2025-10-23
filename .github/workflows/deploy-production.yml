@@ -57,6 +57,26 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Validate required secrets
+              run: |
+                  MISSING_SECRETS=()
+
+                  # Check required secrets are set
+                  [[ -z "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" ]] && MISSING_SECRETS+=("DIGITALOCEAN_ACCESS_TOKEN")
+                  [[ -z "${{ secrets.DO_REGISTRY_NAME }}" ]] && MISSING_SECRETS+=("DO_REGISTRY_NAME")
+                  [[ -z "${{ secrets.PRODUCTION_HOST }}" ]] && MISSING_SECRETS+=("PRODUCTION_HOST")
+                  [[ -z "${{ secrets.PRODUCTION_USER }}" ]] && MISSING_SECRETS+=("PRODUCTION_USER")
+                  [[ -z "${{ secrets.PRODUCTION_SSH_KEY }}" ]] && MISSING_SECRETS+=("PRODUCTION_SSH_KEY")
+
+                  if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
+                      echo "::error::Missing required secrets: ${MISSING_SECRETS[*]}"
+                      echo "Please configure these secrets in repository settings:"
+                      echo "Settings → Secrets and variables → Actions → New repository secret"
+                      exit 1
+                  fi
+
+                  echo "::notice::All required secrets are configured ✓"
+
             - name: Install doctl
               uses: digitalocean/action-doctl@v2
               with:
@@ -95,6 +115,12 @@ jobs:
                       }
                       trap cleanup EXIT
 
+                      # Validate deployment directory exists
+                      if [ ! -d /opt/theboosh-zone ]; then
+                          echo "::error::Deployment directory /opt/theboosh-zone does not exist!"
+                          echo "Please run initial server setup first."
+                          exit 1
+                      fi
                       cd /opt/theboosh-zone
 
                       # Decode and write docker credentials
@@ -113,8 +139,13 @@ jobs:
                       # Verify deployment
                       sleep 15
                       if ! curl -f https://theboosh.zone/health; then
-                        echo "Health check failed! Rolling back..."
-                        ./deploy/rollback.sh production
+                        echo "::error::Health check failed! Attempting rollback..."
+                        if ! ./deploy/rollback.sh production; then
+                            echo "::error::CRITICAL: Rollback failed! Manual intervention required!"
+                            echo "::error::Please check server logs and contact administrator immediately."
+                            exit 2  # Different exit code for rollback failure
+                        fi
+                        echo "::warning::Rollback completed successfully"
                         exit 1
                       fi
               env:

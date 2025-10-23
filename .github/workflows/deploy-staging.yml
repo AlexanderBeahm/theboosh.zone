@@ -53,6 +53,26 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
+            - name: Validate required secrets
+              run: |
+                  MISSING_SECRETS=()
+
+                  # Check required secrets are set
+                  [[ -z "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" ]] && MISSING_SECRETS+=("DIGITALOCEAN_ACCESS_TOKEN")
+                  [[ -z "${{ secrets.DO_REGISTRY_NAME }}" ]] && MISSING_SECRETS+=("DO_REGISTRY_NAME")
+                  [[ -z "${{ secrets.STAGING_HOST }}" ]] && MISSING_SECRETS+=("STAGING_HOST")
+                  [[ -z "${{ secrets.STAGING_USER }}" ]] && MISSING_SECRETS+=("STAGING_USER")
+                  [[ -z "${{ secrets.STAGING_SSH_KEY }}" ]] && MISSING_SECRETS+=("STAGING_SSH_KEY")
+
+                  if [ ${#MISSING_SECRETS[@]} -ne 0 ]; then
+                      echo "::error::Missing required secrets: ${MISSING_SECRETS[*]}"
+                      echo "Please configure these secrets in repository settings:"
+                      echo "Settings → Secrets and variables → Actions → New repository secret"
+                      exit 1
+                  fi
+
+                  echo "::notice::All required secrets are configured ✓"
+
             - name: Install doctl
               uses: digitalocean/action-doctl@v2
               with:
@@ -85,6 +105,12 @@ jobs:
                       }
                       trap cleanup EXIT
 
+                      # Validate deployment directory exists
+                      if [ ! -d /opt/theboosh-zone ]; then
+                          echo "::error::Deployment directory /opt/theboosh-zone does not exist!"
+                          echo "Please run initial server setup first."
+                          exit 1
+                      fi
                       cd /opt/theboosh-zone
 
                       # Decode and write docker credentials

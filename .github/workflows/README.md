@@ -257,6 +257,66 @@ test:
 ### Claude AI
 - `CLAUDE_CODE_OAUTH_TOKEN` - OAuth token for Claude Code Action
 
+## Security Considerations
+
+### Credential Handling
+
+Docker registry credentials are passed to remote servers for image pulling. Here's how we handle this securely:
+
+**Method:**
+- Credentials generated as short-lived tokens (20 minute expiry)
+- Base64-encoded for safe transport through SSH environment variables
+- Automatically cleaned up via bash `trap` (even on failure)
+- Only visible during deployment process
+
+**Risk:** During the deployment window, credentials are present in:
+- Environment variables (visible via `ps auxeww` on remote server)
+- Temporary file `~/.docker/config.json` (removed after use)
+
+**Mitigations:**
+- ✅ Tokens expire after 20 minutes
+- ✅ Cleanup trap ensures removal even on failure
+- ✅ Only accessible by deployment user on remote server
+- ✅ SSH connection encrypts all traffic
+- ✅ Base64 encoding prevents accidental logging
+
+**Residual Risk:** Users with root/sudo access on remote servers could theoretically inspect the deployment process and capture credentials during the brief window they exist.
+
+**For Higher Security:** Consider using:
+- HashiCorp Vault for secret injection
+- Kubernetes secrets with sealed-secrets
+- Cloud-native secret management (AWS Secrets Manager, Google Secret Manager, etc.)
+- OIDC-based authentication with workload identity
+
+### Secret Validation
+
+All deployment workflows validate that required secrets are configured before attempting deployment. This fails fast with clear error messages instead of cryptic SSH or authentication errors.
+
+If secrets are missing, you'll see:
+```
+Error: Missing required secrets: PRODUCTION_HOST PRODUCTION_SSH_KEY
+Please configure these secrets in repository settings:
+Settings → Secrets and variables → Actions → New repository secret
+```
+
+### Permissions
+
+Workflows follow the principle of least privilege:
+
+- **test.yml**: `contents: read` - Only needs to checkout code
+- **ci.yml**: `contents: read`, `id-token: write` - Needs to push to registry
+- **deploy-staging.yml**: `contents: read`, `id-token: write` - Deploy only
+- **deploy-production.yml**: `contents: write`, `id-token: write` - Can create releases
+
+### Best Practices
+
+1. **Rotate secrets regularly** - Update SSH keys and tokens periodically
+2. **Use environment protection** - Require approval for production deployments
+3. **Monitor deployment logs** - Watch for unusual activity
+4. **Limit server access** - Only deployment user should have write access
+5. **Enable 2FA** - Require two-factor authentication for GitHub account
+6. **Audit secret access** - Review who has access to repository secrets
+
 ## Future Improvements
 
 ### Potential Enhancements
@@ -318,6 +378,46 @@ test:
 1. Check ci.yml lines 67-85 (environment detection logic)
 2. Verify `github.base_ref` is set for PRs
 3. Add debug output to see detected values
+
+### Missing Secrets Error
+
+**Symptom:** Deployment fails with "Missing required secrets" error
+
+**Cause:** Required secrets not configured in repository settings
+
+**Solution:**
+1. Go to repository Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Add each missing secret listed in the error message
+4. For SSH keys, paste the entire private key including header/footer
+5. Re-run the workflow
+
+### Deployment Directory Not Found
+
+**Symptom:** "Deployment directory /opt/theboosh-zone does not exist!"
+
+**Cause:** Server not initialized or incorrect path
+
+**Solution:**
+1. SSH to the server: `ssh user@server-hostname`
+2. Check if directory exists: `ls -la /opt/theboosh-zone`
+3. If missing, run initial server setup script
+4. Verify user has access: `cd /opt/theboosh-zone`
+5. Check deployment documentation for setup instructions
+
+### Rollback Failed (Exit Code 2)
+
+**Symptom:** "CRITICAL: Rollback failed! Manual intervention required!"
+
+**Cause:** Rollback script encountered error during recovery
+
+**Solution:**
+1. Immediately SSH to production server
+2. Check Docker containers: `docker ps -a`
+3. Check rollback script logs
+4. Manually inspect last backup: `ls -la deploy/backups/`
+5. Consider manual restore from backup
+6. Contact system administrator if unsure
 
 ## References
 
