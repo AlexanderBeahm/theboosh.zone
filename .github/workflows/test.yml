@@ -1,3 +1,14 @@
+# Test Execution Workflow
+#
+# Runs backend (Perl) and frontend (Vue/Vitest) tests
+#
+# This workflow:
+# - Triggers directly on push/PR for fast feedback
+# - Can be called by other workflows (workflow_call)
+# - Provides test results and coverage reports
+#
+# See .github/workflows/README.md for test execution strategy.
+
 name: Run Tests
 
 on:
@@ -6,6 +17,9 @@ on:
     pull_request:
         branches: [dev, main]
     workflow_call:
+
+permissions:
+    contents: read
 
 jobs:
     backend-tests:
