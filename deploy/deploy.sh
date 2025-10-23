@@ -4,7 +4,7 @@
 set -e
 
 ENVIRONMENT=${1:-staging}
-PROJECT_DIR="/opt/theboosh.zone"
+PROJECT_DIR="/opt/theboosh-zone"
 
 echo "========================================="
 echo "TheBoosh.Zone Deployment"
@@ -33,6 +33,58 @@ if [ ! -f "docker-compose.$ENVIRONMENT.yml" ]; then
     echo "Error: docker-compose.$ENVIRONMENT.yml not found!"
     exit 1
 fi
+
+# Check for port conflicts only if no containers are currently running
+# (prevents false positives on re-deployments)
+echo ""
+RUNNING_CONTAINERS=$(docker compose -f docker-compose.$ENVIRONMENT.yml ps -q 2>/dev/null | wc -l)
+
+if [ "$RUNNING_CONTAINERS" -eq 0 ]; then
+    echo "First deployment or clean state detected. Checking for port conflicts..."
+    PORT_80_IN_USE=$(sudo ss -tulpn | grep ':80 ' | grep -v docker || true)
+    PORT_443_IN_USE=$(sudo ss -tulpn | grep ':443 ' | grep -v docker || true)
+
+    if [ ! -z "$PORT_80_IN_USE" ] || [ ! -z "$PORT_443_IN_USE" ]; then
+        echo "ERROR: Ports 80 or 443 are in use by non-Docker processes:"
+        [ ! -z "$PORT_80_IN_USE" ] && echo "  Port 80: $PORT_80_IN_USE"
+        [ ! -z "$PORT_443_IN_USE" ] && echo "  Port 443: $PORT_443_IN_USE"
+        echo ""
+        echo "Common culprits: Apache (apache2), Nginx (nginx), or other web servers"
+        echo "To fix, stop the conflicting service:"
+        echo "  sudo systemctl stop apache2 && sudo systemctl disable apache2"
+        echo "  sudo systemctl stop nginx && sudo systemctl disable nginx"
+
+        # Check if running in non-interactive mode (CI/CD)
+        if [ ! -t 0 ] || [ "$CI" = "true" ]; then
+            echo ""
+            echo "Running in automated mode. Deployment aborted due to port conflict."
+            exit 1
+        fi
+
+        # Interactive mode: prompt user to continue or abort
+        echo ""
+        read -p "Continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Deployment aborted. Please resolve port conflicts first."
+            exit 1
+        fi
+    else
+        echo "No port conflicts detected. Proceeding with deployment."
+    fi
+else
+    echo "Re-deployment detected (${RUNNING_CONTAINERS} containers running). Skipping port conflict check."
+fi
+
+# Stop existing containers and clean up networks
+echo ""
+echo "Stopping existing containers..."
+docker compose -f docker-compose.$ENVIRONMENT.yml down --remove-orphans 2>/dev/null || true
+
+# Clean up stale Docker networks
+echo ""
+echo "Cleaning up stale Docker networks..."
+docker network prune -f
 
 # Pull latest images
 echo ""

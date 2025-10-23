@@ -40,6 +40,20 @@ else
     echo "Docker Compose already installed: $(docker compose version)"
 fi
 
+# Install doctl (DigitalOcean CLI)
+if ! command -v doctl &> /dev/null; then
+    echo "Installing doctl..."
+    cd /tmp
+    wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz
+    tar xf doctl-1.104.0-linux-amd64.tar.gz
+    sudo mv doctl /usr/local/bin
+    rm doctl-1.104.0-linux-amd64.tar.gz
+    cd -
+    echo "doctl installed: $(doctl version)"
+else
+    echo "doctl already installed: $(doctl version)"
+fi
+
 # Install certbot for SSL
 if ! command -v certbot &> /dev/null; then
     echo "Installing certbot..."
@@ -47,6 +61,23 @@ if ! command -v certbot &> /dev/null; then
 else
     echo "Certbot already installed: $(certbot --version)"
 fi
+
+# Stop and disable conflicting web servers
+echo "Checking for conflicting web servers on ports 80/443..."
+CONFLICTING_SERVICES=("apache2" "nginx" "httpd")
+for service in "${CONFLICTING_SERVICES[@]}"; do
+    if systemctl is-active --quiet $service 2>/dev/null; then
+        echo "Stopping $service (conflicts with Docker nginx)..."
+        sudo systemctl stop $service
+        sudo systemctl disable $service
+        echo "$service stopped and disabled"
+    elif systemctl is-enabled --quiet $service 2>/dev/null; then
+        echo "Disabling $service (conflicts with Docker nginx)..."
+        sudo systemctl disable $service
+        echo "$service disabled"
+    fi
+done
+echo "Port conflict check complete"
 
 # Setup firewall
 echo "Configuring firewall..."
