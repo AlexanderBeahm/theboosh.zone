@@ -4,7 +4,7 @@
 set -e
 
 ENVIRONMENT=${1:-staging}
-PROJECT_DIR="/opt/theboosh.zone"
+PROJECT_DIR="/opt/theboosh-zone"
 
 echo "========================================="
 echo "TheBoosh.Zone Deployment"

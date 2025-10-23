@@ -40,6 +40,20 @@ else
     echo "Docker Compose already installed: $(docker compose version)"
 fi
 
+# Install doctl (DigitalOcean CLI)
+if ! command -v doctl &> /dev/null; then
+    echo "Installing doctl..."
+    cd /tmp
+    wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz
+    tar xf doctl-1.104.0-linux-amd64.tar.gz
+    sudo mv doctl /usr/local/bin
+    rm doctl-1.104.0-linux-amd64.tar.gz
+    cd -
+    echo "doctl installed: $(doctl version)"
+else
+    echo "doctl already installed: $(doctl version)"
+fi
+
 # Install certbot for SSL
 if ! command -v certbot &> /dev/null; then
     echo "Installing certbot..."
