@@ -62,6 +62,23 @@ else
     echo "Certbot already installed: $(certbot --version)"
 fi
 
+# Stop and disable conflicting web servers
+echo "Checking for conflicting web servers on ports 80/443..."
+CONFLICTING_SERVICES=("apache2" "nginx" "httpd")
+for service in "${CONFLICTING_SERVICES[@]}"; do
+    if systemctl is-active --quiet $service 2>/dev/null; then
+        echo "Stopping $service (conflicts with Docker nginx)..."
+        sudo systemctl stop $service
+        sudo systemctl disable $service
+        echo "$service stopped and disabled"
+    elif systemctl is-enabled --quiet $service 2>/dev/null; then
+        echo "Disabling $service (conflicts with Docker nginx)..."
+        sudo systemctl disable $service
+        echo "$service disabled"
+    fi
+done
+echo "Port conflict check complete"
+
 # Setup firewall
 echo "Configuring firewall..."
 sudo apt-get install -y ufw
