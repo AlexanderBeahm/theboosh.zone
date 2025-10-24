@@ -9,7 +9,20 @@ vi.mock("../composables/useAuth", () => ({
     useAuth: vi.fn(),
 }));
 
+// Mock the config
+vi.mock("../config", () => ({
+    config: {
+        apiUrl: "http://localhost:3000",
+        environment: "test",
+        isDevelopment: false,
+        isProduction: false,
+        enableDebug: false,
+        enableSwagger: true, // Default to true for most tests
+    },
+}));
+
 import { useAuth } from "../composables/useAuth";
+import { config } from "../config";
 
 describe("NavBar", () => {
     let router;
@@ -67,6 +80,8 @@ describe("NavBar", () => {
 
     describe("Basic Navigation", () => {
         it("renders all public navigation links", async () => {
+            config.enableSwagger = true;
+
             await router.push("/");
             await router.isReady();
 
@@ -77,7 +92,6 @@ describe("NavBar", () => {
             expect(wrapper.text()).toContain("Home");
             expect(wrapper.text()).toContain("About");
             expect(wrapper.text()).toContain("Articles");
-            expect(wrapper.text()).toContain("Swagger");
             expect(wrapper.text()).toContain("TheBoosh.Zone");
         });
 
@@ -109,23 +123,6 @@ describe("NavBar", () => {
             expect(homeLink.exists()).toBe(true);
             expect(aboutLink.exists()).toBe(true);
             expect(articlesLink.exists()).toBe(true);
-        });
-
-        it("external Swagger link has correct attributes", async () => {
-            await router.push("/");
-            await router.isReady();
-
-            const wrapper = mount(NavBar, {
-                global: { plugins: [router] },
-            });
-
-            const swaggerLink = wrapper.find('a[href="/swagger"]');
-            expect(swaggerLink.exists()).toBe(true);
-            expect(swaggerLink.attributes("target")).toBe("_blank");
-            expect(swaggerLink.attributes("rel")).toBe("noopener noreferrer");
-            expect(swaggerLink.attributes("aria-label")).toContain(
-                "API documentation",
-            );
         });
     });
 
@@ -338,6 +335,57 @@ describe("NavBar", () => {
             });
 
             expect(wrapper.find(".nav-actions").exists()).toBe(true);
+        });
+    });
+
+    describe("Swagger Link Visibility", () => {
+        it("shows Swagger link when enableSwagger is true", async () => {
+            config.enableSwagger = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+            });
+
+            const swaggerLink = wrapper.find('a[href="/swagger"]');
+            expect(swaggerLink.exists()).toBe(true);
+            expect(swaggerLink.text()).toBe("Swagger");
+        });
+
+        it("hides Swagger link when enableSwagger is false", async () => {
+            config.enableSwagger = false;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+            });
+
+            const swaggerLink = wrapper.find('a[href="/swagger"]');
+            expect(swaggerLink.exists()).toBe(false);
+            expect(wrapper.text()).not.toContain("Swagger");
+        });
+
+        it("Swagger link has correct attributes when enabled", async () => {
+            config.enableSwagger = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+            });
+
+            const swaggerLink = wrapper.find('a[href="/swagger"]');
+            expect(swaggerLink.exists()).toBe(true);
+            expect(swaggerLink.attributes("target")).toBe("_blank");
+            expect(swaggerLink.attributes("rel")).toBe("noopener noreferrer");
+            expect(swaggerLink.attributes("aria-label")).toContain(
+                "API documentation",
+            );
         });
     });
 });
