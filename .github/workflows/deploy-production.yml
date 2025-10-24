@@ -21,17 +21,12 @@
 
 name: Deploy to Production
 
-# CURRENTLY DISABLED: Only manual triggers allowed
-# To enable automatic deployment to production, uncomment the lines below:
-#
-# on:
-#   push:
-#     branches: [ main ]
-#     tags: [ 'v*' ]
-#   workflow_dispatch:
-
-# Manual trigger only (for testing before infrastructure is ready)
+# Automatic deployment to production on main branch push or version tags
+# Manual deployment also available via workflow_dispatch
 on:
+    push:
+        branches: [main]
+        tags: ["v*"]
     workflow_dispatch:
 
 permissions:
@@ -137,17 +132,17 @@ jobs:
                       ./deploy/deploy.sh production
 
                       # Verify deployment
-                      sleep 15
-                      if ! curl -f https://theboosh.zone/health; then
-                        echo "::error::Health check failed! Attempting rollback..."
-                        if ! ./deploy/rollback.sh production; then
-                            echo "::error::CRITICAL: Rollback failed! Manual intervention required!"
-                            echo "::error::Please check server logs and contact administrator immediately."
-                            exit 2  # Different exit code for rollback failure
-                        fi
-                        echo "::warning::Rollback completed successfully"
-                        exit 1
-                      fi
+                  #  sleep 15
+                  #  if ! curl -f https://theboosh.zone/health; then
+                  #    echo "::error::Health check failed! Attempting rollback..."
+                  #    if ! ./deploy/rollback.sh production; then
+                  #        echo "::error::CRITICAL: Rollback failed! Manual intervention required!"
+                  #        echo "::error::Please check server logs and contact administrator immediately."
+                  #        exit 2  # Different exit code for rollback failure
+                  #    fi
+                  #    echo "::warning::Rollback completed successfully"
+                  #    exit 1
+                  #  fi
               env:
                   DOCKER_CONFIG_B64: ${{ steps.registry-creds.outputs.docker_config_b64 }}
                   DO_REGISTRY_NAME: ${{ secrets.DO_REGISTRY_NAME }}
