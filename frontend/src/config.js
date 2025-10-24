@@ -5,6 +5,7 @@ export const config = {
     isDevelopment: import.meta.env.VITE_ENVIRONMENT === "development",
     isProduction: import.meta.env.VITE_ENVIRONMENT === "production",
     enableDebug: import.meta.env.VITE_ENABLE_DEBUG === "true",
+    enableSwagger: import.meta.env.VITE_ENABLE_SWAGGER === "true",
 };
 
 // Configuration logging disabled
