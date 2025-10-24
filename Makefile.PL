@@ -21,6 +21,7 @@ WriteMakefile(
         'File::Copy'          => 0,  # Added for file operations
         'File::Basename'      => 0,  # Added for filename parsing
         'MIME::Types'         => 0,  # Added for MIME type detection
+        'MIME::Base64'        => 0,  # Added for base64 image upload support
         'Test::More'          => '1.302',  # Core testing framework
         'Test::Mojo'          => 0,  # Mojolicious testing
         'DBD::Mock'           => 0,  # Mock database driver

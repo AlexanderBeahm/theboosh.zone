@@ -10,17 +10,21 @@ use File::Path qw(make_path);
 use File::Copy;
 use File::Basename;
 use MIME::Types;
+use MIME::Base64;
 use Digest::SHA qw(sha256_hex);
 use Time::Local;
 
 # Upload media file
 sub upload ($self) {
     my $upload = $self->req->upload('file');
+    my $base64_data = $self->param('base64_data');
+    my $base64_filename = $self->param('base64_filename');
 
-    unless ($upload) {
+    # Support both file upload and base64 data
+    unless ($upload || $base64_data) {
         return $self->render(json => {
             success => 0,
-            error => 'No file uploaded'
+            error => 'No file uploaded or base64 data provided'
         }, status => 400);
     }
 
@@ -32,17 +36,58 @@ sub upload ($self) {
     my @allowed_mime_types = split /,/, $allowed_types;
     my %allowed_types_hash = map { $_ => 1 } @allowed_mime_types;
 
+    # Initialize variables for both upload types
+    my ($file_size, $mime_type, $original_filename, $file_data);
+
+    if ($upload) {
+        # Handle regular file upload
+        $file_size = $upload->size;
+        $mime_type = $upload->headers->content_type;
+        $original_filename = $upload->filename;
+    } elsif ($base64_data) {
+        # Handle base64 data upload
+        # Expect format: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...
+        my ($data_uri_prefix, $encoded_data) = split /,/, $base64_data, 2;
+
+        unless ($encoded_data) {
+            return $self->render(json => {
+                success => 0,
+                error => 'Invalid base64 data format. Expected data URI format: data:mime/type;base64,data'
+            }, status => 400);
+        }
+
+        # Extract MIME type from data URI
+        if ($data_uri_prefix =~ /data:([^;]+);base64/) {
+            $mime_type = $1;
+        } else {
+            return $self->render(json => {
+                success => 0,
+                error => 'Could not determine MIME type from base64 data'
+            }, status => 400);
+        }
+
+        # Decode base64 data
+        eval {
+            $file_data = decode_base64($encoded_data);
+        };
+        if ($@) {
+            return $self->render(json => {
+                success => 0,
+                error => 'Failed to decode base64 data'
+            }, status => 400);
+        }
+
+        $file_size = length($file_data);
+        $original_filename = $base64_filename || "pasted-image-" . time() . "." . ($mime_type =~ /\/([^\/]+)$/ ? $1 : 'bin');
+    }
+
     # Validate file size
-    my $file_size = $upload->size;
     if ($file_size > $max_size) {
         return $self->render(json => {
             success => 0,
             error => "File size exceeds maximum allowed size of " . int($max_size / 1048576) . "MB"
         }, status => 400);
     }
-
-    # Get MIME type
-    my $mime_type = $upload->headers->content_type;
 
     # Validate MIME type
     unless ($allowed_types_hash{$mime_type}) {
@@ -51,9 +96,6 @@ sub upload ($self) {
             error => "File type not allowed. Allowed types: " . join(', ', @allowed_mime_types)
         }, status => 400);
     }
-
-    # Get original filename
-    my $original_filename = $upload->filename;
 
     # Generate unique filename
     my ($name, $path, $ext) = fileparse($original_filename, qr/\.[^.]*/);
@@ -84,9 +126,18 @@ sub upload ($self) {
     my $filepath = "$date_path/$unique_filename";
     my $full_filepath = "$uploads_dir/$filepath";
 
-    # Save the uploaded file
+    # Save the file
     eval {
-        $upload->move_to($full_filepath);
+        if ($upload) {
+            # Save regular file upload
+            $upload->move_to($full_filepath);
+        } elsif ($file_data) {
+            # Save base64 decoded data
+            open(my $fh, '>', $full_filepath) or die "Cannot open file $full_filepath: $!";
+            binmode $fh;
+            print $fh $file_data;
+            close $fh;
+        }
     };
     if ($@) {
         return $self->render(json => {

@@ -1,5 +1,11 @@
 <template>
-  <div class="media-library">
+  <div
+    class="media-library"
+    tabindex="0"
+    @paste="handlePaste"
+    @keydown.ctrl.v="handleKeyboardPaste"
+    @keydown.meta.v="handleKeyboardPaste"
+  >
     <!-- Header with Search and Filters -->
     <div class="library-header">
       <div class="search-bar">
@@ -37,6 +43,63 @@
             SVG
           </option>
         </select>
+      </div>
+    </div>
+
+    <!-- Upload Zone -->
+    <div
+      class="upload-zone"
+      :class="{
+        'drag-over': isDragOver,
+        'uploading': isUploading
+      }"
+      @drop="handleDrop"
+      @dragover="handleDragOver"
+      @dragenter="handleDragEnter"
+      @dragleave="handleDragLeave"
+      @click="triggerFileInput"
+    >
+      <input
+        ref="fileInput"
+        type="file"
+        multiple
+        accept="image/*"
+        class="hidden-file-input"
+        @change="handleFileSelect"
+      >
+
+      <div
+        v-if="!isUploading"
+        class="upload-zone-content"
+      >
+        <div class="upload-icon">
+          📁
+        </div>
+        <p class="upload-text">
+          <strong>Drop images here to upload</strong>
+        </p>
+        <p class="upload-subtext">
+          or click to browse files, or paste images with <kbd>Ctrl+V</kbd>
+        </p>
+        <div class="upload-formats">
+          Supports: JPEG, PNG, GIF, WebP, SVG
+        </div>
+      </div>
+
+      <div
+        v-if="isUploading"
+        class="uploading-content"
+      >
+        <div class="upload-progress">
+          <div class="loading-spinner" />
+          <p>Uploading {{ uploadQueue.length }} file(s)...</p>
+          <div class="progress-bar">
+            <div
+              class="progress-fill"
+              :style="{ width: uploadProgress + '%' }"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -288,6 +351,11 @@ const editForm = ref({
     alt_text: "",
     caption: "",
 });
+const isDragOver = ref(false);
+const isUploading = ref(false);
+const uploadQueue = ref([]);
+const uploadProgress = ref(0);
+const fileInput = ref(null);
 
 let searchDebounceTimer = null;
 
@@ -465,6 +533,133 @@ function clearSelection() {
 
 function getSelectedMedia() {
     return mediaItems.value.filter((m) => selectedMediaIds.value.has(m.id));
+}
+
+// Drag and drop methods
+function handleDragEnter(event) {
+    event.preventDefault();
+    isDragOver.value = true;
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    isDragOver.value = true;
+}
+
+function handleDragLeave(event) {
+    event.preventDefault();
+    // Only set to false if leaving the upload zone completely
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        isDragOver.value = false;
+    }
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    isDragOver.value = false;
+
+    const files = Array.from(event.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+    }
+}
+
+function triggerFileInput() {
+    if (!isUploading.value && fileInput.value) {
+        fileInput.value.click();
+    }
+}
+
+function handleFileSelect(event) {
+    const files = Array.from(event.target.files);
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
+    // Reset the input value to allow selecting the same file again
+    event.target.value = '';
+}
+
+async function uploadFiles(files) {
+    if (isUploading.value) return;
+
+    isUploading.value = true;
+    uploadQueue.value = [...files];
+    uploadProgress.value = 0;
+
+    try {
+        const uploadPromises = files.map((file, index) =>
+            uploadSingleFile(file, index, files.length)
+        );
+
+        await Promise.all(uploadPromises);
+
+        // Refresh the media list after uploads
+        await fetchMedia();
+
+        // Reset upload state
+        uploadQueue.value = [];
+        uploadProgress.value = 0;
+    } catch {
+        alert('Some uploads failed. Please try again.');
+    } finally {
+        isUploading.value = false;
+    }
+}
+
+async function uploadSingleFile(file, index, total) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('alt_text', file.name);
+    formData.append('caption', '');
+
+    const response = await axios.post('/api/admin/media/upload', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+
+    if (response.data.success) {
+        // Update progress
+        uploadProgress.value = Math.round(((index + 1) / total) * 100);
+        return response.data.media;
+    } else {
+        throw new Error(response.data.error || 'Upload failed');
+    }
+}
+
+// Paste functionality
+function handleKeyboardPaste(event) {
+    // For keyboard shortcuts, we need to manually trigger paste event
+    // This is mainly for accessibility
+    event.preventDefault();
+    document.execCommand('paste');
+}
+
+async function handlePaste(event) {
+    const clipboardData = event.clipboardData || event.originalEvent?.clipboardData;
+    if (!clipboardData) return;
+
+    // Check if clipboard contains image files
+    const items = Array.from(clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+
+    if (imageItems.length === 0) {
+        // No images in clipboard, ignore
+        return;
+    }
+
+    // Prevent default paste behavior when images are detected
+    event.preventDefault();
+
+    // Process all pasted images
+    const imageFiles = imageItems.map(item => item.getAsFile()).filter(file => file);
+
+    if (imageFiles.length > 0) {
+        // Upload the pasted images
+        await uploadFiles(imageFiles);
+    }
 }
 
 // Lifecycle
@@ -830,6 +1025,116 @@ defineExpose({
     opacity: 0.9;
 }
 
+/* Upload Zone Styles */
+.upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
+    text-align: center;
+    background-color: var(--light-bg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.upload-zone:hover {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
+}
+
+.upload-zone.drag-over {
+    border-color: var(--primary-color);
+    background-color: var(--primary-color-light);
+    border-style: solid;
+    transform: scale(1.02);
+}
+
+.upload-zone.uploading {
+    border-color: var(--primary-color);
+    background-color: var(--bg-color);
+    cursor: default;
+}
+
+.hidden-file-input {
+    display: none;
+}
+
+.upload-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.upload-text {
+    margin: 0;
+    font-size: 1.125rem;
+    color: var(--text-primary);
+}
+
+.upload-subtext {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.upload-formats {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-color);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.upload-subtext kbd {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.uploading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.upload-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    max-width: 300px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background-color: var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    border-radius: var(--radius-sm);
+    transition: width var(--transition-fast);
+}
+
 @media (max-width: 768px) {
     .media-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -842,6 +1147,18 @@ defineExpose({
 
     .search-bar {
         width: 100%;
+    }
+
+    .upload-zone {
+        padding: var(--spacing-lg);
+    }
+
+    .upload-icon {
+        font-size: 2rem;
+    }
+
+    .upload-text {
+        font-size: 1rem;
     }
 }
 </style>
