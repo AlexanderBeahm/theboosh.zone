@@ -8,8 +8,11 @@ use HelloPerld::Model::Media;
 use Imager;
 use File::Path qw(make_path);
 use File::Copy;
-use File::Basename;
+use File::Basename qw(fileparse dirname);
+use File::Spec::Functions qw(catfile catdir);
+use File::Type;
 use MIME::Types;
+use MIME::Base64;
 use Digest::SHA qw(sha256_hex);
 use Time::Local;
 
@@ -17,10 +20,16 @@ use Time::Local;
 sub upload ($self) {
     my $upload = $self->req->upload('file');
 
-    unless ($upload) {
+    # Support both form parameters and JSON body (like other endpoints)
+    my $body = $self->req->json || {};
+    my $base64_data = $self->param('base64_data') || $body->{base64_data};
+    my $base64_filename = $self->param('base64_filename') || $body->{base64_filename};
+
+    # Support both file upload and base64 data
+    unless ($upload || $base64_data) {
         return $self->render(json => {
             success => 0,
-            error => 'No file uploaded'
+            error => 'No file uploaded or base64 data provided'
         }, status => 400);
     }
 
@@ -32,17 +41,69 @@ sub upload ($self) {
     my @allowed_mime_types = split /,/, $allowed_types;
     my %allowed_types_hash = map { $_ => 1 } @allowed_mime_types;
 
+    # Initialize variables for both upload types
+    my ($file_size, $mime_type, $original_filename, $file_data);
+
+    if ($upload) {
+        # Handle regular file upload
+        $file_size = $upload->size;
+        $mime_type = $upload->headers->content_type;
+        $original_filename = $upload->filename;
+    } elsif ($base64_data) {
+        # Handle base64 data upload
+        # Expect format: data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAAAAAAAD...
+        my ($data_uri_prefix, $encoded_data) = split /,/, $base64_data, 2;
+
+        unless ($encoded_data) {
+            return $self->render(json => {
+                success => 0,
+                error => 'Invalid base64 data format. Expected data URI format: data:mime/type;base64,data'
+            }, status => 400);
+        }
+
+        # Extract MIME type from data URI
+        if ($data_uri_prefix =~ /data:([^;]+);base64/) {
+            $mime_type = $1;
+        } else {
+            return $self->render(json => {
+                success => 0,
+                error => 'Could not determine MIME type from base64 data'
+            }, status => 400);
+        }
+
+        # Decode base64 data
+        eval {
+            $file_data = decode_base64($encoded_data);
+        };
+        if ($@) {
+            return $self->render(json => {
+                success => 0,
+                error => 'Failed to decode base64 data'
+            }, status => 400);
+        }
+
+        $file_size = length($file_data);
+
+        # Secure extension mapping based on MIME type
+        my %mime_to_ext = (
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg'
+        );
+        my $ext = $mime_to_ext{$mime_type} || 'bin';
+
+        $original_filename = $base64_filename || "pasted-image-" . time() . ".$ext";
+    }
+
     # Validate file size
-    my $file_size = $upload->size;
     if ($file_size > $max_size) {
         return $self->render(json => {
             success => 0,
             error => "File size exceeds maximum allowed size of " . int($max_size / 1048576) . "MB"
         }, status => 400);
     }
-
-    # Get MIME type
-    my $mime_type = $upload->headers->content_type;
 
     # Validate MIME type
     unless ($allowed_types_hash{$mime_type}) {
@@ -52,8 +113,36 @@ sub upload ($self) {
         }, status => 400);
     }
 
-    # Get original filename
-    my $original_filename = $upload->filename;
+    # File signature validation - verify actual file content matches declared MIME type
+    my $file_checker = File::Type->new();
+    my $detected_mime_type;
+
+    if ($upload) {
+        # For file uploads, check the file directly
+        $detected_mime_type = $file_checker->mime_type($upload->asset->slurp);
+    } elsif ($file_data) {
+        # For base64 uploads, check the decoded data
+        $detected_mime_type = $file_checker->mime_type($file_data);
+    }
+
+    # Verify the detected MIME type matches what was declared
+    if ($detected_mime_type && $detected_mime_type ne $mime_type) {
+        # Allow some common variations (e.g., image/jpg vs image/jpeg)
+        my %mime_aliases = (
+            'image/jpg' => 'image/jpeg',
+            'image/jpeg' => 'image/jpg'
+        );
+
+        my $normalized_detected = $mime_aliases{$detected_mime_type} || $detected_mime_type;
+        my $normalized_declared = $mime_aliases{$mime_type} || $mime_type;
+
+        unless ($normalized_detected eq $normalized_declared) {
+            return $self->render(json => {
+                success => 0,
+                error => "File content does not match declared file type"
+            }, status => 400);
+        }
+    }
 
     # Generate unique filename
     my ($name, $path, $ext) = fileparse($original_filename, qr/\.[^.]*/);
@@ -65,7 +154,7 @@ sub upload ($self) {
     $year += 1900;
     $mon += 1;
     my $date_path = sprintf("%04d/%02d", $year, $mon);
-    my $full_dir = "$uploads_dir/$date_path";
+    my $full_dir = catdir($uploads_dir, $date_path);
 
     # Create directory if it doesn't exist
     unless (-d $full_dir) {
@@ -73,25 +162,36 @@ sub upload ($self) {
             make_path($full_dir, { chmod => 0755 });
         };
         if ($@) {
+            $self->app->log->error("Failed to create upload directory: $@");
             return $self->render(json => {
                 success => 0,
-                error => "Failed to create upload directory: $@"
+                error => "Failed to create upload directory"
             }, status => 500);
         }
     }
 
-    # Full file path
-    my $filepath = "$date_path/$unique_filename";
-    my $full_filepath = "$uploads_dir/$filepath";
+    # Full file path (using secure path construction)
+    my $filepath = catfile($date_path, $unique_filename);
+    my $full_filepath = catfile($uploads_dir, $filepath);
 
-    # Save the uploaded file
+    # Save the file
     eval {
-        $upload->move_to($full_filepath);
+        if ($upload) {
+            # Save regular file upload
+            $upload->move_to($full_filepath);
+        } elsif ($file_data) {
+            # Save base64 decoded data
+            open(my $fh, '>', $full_filepath) or die "Cannot open file $full_filepath: $!";
+            binmode $fh;
+            print $fh $file_data;
+            close $fh;
+        }
     };
     if ($@) {
+        $self->app->log->error("Failed to save file: $@");
         return $self->render(json => {
             success => 0,
-            error => "Failed to save file: $@"
+            error => "Failed to save file"
         }, status => 500);
     }
 
@@ -108,9 +208,9 @@ sub upload ($self) {
     # Get uploaded_by from session
     my $uploaded_by = $self->session('admin_user_id');
 
-    # Get optional metadata from request
-    my $alt_text = $self->param('alt_text');
-    my $caption = $self->param('caption');
+    # Get optional metadata from request (support both form and JSON)
+    my $alt_text = $self->param('alt_text') || $body->{alt_text};
+    my $caption = $self->param('caption') || $body->{caption};
 
     # Create media record in database
     my $media_model = HelloPerld::Model::Media->new(
@@ -277,39 +377,79 @@ sub delete ($self) {
         logger => $self->app->logger_instance,
         db_config => $self->db_config
     );
-    my $result = $media_model->delete($id);
 
-    unless ($result) {
+    # First, get the media record to obtain file path before deletion
+    my $media_record = $media_model->get_by_id($id);
+    unless ($media_record) {
         return $self->render(json => {
             success => 0,
-            error => 'Media not found or failed to delete'
+            error => 'Media not found'
         }, status => 404);
     }
 
-    # Delete the physical file
+    # Construct full file path
     my $uploads_dir = $ENV{UPLOADS_DIR} || '/usr/src/hello-perld/uploads';
-    my $full_filepath = "$uploads_dir/" . $result->{filepath};
+    my $full_filepath = catfile($uploads_dir, $media_record->{filepath});
 
-    $self->app->log->info("Attempting to delete file: $full_filepath");
+    $self->app->log->info("Attempting to delete media ID: $id");
+    $self->app->log->info("File path: $full_filepath");
     $self->app->log->info("File exists before delete: " . (-f $full_filepath ? "YES" : "NO"));
 
-    if (-f $full_filepath) {
-        $self->app->log->info("File permissions: " . sprintf("%04o", (stat($full_filepath))[2] & 07777));
+    # Check file permissions and existence before attempting deletion
+    my $file_deletion_success = 1;
+    my $file_deletion_error = '';
 
-        if (unlink $full_filepath) {
-            $self->app->log->info("Successfully deleted file: $full_filepath");
-        } else {
+    if (-f $full_filepath) {
+        # Log file permissions for debugging
+        my $perms = sprintf("%04o", (stat($full_filepath))[2] & 07777);
+        $self->app->log->info("File permissions: $perms");
+
+        # Check if directory is writable
+        my $dir = dirname($full_filepath);
+        my $dir_writable = -w $dir;
+        $self->app->log->info("Directory writable: " . ($dir_writable ? "YES" : "NO"));
+
+        # Attempt file deletion
+        unless (unlink $full_filepath) {
+            $file_deletion_success = 0;
+            $file_deletion_error = $!;
             $self->app->log->error("Failed to delete file: $full_filepath - Error: $!");
-            warn "Failed to delete file $full_filepath: $!";
+        } else {
+            $self->app->log->info("Successfully deleted file: $full_filepath");
         }
     } else {
         $self->app->log->warn("File not found for deletion: $full_filepath");
+        # Continue with database deletion even if file doesn't exist (cleanup orphaned records)
     }
 
-    return $self->render(json => {
-        success => 1,
-        message => 'Media deleted successfully'
-    });
+    # Only delete from database if file deletion succeeded (or file didn't exist)
+    if ($file_deletion_success) {
+        my $result = $media_model->delete($id);
+        unless ($result) {
+            $self->app->log->error("Failed to delete media record from database for ID: $id");
+            return $self->render(json => {
+                success => 0,
+                error => 'Failed to delete media record from database'
+            }, status => 500);
+        }
+
+        # Add cache invalidation headers to help browsers clear cached content
+        $self->res->headers->header('Clear-Site-Data' => '"cache"');
+        $self->res->headers->cache_control('no-cache, no-store, must-revalidate');
+        $self->res->headers->header('Pragma' => 'no-cache');
+        $self->res->headers->header('Expires' => '0');
+
+        return $self->render(json => {
+            success => 1,
+            message => 'Media deleted successfully'
+        });
+    } else {
+        # File deletion failed, don't delete database record
+        return $self->render(json => {
+            success => 0,
+            error => "Failed to delete physical file: $file_deletion_error"
+        }, status => 500);
+    }
 }
 
 1;

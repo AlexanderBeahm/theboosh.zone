@@ -82,12 +82,21 @@
             >
               Preview
             </button>
+            <button
+              type="button"
+              class="tab-button insert-image-button"
+              :disabled="isSaving"
+              @click="openUnifiedInsertModal"
+            >
+              Insert Image
+            </button>
           </div>
 
           <div class="editor-content">
             <textarea
               v-show="activeTab === 'write'"
               id="content"
+              ref="contentTextarea"
               v-model="form.content"
               required
               :disabled="isSaving"
@@ -95,6 +104,7 @@
               placeholder="Write your article content in Markdown..."
               rows="20"
               @keydown="handleTabKey"
+              @paste="handlePaste"
             />
 
             <div
@@ -383,6 +393,177 @@
         </div>
       </div>
     </div>
+
+    <!-- Paste Image Confirmation Modal -->
+    <div
+      v-if="showPasteImageModal"
+      class="image-modal-overlay"
+      @click="closePasteImageModal"
+    >
+      <div
+        class="image-modal-content"
+        @click.stop
+      >
+        <div class="image-modal-header">
+          <h3>Confirm Pasted Image</h3>
+          <button
+            class="close-button"
+            @click="closePasteImageModal"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="image-modal-body">
+          <div
+            v-if="pastedImageData"
+            class="paste-image-preview"
+          >
+            <div class="preview-image-container">
+              <img
+                :src="pastedImageData.dataUrl"
+                :alt="pastedImageData.name"
+                class="preview-image"
+              >
+            </div>
+
+            <div class="paste-image-info">
+              <p><strong>File:</strong> {{ pastedImageData.name }}</p>
+              <p><strong>Type:</strong> {{ pastedImageData.type }}</p>
+              <p><strong>Size:</strong> {{ formatFileSize(pastedImageData.size) }}</p>
+            </div>
+
+            <div class="paste-image-actions">
+              <button
+                type="button"
+                class="button-secondary"
+                @click="closePasteImageModal"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="button-primary"
+                :disabled="isPastingImage"
+                @click="handlePastedImageConfirm"
+              >
+                <span v-if="isPastingImage">Uploading...</span>
+                <span v-else>Upload and Insert</span>
+              </button>
+            </div>
+          </div>
+
+          <div
+            v-if="isPastingImage"
+            class="uploading-indicator"
+          >
+            <div class="loading-spinner" />
+            <p>Processing pasted image...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Insert Image Modal -->
+    <div
+      v-if="showUnifiedInsertModal"
+      class="image-modal-overlay"
+      @click="closeUnifiedInsertModal"
+    >
+      <div
+        class="image-modal-content unified-modal"
+        @click.stop
+      >
+        <div class="image-modal-header">
+          <h3>Insert Image</h3>
+          <button
+            class="close-button"
+            @click="closeUnifiedInsertModal"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="unified-modal-tabs">
+          <button
+            type="button"
+            class="unified-tab-button"
+            :class="{ active: unifiedModalActiveTab === 'browse' }"
+            @click="unifiedModalActiveTab = 'browse'"
+          >
+            Browse Library
+          </button>
+          <button
+            type="button"
+            class="unified-tab-button"
+            :class="{ active: unifiedModalActiveTab === 'upload' }"
+            @click="unifiedModalActiveTab = 'upload'"
+          >
+            Upload New
+          </button>
+          <button
+            type="button"
+            class="unified-tab-button"
+            :class="{ active: unifiedModalActiveTab === 'paste' }"
+            @click="unifiedModalActiveTab = 'paste'"
+          >
+            Paste Image
+          </button>
+        </div>
+
+        <div class="image-modal-body">
+          <!-- Browse Tab -->
+          <div
+            v-show="unifiedModalActiveTab === 'browse'"
+            class="unified-tab-content"
+          >
+            <MediaLibrary
+              ref="unifiedMediaLibrary"
+              selection-mode="single"
+              @media-selected="handleUnifiedMediaSelected"
+            />
+          </div>
+
+          <!-- Upload Tab -->
+          <div
+            v-show="unifiedModalActiveTab === 'upload'"
+            class="unified-tab-content"
+          >
+            <ImageUploader
+              ref="unifiedImageUploader"
+              :max-size-m-b="5"
+              :show-metadata="true"
+              :auto-upload="false"
+              @upload-success="handleUnifiedImageUpload"
+            />
+          </div>
+
+          <!-- Paste Tab -->
+          <div
+            v-show="unifiedModalActiveTab === 'paste'"
+            class="unified-tab-content"
+          >
+            <div class="paste-instructions">
+              <div class="paste-icon">
+                📋
+              </div>
+              <h4>Paste an Image</h4>
+              <p>
+                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on Mac) to paste an image from your clipboard.
+                You can also paste directly into the content area while writing.
+              </p>
+              <div class="paste-tips">
+                <h5>Tips:</h5>
+                <ul>
+                  <li>Copy an image from another application</li>
+                  <li>Take a screenshot and copy it</li>
+                  <li>Right-click an image in your browser and "Copy image"</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -416,8 +597,17 @@ const availableTags = ref([]);
 const selectedTags = ref([]);
 const showMediaLibraryModal = ref(false);
 const showImageUploadModal = ref(false);
+const showPasteImageModal = ref(false);
+const showUnifiedInsertModal = ref(false);
+const unifiedModalActiveTab = ref('browse');
 const mediaLibrary = ref(null);
 const imageUploader = ref(null);
+const unifiedMediaLibrary = ref(null);
+const unifiedImageUploader = ref(null);
+const contentTextarea = ref(null);
+const savedCaretPosition = ref(0);
+const pastedImageData = ref(null);
+const isPastingImage = ref(false);
 
 const form = ref({
     title: "",
@@ -579,6 +769,59 @@ function handleTabKey(event) {
     }
 }
 
+async function handlePaste(event) {
+    const clipboardData = event.clipboardData || event.originalEvent?.clipboardData;
+    if (!clipboardData) return;
+
+    // Check if clipboard contains image files
+    const items = Array.from(clipboardData.items);
+    const imageItems = items.filter(item => item.type.startsWith('image/'));
+
+    if (imageItems.length === 0) {
+        // No images in clipboard, allow normal paste
+        return;
+    }
+
+    // Prevent default paste behavior when images are detected
+    event.preventDefault();
+
+    // Save current caret position
+    if (contentTextarea.value) {
+        savedCaretPosition.value = contentTextarea.value.selectionStart;
+    }
+
+    // Process the first image found
+    const imageItem = imageItems[0];
+    const file = imageItem.getAsFile();
+
+    if (file) {
+        isPastingImage.value = true;
+
+        // Convert image to base64 for preview and upload
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            pastedImageData.value = {
+                file: file,
+                dataUrl: e.target.result,
+                type: file.type,
+                size: file.size,
+                name: `pasted-image-${Date.now()}.${file.type.split('/')[1]}`
+            };
+
+            // Show paste confirmation modal
+            showPasteImageModal.value = true;
+            isPastingImage.value = false;
+        };
+
+        reader.onerror = () => {
+            isPastingImage.value = false;
+            error.value = 'Failed to process pasted image';
+        };
+
+        reader.readAsDataURL(file);
+    }
+}
+
 function handleMediaSelected(media) {
     form.value.featured_image = media.url;
     showMediaLibraryModal.value = false;
@@ -591,6 +834,121 @@ function handleImageUpload(media) {
 
 function removeFeaturedImage() {
     form.value.featured_image = "";
+}
+
+function openUnifiedInsertModal() {
+    // Save current caret position
+    if (contentTextarea.value) {
+        savedCaretPosition.value = contentTextarea.value.selectionStart;
+    }
+    unifiedModalActiveTab.value = 'browse';
+    showUnifiedInsertModal.value = true;
+}
+
+function closeUnifiedInsertModal() {
+    showUnifiedInsertModal.value = false;
+    unifiedModalActiveTab.value = 'browse';
+}
+
+function handleUnifiedMediaSelected(media) {
+    insertImageMarkdown(media);
+    closeUnifiedInsertModal();
+}
+
+function handleUnifiedImageUpload(media) {
+    insertImageMarkdown(media);
+    closeUnifiedInsertModal();
+}
+
+function insertImageMarkdown(media) {
+    // Generate markdown syntax for the image
+    const altText = media.alt_text || media.original_filename || 'Image';
+    const imageUrl = media.url;
+    const markdownSyntax = `![${altText}](${imageUrl})`;
+
+    // Insert at saved caret position
+    const pos = savedCaretPosition.value;
+    const currentContent = form.value.content || '';
+
+    form.value.content =
+        currentContent.substring(0, pos) +
+        markdownSyntax +
+        currentContent.substring(pos);
+
+    // Restore focus and move caret to after inserted text
+    if (contentTextarea.value) {
+        contentTextarea.value.focus();
+        const newCaretPos = pos + markdownSyntax.length;
+        contentTextarea.value.setSelectionRange(newCaretPos, newCaretPos);
+    }
+}
+
+function closePasteImageModal() {
+    showPasteImageModal.value = false;
+    pastedImageData.value = null;
+    isPastingImage.value = false;
+}
+
+async function handlePastedImageConfirm() {
+    if (!pastedImageData.value) return;
+
+    try {
+        isPastingImage.value = true;
+
+        // Create FormData for upload
+        const formData = new FormData();
+        formData.append('file', pastedImageData.value.file);
+        formData.append('alt_text', `Pasted image ${new Date().toLocaleString()}`);
+        formData.append('caption', '');
+
+        // Upload the pasted image
+        const response = await axios.post('/api/admin/media/upload', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        if (response.data.success) {
+            // Insert markdown syntax at saved caret position
+            const media = response.data.media;
+            const altText = media.alt_text || media.original_filename || 'Pasted Image';
+            const imageUrl = media.url;
+            const markdownSyntax = `![${altText}](${imageUrl})`;
+
+            // Insert at saved caret position
+            const pos = savedCaretPosition.value;
+            const currentContent = form.value.content || '';
+
+            form.value.content =
+                currentContent.substring(0, pos) +
+                markdownSyntax +
+                currentContent.substring(pos);
+
+            // Close modal
+            closePasteImageModal();
+
+            // Restore focus and move caret to after inserted text
+            if (contentTextarea.value) {
+                contentTextarea.value.focus();
+                const newCaretPos = pos + markdownSyntax.length;
+                contentTextarea.value.setSelectionRange(newCaretPos, newCaretPos);
+            }
+        } else {
+            throw new Error(response.data.error || 'Failed to upload pasted image');
+        }
+    } catch (err) {
+        error.value = err.response?.data?.error || err.message || 'Failed to upload pasted image';
+    } finally {
+        isPastingImage.value = false;
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 }
 
 async function handleSave() {
@@ -1248,6 +1606,237 @@ small {
     padding: var(--spacing-lg);
 }
 
+/* Paste Image Modal Styles */
+.paste-image-preview {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.preview-image-container {
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-md);
+    background-color: var(--light-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+}
+
+.paste-image-info {
+    padding: var(--spacing-md);
+    background-color: var(--light-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.paste-image-info p {
+    margin: var(--spacing-xs) 0;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.paste-image-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+}
+
+.uploading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xxl);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top: 3px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: var(--spacing-md);
+}
+
+.button-secondary,
+.button-primary {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    font-size: 1rem;
+}
+
+.button-secondary {
+    background-color: var(--light-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.button-secondary:hover:not(:disabled) {
+    background-color: var(--border-color);
+}
+
+.button-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.button-primary:hover:not(:disabled) {
+    background-color: var(--primary-color-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.button-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Unified Insert Modal Styles */
+.unified-modal {
+    max-width: 1400px;
+    max-height: 95vh;
+}
+
+.unified-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--light-bg);
+}
+
+.unified-tab-button {
+    flex: 1;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    border-bottom: 3px solid transparent;
+}
+
+.unified-tab-button.active {
+    background-color: var(--bg-color);
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+}
+
+.unified-tab-button:not(.active):hover {
+    background-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.unified-tab-content {
+    min-height: 500px;
+    padding: var(--spacing-lg);
+}
+
+.insert-image-button {
+    margin-left: auto;
+    background-color: var(--primary-color-light);
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+
+.insert-image-button:hover:not(:disabled) {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.insert-image-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Paste Instructions Styles */
+.paste-instructions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--spacing-xxl);
+    color: var(--text-primary);
+}
+
+.paste-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.paste-instructions h4 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.paste-instructions p {
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.6;
+    max-width: 500px;
+}
+
+.paste-instructions kbd {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.875rem;
+    font-family: monospace;
+    color: var(--text-primary);
+}
+
+.paste-tips {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    max-width: 400px;
+    text-align: left;
+}
+
+.paste-tips h5 {
+    margin: 0 0 var(--spacing-sm) 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.paste-tips ul {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    color: var(--text-secondary);
+}
+
+.paste-tips li {
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.875rem;
+}
+
 @media (max-width: 768px) {
     .image-selection-buttons {
         flex-direction: column;
@@ -1268,6 +1857,14 @@ small {
 
     .image-modal-body {
         padding: var(--spacing-md);
+    }
+
+    .paste-image-actions {
+        flex-direction: column;
+    }
+
+    .preview-image {
+        max-height: 200px;
     }
 }
 </style>

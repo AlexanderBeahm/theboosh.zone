@@ -1,12 +1,48 @@
+/* global File, Event */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import axios from "axios";
 import ArticleEditor from "./ArticleEditor.vue";
 import MarkdownRenderer from "./MarkdownRenderer.vue";
-import MediaLibrary from "./MediaLibrary.vue";
 import ImageUploader from "./ImageUploader.vue";
 
 vi.mock("axios");
+
+// Mock MediaLibrary completely to prevent undefined errors
+vi.mock('./MediaLibrary.vue', () => ({
+    default: {
+        name: 'MediaLibrary',
+        props: {
+            mediaItems: { default: () => [] },
+            isLoading: { default: false },
+            onMediaSelect: { default: () => {} }
+        },
+        template: `<div class="mock-media-library">Mock Media Library</div>`,
+        setup() {
+            return {
+                mediaItems: [],
+                isLoading: false
+            };
+        }
+    }
+}));
+
+// Additional MockMediaLibrary for explicit component override
+const MockMediaLibrary = {
+    name: 'MediaLibrary',
+    props: {
+        mediaItems: { default: () => [] },
+        isLoading: { default: false },
+        onMediaSelect: { default: () => {} }
+    },
+    template: `<div class="mock-media-library">Mock Media Library</div>`,
+    setup() {
+        return {
+            mediaItems: [],
+            isLoading: false
+        };
+    }
+};
 
 describe("ArticleEditor", () => {
     const mockTags = [
@@ -28,7 +64,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -61,7 +97,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -83,7 +119,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -100,7 +136,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -126,7 +162,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -153,7 +189,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -176,7 +212,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -201,7 +237,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -218,7 +254,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -238,7 +274,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -268,7 +304,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -298,7 +334,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -343,7 +379,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -373,7 +409,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -401,7 +437,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -421,7 +457,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -439,7 +475,7 @@ describe("ArticleEditor", () => {
                 global: {
                     components: {
                         MarkdownRenderer,
-                        MediaLibrary,
+                        MediaLibrary: MockMediaLibrary,
                         ImageUploader,
                     },
                 },
@@ -449,6 +485,372 @@ describe("ArticleEditor", () => {
             await wrapper.find(".cancel-button").trigger("click");
 
             expect(wrapper.emitted("close")).toBeTruthy();
+        });
+    });
+
+    describe("Paste Functionality", () => {
+        it("detects image paste events", async () => {
+            // Mock FileReader to capture the onload handler
+            const mockFileReader = {
+                onload: null,
+                onerror: null,
+                readAsDataURL: vi.fn(function() {
+                    // Call the onload handler immediately
+                    if (this.onload) {
+                        // Simulate successful file read
+                        this.onload({
+                            target: {
+                                result: 'data:image/jpeg;base64,mockdata'
+                            }
+                        });
+                    }
+                })
+            };
+            global.FileReader = vi.fn(() => mockFileReader);
+
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Create a proper mock file
+            const mockFile = new File(['test image data'], 'test.jpg', {
+                type: 'image/jpeg'
+            });
+
+            // Create mock clipboard data that matches browser API
+            const mockClipboardData = {
+                items: [{
+                    type: 'image/jpeg',
+                    getAsFile: vi.fn(() => mockFile)
+                }]
+            };
+
+            // Create paste event with clipboardData
+            const pasteEvent = {
+                preventDefault: vi.fn(),
+                clipboardData: mockClipboardData
+            };
+
+            const contentTextarea = wrapper.find('#content');
+
+            // Get the actual DOM element to access its properties
+            const textareaElement = contentTextarea.element;
+            textareaElement.selectionStart = 5; // Mock caret position
+
+            // Manually call the handlePaste function
+            await wrapper.vm.handlePaste(pasteEvent);
+
+            await flushPromises();
+
+            // Verify preventDefault was called
+            expect(pasteEvent.preventDefault).toHaveBeenCalled();
+
+            // Verify file reader was used
+            expect(mockFileReader.readAsDataURL).toHaveBeenCalledWith(mockFile);
+
+            // Check component state
+            expect(wrapper.vm.showPasteImageModal).toBe(true);
+            expect(wrapper.vm.pastedImageData).toBeTruthy();
+            expect(wrapper.vm.pastedImageData.file).toStrictEqual(mockFile);
+            expect(wrapper.vm.pastedImageData.type).toBe('image/jpeg');
+            expect(wrapper.vm.pastedImageData.size).toBe(15); // 'test image data' = 15 bytes
+
+            // Should show paste image modal
+            expect(wrapper.find('.image-modal-overlay').exists()).toBe(true);
+            expect(wrapper.text()).toContain('Confirm Pasted Image');
+        });
+
+        it("ignores paste events without images", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Create mock clipboard data without images
+            const mockClipboardData = {
+                items: [{
+                    type: 'text/plain',
+                    getAsFile: () => null
+                }]
+            };
+
+            const pasteEvent = new Event('paste');
+            Object.defineProperty(pasteEvent, 'clipboardData', {
+                value: mockClipboardData
+            });
+
+            const contentTextarea = wrapper.find('#content');
+            await contentTextarea.trigger('paste', pasteEvent);
+
+            await flushPromises();
+
+            // Should not show paste image modal
+            expect(wrapper.find('.image-modal-overlay').exists()).toBe(false);
+        });
+
+        it("uploads pasted image and inserts markdown", async () => {
+            const mockUploadResponse = {
+                data: {
+                    success: true,
+                    media: {
+                        id: 1,
+                        url: '/uploads/2025/01/pasted-image.jpg',
+                        alt_text: 'Pasted image',
+                        original_filename: 'pasted-image.jpg'
+                    }
+                }
+            };
+            axios.post.mockResolvedValueOnce(mockUploadResponse);
+
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Set initial content and caret position
+            await wrapper.find('#content').setValue('Initial content ');
+            const textarea = wrapper.find('#content').element;
+            textarea.selectionStart = 16; // After "Initial content "
+
+            // Trigger paste
+            const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+            wrapper.vm.pastedImageData = {
+                file: mockFile,
+                dataUrl: 'data:image/jpeg;base64,test',
+                type: 'image/jpeg',
+                size: 1024,
+                name: 'pasted-image.jpg'
+            };
+            wrapper.vm.savedCaretPosition = 16;
+            wrapper.vm.showPasteImageModal = true;
+
+            await wrapper.vm.$nextTick();
+
+            // Confirm upload
+            await wrapper.find('.button-primary').trigger('click');
+            await flushPromises();
+
+            // Check that upload was called
+            expect(axios.post).toHaveBeenCalledWith(
+                '/api/admin/media/upload',
+                expect.any(FormData),
+                expect.objectContaining({
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                })
+            );
+
+            // Check that markdown was inserted
+            expect(wrapper.vm.form.content).toContain('![Pasted image](/uploads/2025/01/pasted-image.jpg)');
+        });
+
+        it("shows error when paste upload fails", async () => {
+            axios.post.mockRejectedValueOnce({
+                response: { data: { error: 'Upload failed' } }
+            });
+
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Set up paste data
+            const mockFile = new File(['test'], 'test.jpg', { type: 'image/jpeg' });
+            wrapper.vm.pastedImageData = {
+                file: mockFile,
+                dataUrl: 'data:image/jpeg;base64,test',
+                type: 'image/jpeg',
+                size: 1024,
+                name: 'pasted-image.jpg'
+            };
+            wrapper.vm.showPasteImageModal = true;
+
+            await wrapper.vm.$nextTick();
+
+            // Confirm upload
+            await wrapper.find('.button-primary').trigger('click');
+            await flushPromises();
+
+            // Should show error
+            expect(wrapper.find('.error-message').text()).toContain('Upload failed');
+        });
+    });
+
+    describe("Unified Insert Modal", () => {
+        it("opens unified insert modal when Insert Image button clicked", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Click Insert Image button
+            await wrapper.find('.insert-image-button').trigger('click');
+
+            // Should open unified modal
+            expect(wrapper.find('.unified-modal').exists()).toBe(true);
+            expect(wrapper.text()).toContain('Insert Image');
+            expect(wrapper.text()).toContain('Browse Library');
+            expect(wrapper.text()).toContain('Upload New');
+            expect(wrapper.text()).toContain('Paste Image');
+        });
+
+        it("switches between unified modal tabs", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Open unified modal
+            await wrapper.find('.insert-image-button').trigger('click');
+
+            const tabButtons = wrapper.findAll('.unified-tab-button');
+
+            // Should start with Browse tab active
+            expect(tabButtons[0].classes()).toContain('active');
+
+            // Switch to Upload tab
+            await tabButtons[1].trigger('click');
+            expect(tabButtons[1].classes()).toContain('active');
+            expect(tabButtons[0].classes()).not.toContain('active');
+
+            // Switch to Paste tab
+            await tabButtons[2].trigger('click');
+            expect(tabButtons[2].classes()).toContain('active');
+            expect(wrapper.text()).toContain('Paste an Image');
+        });
+
+        it("handles media selection from unified modal", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Set up initial content
+            await wrapper.find('#content').setValue('Content ');
+
+            // Open unified modal and simulate media selection
+            wrapper.vm.savedCaretPosition = 8;
+            const mockMedia = {
+                url: '/uploads/2025/01/selected-image.jpg',
+                alt_text: 'Selected image',
+                original_filename: 'selected-image.jpg'
+            };
+
+            wrapper.vm.handleUnifiedMediaSelected(mockMedia);
+
+            // Check that markdown was inserted
+            expect(wrapper.vm.form.content).toContain('![Selected image](/uploads/2025/01/selected-image.jpg)');
+        });
+
+        it("closes unified modal when close button clicked", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            // Open unified modal
+            await wrapper.find('.insert-image-button').trigger('click');
+            expect(wrapper.find('.unified-modal').exists()).toBe(true);
+
+            // Close modal
+            await wrapper.findAll('.close-button')[1].trigger('click'); // Second close button is for unified modal
+
+            expect(wrapper.find('.unified-modal').exists()).toBe(false);
+        });
+    });
+
+    describe("Tab Key Handling", () => {
+        it("inserts tab character in content textarea", async () => {
+            const wrapper = mount(ArticleEditor, {
+                props: { isVisible: true },
+                global: {
+                    components: {
+                        MarkdownRenderer,
+                        MediaLibrary: MockMediaLibrary,
+                        ImageUploader,
+                    },
+                },
+            });
+
+            await flushPromises();
+
+            const textarea = wrapper.find('#content');
+            await textarea.setValue('Line 1\n');
+
+            // Simulate tab key press with preventDefault spy
+            const preventDefaultSpy = vi.fn();
+            await textarea.trigger('keydown', {
+                key: 'Tab',
+                preventDefault: preventDefaultSpy
+            });
+
+            // Tab character should be inserted
+            expect(wrapper.vm.form.content).toContain('\t');
+            expect(preventDefaultSpy).toHaveBeenCalled();
         });
     });
 });

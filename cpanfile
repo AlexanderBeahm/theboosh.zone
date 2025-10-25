@@ -21,6 +21,8 @@ requires 'Imager';
 requires 'File::Path';
 requires 'File::Copy';
 requires 'File::Basename';
+requires 'File::Spec';
+requires 'File::Type';
 requires 'File::ShareDir';
 
 # Data Handling
