@@ -67,6 +67,12 @@ sub startup {
         $c->app->log->info("File exists: " . (-f $full_path ? "YES" : "NO"));
 
         if (-f $full_path) {
+            # Add cache control headers to prevent aggressive caching
+            # This ensures browsers validate with server before using cached content
+            $c->res->headers->cache_control('no-cache, must-revalidate, max-age=0');
+            $c->res->headers->header('Pragma' => 'no-cache');
+            $c->res->headers->header('Expires' => 'Thu, 01 Jan 1970 00:00:00 GMT');
+
             return $c->reply->file($full_path);
         } else {
             return $c->reply->not_found;

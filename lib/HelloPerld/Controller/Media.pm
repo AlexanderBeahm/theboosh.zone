@@ -19,8 +19,11 @@ use Time::Local;
 # Upload media file
 sub upload ($self) {
     my $upload = $self->req->upload('file');
-    my $base64_data = $self->param('base64_data');
-    my $base64_filename = $self->param('base64_filename');
+
+    # Support both form parameters and JSON body (like other endpoints)
+    my $body = $self->req->json || {};
+    my $base64_data = $self->param('base64_data') || $body->{base64_data};
+    my $base64_filename = $self->param('base64_filename') || $body->{base64_filename};
 
     # Support both file upload and base64 data
     unless ($upload || $base64_data) {
@@ -205,9 +208,9 @@ sub upload ($self) {
     # Get uploaded_by from session
     my $uploaded_by = $self->session('admin_user_id');
 
-    # Get optional metadata from request
-    my $alt_text = $self->param('alt_text');
-    my $caption = $self->param('caption');
+    # Get optional metadata from request (support both form and JSON)
+    my $alt_text = $self->param('alt_text') || $body->{alt_text};
+    my $caption = $self->param('caption') || $body->{caption};
 
     # Create media record in database
     my $media_model = HelloPerld::Model::Media->new(
@@ -429,6 +432,12 @@ sub delete ($self) {
                 error => 'Failed to delete media record from database'
             }, status => 500);
         }
+
+        # Add cache invalidation headers to help browsers clear cached content
+        $self->res->headers->header('Clear-Site-Data' => '"cache"');
+        $self->res->headers->cache_control('no-cache, no-store, must-revalidate');
+        $self->res->headers->header('Pragma' => 'no-cache');
+        $self->res->headers->header('Expires' => '0');
 
         return $self->render(json => {
             success => 1,

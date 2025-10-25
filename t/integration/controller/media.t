@@ -146,26 +146,43 @@ subtest 'complete media upload and deletion workflow' => sub {
         password => $admin_pass
     })->status_is(200, 'Admin login successful');
 
-    # Create a small test image using base64 data (1x1 PNG)
-    my $tiny_png_base64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAI9jU77gwAAAABJRU5ErkJggg==';
-    my $base64_data = "data:image/png;base64,$tiny_png_base64";
+    # Create a small but valid test JPEG (more reliably detected by File::Type)
+    # This is a minimal 1x1 JPEG that should be properly recognized
+    my $valid_jpeg_base64 = '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+    my $base64_data = "data:image/jpeg;base64,$valid_jpeg_base64";
 
     # Upload test image via base64
-    $t->post_ok('/api/admin/media/upload' => form => {
+    my $upload_response = $t->post_ok('/api/admin/media/upload' => form => {
         base64_data => $base64_data,
-        base64_filename => 'test-image.png',
+        base64_filename => 'test-image.jpg',
         alt_text => 'Test image for deletion',
         caption => 'This image will be deleted'
-    })->status_is(200, 'Base64 upload successful')
+    });
+
+    # Debug: show the actual response if upload fails
+    if ($upload_response->tx->res->code != 200) {
+        my $error_response = $upload_response->tx->res->json;
+        diag("Upload failed with status: " . $upload_response->tx->res->code);
+        diag("Error response: " . ($error_response->{error} || 'No error message'));
+        diag("Full response: " . $upload_response->tx->res->body);
+    }
+
+    $upload_response->status_is(200, 'Base64 upload successful')
       ->json_is('/success' => 1, 'Upload marked as successful')
       ->json_has('/media/id', 'Media ID returned')
       ->json_has('/media/url', 'Media URL returned')
-      ->json_like('/media/filename', qr/\.png$/, 'Filename has PNG extension');
+      ->json_like('/media/filename', qr/\.jpg$/, 'Filename has JPG extension');
 
-    my $upload_response = $t->tx->res->json;
-    my $media_id = $upload_response->{media}{id};
-    my $media_url = $upload_response->{media}{url};
-    my $filepath = $upload_response->{media}{filepath};
+    # Only proceed with deletion tests if upload was successful
+    unless ($upload_response->tx->res->code == 200) {
+        $t->post_ok('/api/auth/logout')->status_is(200);
+        return;
+    }
+
+    my $upload_json = $t->tx->res->json;
+    my $media_id = $upload_json->{media}{id};
+    my $media_url = $upload_json->{media}{url};
+    my $filepath = $upload_json->{media}{filepath};
 
     ok($media_id, 'Media ID exists');
     ok($media_url, 'Media URL exists');
