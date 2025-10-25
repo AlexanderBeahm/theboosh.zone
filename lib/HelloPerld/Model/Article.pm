@@ -6,6 +6,7 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Database::Postgres;
+use HelloPerld::Model::Tag;
 
 sub new {
     my ($class, %args) = @_;
@@ -418,6 +419,24 @@ sub delete {
         }
         $dbh->disconnect() if $dbh;
         return undef;
+    }
+
+    # Clean up orphaned tags after successful article deletion
+    if ($rows_affected && $rows_affected > 0) {
+        my $tag_model = HelloPerld::Model::Tag->new(
+            logger => $self->{logger},
+            db_config => $self->{db_config}
+        );
+
+        my $deleted_tags_count = $tag_model->delete_orphaned_tags();
+
+        if (!defined $deleted_tags_count) {
+            if ($self->{logger}) {
+                $self->{logger}->warn("Article ID '$id' deleted but orphaned tag cleanup failed");
+            }
+        } elsif ($deleted_tags_count > 0 && $self->{logger}) {
+            $self->{logger}->info("Article ID '$id' deleted, cleaned up $deleted_tags_count orphaned tag(s)");
+        }
     }
 
     return $rows_affected;

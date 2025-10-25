@@ -302,4 +302,251 @@ subtest 'admin can retrieve all articles regardless of published status' => sub 
     $t->post_ok('/api/auth/logout')->status_is(200);
 };
 
+subtest 'orphaned tag cleanup - unique tag deletion' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create unique tag name to ensure it doesn't already exist
+    my $unique_tag = 'orphan-test-' . time();
+
+    # Create article with unique tag
+    my $article_title = "Orphan Tag Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $article_title,
+        content => 'Test content for orphaned tag cleanup',
+        is_published => 1,
+        tags => [$unique_tag]
+    })->status_is(201, 'Article created with unique tag');
+
+    my $article_id = $t->tx->res->json->{article}->{id};
+    ok($article_id, 'Got article ID');
+
+    # Verify tag was created
+    $t->get_ok('/api/tags')
+      ->status_is(200);
+
+    my $tags_before = $t->tx->res->json->{tags};
+    my ($created_tag) = grep { $_->{slug} eq $unique_tag } @{$tags_before};
+    ok($created_tag, "Tag '$unique_tag' exists after article creation");
+    my $tag_id = $created_tag->{id};
+
+    # Delete the article
+    $t->delete_ok("/api/admin/articles/$article_id")
+      ->status_is(200, 'Article deleted successfully');
+
+    # Verify orphaned tag was cleaned up
+    $t->get_ok('/api/tags')
+      ->status_is(200);
+
+    my $tags_after = $t->tx->res->json->{tags};
+    my ($orphaned_tag) = grep { $_->{slug} eq $unique_tag } @{$tags_after};
+    ok(!$orphaned_tag, "Orphaned tag '$unique_tag' was deleted");
+
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
+subtest 'orphaned tag cleanup - shared tags preserved' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create unique tag names
+    my $shared_tag = 'shared-tag-' . time();
+    my $unique_tag = 'unique-tag-' . time();
+
+    # Create first article with shared and unique tags
+    my $article1_title = "Shared Tags Test 1 " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $article1_title,
+        content => 'First article content',
+        is_published => 1,
+        tags => [$shared_tag, $unique_tag]
+    })->status_is(201);
+    my $article1_id = $t->tx->res->json->{article}->{id};
+
+    # Create second article with only shared tag
+    my $article2_title = "Shared Tags Test 2 " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $article2_title,
+        content => 'Second article content',
+        is_published => 1,
+        tags => [$shared_tag]
+    })->status_is(201);
+    my $article2_id = $t->tx->res->json->{article}->{id};
+
+    # Verify both tags exist
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_before = $t->tx->res->json->{tags};
+    my ($shared_before) = grep { $_->{slug} eq $shared_tag } @{$tags_before};
+    my ($unique_before) = grep { $_->{slug} eq $unique_tag } @{$tags_before};
+    ok($shared_before, "Shared tag exists before deletion");
+    ok($unique_before, "Unique tag exists before deletion");
+
+    # Delete first article (has unique tag and shared tag)
+    $t->delete_ok("/api/admin/articles/$article1_id")
+      ->status_is(200);
+
+    # Verify shared tag still exists, unique tag deleted
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_after = $t->tx->res->json->{tags};
+    my ($shared_after) = grep { $_->{slug} eq $shared_tag } @{$tags_after};
+    my ($unique_after) = grep { $_->{slug} eq $unique_tag } @{$tags_after};
+    ok($shared_after, "Shared tag preserved (still used by article 2)");
+    ok(!$unique_after, "Unique tag deleted (not used by any articles)");
+
+    # Clean up
+    $t->delete_ok("/api/admin/articles/$article2_id")->status_is(200);
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
+subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create article with multiple unique tags
+    my $tag1 = 'multi-orphan-1-' . time();
+    my $tag2 = 'multi-orphan-2-' . time();
+    my $tag3 = 'multi-orphan-3-' . time();
+
+    my $article_title = "Multiple Orphans Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $article_title,
+        content => 'Test content with multiple tags',
+        is_published => 1,
+        tags => [$tag1, $tag2, $tag3]
+    })->status_is(201);
+    my $article_id = $t->tx->res->json->{article}->{id};
+
+    # Verify all tags exist
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_before = $t->tx->res->json->{tags};
+    my $tag1_before = grep { $_->{slug} eq $tag1 } @{$tags_before};
+    my $tag2_before = grep { $_->{slug} eq $tag2 } @{$tags_before};
+    my $tag3_before = grep { $_->{slug} eq $tag3 } @{$tags_before};
+    ok($tag1_before, "Tag 1 exists before deletion");
+    ok($tag2_before, "Tag 2 exists before deletion");
+    ok($tag3_before, "Tag 3 exists before deletion");
+
+    # Delete article
+    $t->delete_ok("/api/admin/articles/$article_id")
+      ->status_is(200);
+
+    # Verify all orphaned tags were deleted
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_after = $t->tx->res->json->{tags};
+    my $tag1_after = grep { $_->{slug} eq $tag1 } @{$tags_after};
+    my $tag2_after = grep { $_->{slug} eq $tag2 } @{$tags_after};
+    my $tag3_after = grep { $_->{slug} eq $tag3 } @{$tags_after};
+    ok(!$tag1_after, "Tag 1 deleted");
+    ok(!$tag2_after, "Tag 2 deleted");
+    ok(!$tag3_after, "Tag 3 deleted");
+
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
+subtest 'orphaned tag cleanup - article with no tags' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create article without tags
+    my $article_title = "No Tags Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $article_title,
+        content => 'Article without tags',
+        is_published => 1
+    })->status_is(201);
+    my $article_id = $t->tx->res->json->{article}->{id};
+
+    # Delete article (should not error even though there are no tags)
+    $t->delete_ok("/api/admin/articles/$article_id")
+      ->status_is(200, 'Article without tags deleted successfully');
+
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
+subtest 'orphaned tag cleanup - draft article deletion' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set';
+        return;
+    }
+
+    # Login as admin
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200);
+
+    # Create unique tag
+    my $draft_tag = 'draft-orphan-' . time();
+
+    # Create draft article with unique tag
+    my $draft_title = "Draft Orphan Test " . time();
+    $t->post_ok('/api/admin/articles' => json => {
+        title => $draft_title,
+        content => 'Draft article content',
+        is_published => 0,
+        tags => [$draft_tag]
+    })->status_is(201);
+    my $draft_id = $t->tx->res->json->{article}->{id};
+
+    # Verify tag exists
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_before = $t->tx->res->json->{tags};
+    my ($tag_before) = grep { $_->{slug} eq $draft_tag } @{$tags_before};
+    ok($tag_before, "Draft article tag exists");
+
+    # Delete draft article
+    $t->delete_ok("/api/admin/articles/$draft_id")
+      ->status_is(200);
+
+    # Verify orphaned tag was cleaned up (even from draft)
+    $t->get_ok('/api/tags')->status_is(200);
+    my $tags_after = $t->tx->res->json->{tags};
+    my ($tag_after) = grep { $_->{slug} eq $draft_tag } @{$tags_after};
+    ok(!$tag_after, "Orphaned tag from draft article was deleted");
+
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
 done_testing();
