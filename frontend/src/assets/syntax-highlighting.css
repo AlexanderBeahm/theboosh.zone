@@ -1,0 +1,14 @@
+/* Global Syntax Highlighting Styles for highlight.js */
+/* These styles are intentionally global (not scoped) to apply to dynamically rendered code blocks */
+
+.hljs {
+    background: #0d1117 !important;
+    color: #c9d1d9 !important;
+    border-radius: 6px;
+}
+
+/* Ensure code blocks within markdown have proper styling */
+.markdown-content pre.hljs {
+    background: #0d1117;
+    border: 1px solid #30363d;
+}

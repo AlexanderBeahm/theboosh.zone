@@ -1,12 +1,12 @@
 <template>
-  <!-- v-html is safe here: content is sanitized with DOMPurify -->
-  <!-- eslint-disable vue/no-v-html -->
-  <div
-    class="markdown-content"
-    @click="handleLinkClick"
-    v-html="renderedContent"
-  />
-  <!-- eslint-enable vue/no-v-html -->
+    <!-- v-html is safe here: content is sanitized with DOMPurify -->
+    <!-- eslint-disable vue/no-v-html -->
+    <div
+        class="markdown-content"
+        @click="handleLinkClick"
+        v-html="renderedContent"
+    />
+    <!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup>
@@ -459,20 +459,5 @@ onUpdated(() => {
     border-radius: var(--radius-md);
     border: 1px solid var(--error-border);
     margin: 1rem 0;
-}
-</style>
-
-<style>
-/* Global styles for syntax highlighting (not scoped) */
-.hljs {
-    background: #0d1117 !important;
-    color: #c9d1d9 !important;
-    border-radius: 6px;
-}
-
-/* Ensure code blocks have proper styling */
-.markdown-content pre.hljs {
-    background: #0d1117;
-    border: 1px solid #30363d;
 }
 </style>

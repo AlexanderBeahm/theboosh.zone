@@ -1,64 +1,47 @@
 <template>
-  <div class="nav-bar">
-    <nav
-      class="nav-links"
-      aria-label="Main navigation"
-    >
-      <router-link
-        to="/"
-        :class="{ active: $route.path === '/' }"
-      >
-        Home
-      </router-link>
-      <router-link
-        to="/about"
-        :class="{ active: $route.path === '/about' }"
-      >
-        About
-      </router-link>
-      <router-link
-        to="/articles"
-        :class="{ active: $route.path.startsWith('/articles') }"
-      >
-        Articles
-      </router-link>
-      <a
-        v-if="config.enableSwagger"
-        href="/swagger"
-        target="_blank"
-        aria-label="View API documentation in Swagger UI (opens in new tab)"
-        rel="noopener noreferrer"
-      >Swagger</a>
-      <router-link
-        v-if="isAuthenticated"
-        to="/admin"
-        :class="{ active: $route.path.startsWith('/admin') }"
-      >
-        Admin
-      </router-link>
-    </nav>
-    <div
-      class="nav-title"
-      aria-label="Site name"
-    >
-      TheBoosh.Zone
-    </div>
-    <div class="nav-spacer" />
+    <div class="nav-bar">
+        <nav class="nav-links" aria-label="Main navigation">
+            <router-link to="/" :class="{ active: $route.path === '/' }">
+                Home
+            </router-link>
+            <router-link
+                to="/about"
+                :class="{ active: $route.path === '/about' }"
+            >
+                About
+            </router-link>
+            <router-link
+                to="/articles"
+                :class="{ active: $route.path.startsWith('/articles') }"
+            >
+                Articles
+            </router-link>
+            <a
+                v-if="config.enableSwagger"
+                href="/swagger"
+                target="_blank"
+                aria-label="View API documentation in Swagger UI (opens in new tab)"
+                rel="noopener noreferrer"
+                >Swagger</a
+            >
+            <router-link
+                v-if="isAuthenticated"
+                to="/admin"
+                :class="{ active: $route.path.startsWith('/admin') }"
+            >
+                Admin
+            </router-link>
+        </nav>
+        <div class="nav-title" aria-label="Site name">TheBoosh.Zone</div>
+        <div class="nav-spacer" />
 
-    <!-- Admin Logout Button (only visible when authenticated) -->
-    <div
-      v-if="isAuthenticated"
-      class="nav-actions"
-    >
-      <button
-        class="logout-button"
-        title="Logout"
-        @click="handleLogout"
-      >
-        Logout
-      </button>
+        <!-- Admin Logout Button (only visible when authenticated) -->
+        <div v-if="isAuthenticated" class="nav-actions">
+            <button class="logout-button" title="Logout" @click="handleLogout">
+                Logout
+            </button>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>

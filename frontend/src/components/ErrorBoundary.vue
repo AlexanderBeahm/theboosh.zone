@@ -29,32 +29,21 @@ const reset = () => {
 </script>
 
 <template>
-  <div
-    v-if="error"
-    class="error-boundary"
-  >
-    <div class="error-content">
-      <h2>Something went wrong</h2>
-      <p class="error-message">
-        {{ error.message }}
-      </p>
-      <details
-        v-if="isDev"
-        class="error-details"
-      >
-        <summary>Error Details</summary>
-        <pre>{{ error.stack }}</pre>
-        <p><strong>Component info:</strong> {{ errorInfo }}</p>
-      </details>
-      <button
-        class="retry-button"
-        @click="reset"
-      >
-        Try Again
-      </button>
+    <div v-if="error" class="error-boundary">
+        <div class="error-content">
+            <h2>Something went wrong</h2>
+            <p class="error-message">
+                {{ error.message }}
+            </p>
+            <details v-if="isDev" class="error-details">
+                <summary>Error Details</summary>
+                <pre>{{ error.stack }}</pre>
+                <p><strong>Component info:</strong> {{ errorInfo }}</p>
+            </details>
+            <button class="retry-button" @click="reset">Try Again</button>
+        </div>
     </div>
-  </div>
-  <slot v-else />
+    <slot v-else />
 </template>
 
 <style scoped>
@@ -63,68 +52,68 @@ const reset = () => {
     align-items: center;
     justify-content: center;
     min-height: 400px;
-    padding: 2rem;
+    padding: var(--spacing-lg);
 }
 
 .error-content {
     max-width: 600px;
     text-align: center;
-    padding: 2rem;
-    background-color: #fff;
-    border: 2px solid #e74c3c;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: var(--spacing-lg);
+    background-color: var(--card-bg);
+    border: 2px solid var(--error-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
 }
 
 .error-content h2 {
-    color: #e74c3c;
-    margin-bottom: 1rem;
+    color: var(--error-color);
+    margin-bottom: var(--spacing-sm);
     font-size: 24px;
 }
 
 .error-message {
-    color: #333;
-    margin-bottom: 1rem;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
     font-size: 16px;
 }
 
 .error-details {
     text-align: left;
-    margin: 1rem 0;
-    padding: 1rem;
-    background-color: #f8f9fa;
-    border-radius: 4px;
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm);
+    background-color: var(--light-bg);
+    border-radius: var(--radius-sm);
 }
 
 .error-details summary {
     cursor: pointer;
     font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 0.5rem;
+    color: var(--dark-bg);
+    margin-bottom: var(--spacing-xs);
 }
 
 .error-details pre {
     overflow-x: auto;
-    padding: 0.5rem;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: var(--spacing-xs);
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
     font-size: 12px;
-    color: #e74c3c;
+    color: var(--error-color);
 }
 
 .retry-button {
-    background-color: #3498db;
+    background-color: var(--primary-color);
     color: white;
     border: none;
-    padding: 0.75rem 1.5rem;
+    padding: var(--spacing-sm) var(--spacing-md);
     font-size: 16px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color var(--transition-fast);
 }
 
 .retry-button:hover {
-    background-color: #2980b9;
+    background-color: var(--primary-dark);
 }
 </style>
