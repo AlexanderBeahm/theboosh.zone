@@ -133,23 +133,6 @@
           <div class="form-group">
             <label for="tags">Tags</label>
             <div class="tags-input-container">
-              <div class="selected-tags">
-                <span
-                  v-for="tag in selectedTags"
-                  :key="tag.id"
-                  class="selected-tag"
-                >
-                  {{ tag.name }}
-                  <button
-                    type="button"
-                    class="remove-tag-button"
-                    @click="removeTag(tag)"
-                  >
-                    ✕
-                  </button>
-                </span>
-              </div>
-
               <input
                 v-model="tagInput"
                 type="text"
@@ -173,6 +156,22 @@
                   {{ tag.name }}
                   <span class="usage-count">({{ tag.usage_count }})</span>
                 </div>
+              </div>
+              <div class="selected-tags">
+                <span
+                  v-for="tag in selectedTags"
+                  :key="tag.id"
+                  class="selected-tag"
+                >
+                  {{ tag.name }}
+                  <button
+                    type="button"
+                    class="remove-tag-button"
+                    @click="removeTag(tag)"
+                  >
+                    ✕
+                  </button>
+                </span>
               </div>
             </div>
           </div>
@@ -427,9 +426,18 @@
             </div>
 
             <div class="paste-image-info">
-              <p><strong>File:</strong> {{ pastedImageData.name }}</p>
-              <p><strong>Type:</strong> {{ pastedImageData.type }}</p>
-              <p><strong>Size:</strong> {{ formatFileSize(pastedImageData.size) }}</p>
+              <p>
+                <strong>File:</strong>
+                {{ pastedImageData.name }}
+              </p>
+              <p>
+                <strong>Type:</strong>
+                {{ pastedImageData.type }}
+              </p>
+              <p>
+                <strong>Size:</strong>
+                {{ formatFileSize(pastedImageData.size) }}
+              </p>
             </div>
 
             <div class="paste-image-actions">
@@ -548,15 +556,22 @@
               </div>
               <h4>Paste an Image</h4>
               <p>
-                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on Mac) to paste an image from your clipboard.
-                You can also paste directly into the content area while writing.
+                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on
+                Mac) to paste an image from your clipboard. You
+                can also paste directly into the content area
+                while writing.
               </p>
               <div class="paste-tips">
                 <h5>Tips:</h5>
                 <ul>
-                  <li>Copy an image from another application</li>
+                  <li>
+                    Copy an image from another application
+                  </li>
                   <li>Take a screenshot and copy it</li>
-                  <li>Right-click an image in your browser and "Copy image"</li>
+                  <li>
+                    Right-click an image in your browser and
+                    "Copy image"
+                  </li>
                 </ul>
               </div>
             </div>
@@ -599,7 +614,7 @@ const showMediaLibraryModal = ref(false);
 const showImageUploadModal = ref(false);
 const showPasteImageModal = ref(false);
 const showUnifiedInsertModal = ref(false);
-const unifiedModalActiveTab = ref('browse');
+const unifiedModalActiveTab = ref("browse");
 const mediaLibrary = ref(null);
 const imageUploader = ref(null);
 const unifiedMediaLibrary = ref(null);
@@ -770,12 +785,13 @@ function handleTabKey(event) {
 }
 
 async function handlePaste(event) {
-    const clipboardData = event.clipboardData || event.originalEvent?.clipboardData;
+    const clipboardData =
+        event.clipboardData || event.originalEvent?.clipboardData;
     if (!clipboardData) return;
 
     // Check if clipboard contains image files
     const items = Array.from(clipboardData.items);
-    const imageItems = items.filter(item => item.type.startsWith('image/'));
+    const imageItems = items.filter((item) => item.type.startsWith("image/"));
 
     if (imageItems.length === 0) {
         // No images in clipboard, allow normal paste
@@ -805,7 +821,7 @@ async function handlePaste(event) {
                 dataUrl: e.target.result,
                 type: file.type,
                 size: file.size,
-                name: `pasted-image-${Date.now()}.${file.type.split('/')[1]}`
+                name: `pasted-image-${Date.now()}.${file.type.split("/")[1]}`,
             };
 
             // Show paste confirmation modal
@@ -815,7 +831,7 @@ async function handlePaste(event) {
 
         reader.onerror = () => {
             isPastingImage.value = false;
-            error.value = 'Failed to process pasted image';
+            error.value = "Failed to process pasted image";
         };
 
         reader.readAsDataURL(file);
@@ -841,13 +857,13 @@ function openUnifiedInsertModal() {
     if (contentTextarea.value) {
         savedCaretPosition.value = contentTextarea.value.selectionStart;
     }
-    unifiedModalActiveTab.value = 'browse';
+    unifiedModalActiveTab.value = "browse";
     showUnifiedInsertModal.value = true;
 }
 
 function closeUnifiedInsertModal() {
     showUnifiedInsertModal.value = false;
-    unifiedModalActiveTab.value = 'browse';
+    unifiedModalActiveTab.value = "browse";
 }
 
 function handleUnifiedMediaSelected(media) {
@@ -862,13 +878,13 @@ function handleUnifiedImageUpload(media) {
 
 function insertImageMarkdown(media) {
     // Generate markdown syntax for the image
-    const altText = media.alt_text || media.original_filename || 'Image';
+    const altText = media.alt_text || media.original_filename || "Image";
     const imageUrl = media.url;
     const markdownSyntax = `![${altText}](${imageUrl})`;
 
     // Insert at saved caret position
     const pos = savedCaretPosition.value;
-    const currentContent = form.value.content || '';
+    const currentContent = form.value.content || "";
 
     form.value.content =
         currentContent.substring(0, pos) +
@@ -897,27 +913,31 @@ async function handlePastedImageConfirm() {
 
         // Create FormData for upload
         const formData = new FormData();
-        formData.append('file', pastedImageData.value.file);
-        formData.append('alt_text', `Pasted image ${new Date().toLocaleString()}`);
-        formData.append('caption', '');
+        formData.append("file", pastedImageData.value.file);
+        formData.append(
+            "alt_text",
+            `Pasted image ${new Date().toLocaleString()}`,
+        );
+        formData.append("caption", "");
 
         // Upload the pasted image
-        const response = await axios.post('/api/admin/media/upload', formData, {
+        const response = await axios.post("/api/admin/media/upload", formData, {
             headers: {
-                'Content-Type': 'multipart/form-data'
-            }
+                "Content-Type": "multipart/form-data",
+            },
         });
 
         if (response.data.success) {
             // Insert markdown syntax at saved caret position
             const media = response.data.media;
-            const altText = media.alt_text || media.original_filename || 'Pasted Image';
+            const altText =
+                media.alt_text || media.original_filename || "Pasted Image";
             const imageUrl = media.url;
             const markdownSyntax = `![${altText}](${imageUrl})`;
 
             // Insert at saved caret position
             const pos = savedCaretPosition.value;
-            const currentContent = form.value.content || '';
+            const currentContent = form.value.content || "";
 
             form.value.content =
                 currentContent.substring(0, pos) +
@@ -931,24 +951,32 @@ async function handlePastedImageConfirm() {
             if (contentTextarea.value) {
                 contentTextarea.value.focus();
                 const newCaretPos = pos + markdownSyntax.length;
-                contentTextarea.value.setSelectionRange(newCaretPos, newCaretPos);
+                contentTextarea.value.setSelectionRange(
+                    newCaretPos,
+                    newCaretPos,
+                );
             }
         } else {
-            throw new Error(response.data.error || 'Failed to upload pasted image');
+            throw new Error(
+                response.data.error || "Failed to upload pasted image",
+            );
         }
     } catch (err) {
-        error.value = err.response?.data?.error || err.message || 'Failed to upload pasted image';
+        error.value =
+            err.response?.data?.error ||
+            err.message ||
+            "Failed to upload pasted image";
     } finally {
         isPastingImage.value = false;
     }
 }
 
 function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
 async function handleSave() {
@@ -1707,8 +1735,12 @@ small {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Unified Insert Modal Styles */
