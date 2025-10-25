@@ -9,6 +9,8 @@ use Imager;
 use File::Path qw(make_path);
 use File::Copy;
 use File::Basename;
+use File::Spec::Functions qw(catfile catdir);
+use File::Type;
 use MIME::Types;
 use MIME::Base64;
 use Digest::SHA qw(sha256_hex);
@@ -78,7 +80,18 @@ sub upload ($self) {
         }
 
         $file_size = length($file_data);
-        $original_filename = $base64_filename || "pasted-image-" . time() . "." . ($mime_type =~ /\/([^\/]+)$/ ? $1 : 'bin');
+
+        # Secure extension mapping based on MIME type
+        my %mime_to_ext = (
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'image/webp' => 'webp',
+            'image/svg+xml' => 'svg'
+        );
+        my $ext = $mime_to_ext{$mime_type} || 'bin';
+
+        $original_filename = $base64_filename || "pasted-image-" . time() . ".$ext";
     }
 
     # Validate file size
@@ -97,6 +110,37 @@ sub upload ($self) {
         }, status => 400);
     }
 
+    # File signature validation - verify actual file content matches declared MIME type
+    my $file_checker = File::Type->new();
+    my $detected_mime_type;
+
+    if ($upload) {
+        # For file uploads, check the file directly
+        $detected_mime_type = $file_checker->mime_type($upload->asset->to_string);
+    } elsif ($file_data) {
+        # For base64 uploads, check the decoded data
+        $detected_mime_type = $file_checker->mime_type($file_data);
+    }
+
+    # Verify the detected MIME type matches what was declared
+    if ($detected_mime_type && $detected_mime_type ne $mime_type) {
+        # Allow some common variations (e.g., image/jpg vs image/jpeg)
+        my %mime_aliases = (
+            'image/jpg' => 'image/jpeg',
+            'image/jpeg' => 'image/jpg'
+        );
+
+        my $normalized_detected = $mime_aliases{$detected_mime_type} || $detected_mime_type;
+        my $normalized_declared = $mime_aliases{$mime_type} || $mime_type;
+
+        unless ($normalized_detected eq $normalized_declared) {
+            return $self->render(json => {
+                success => 0,
+                error => "File content does not match declared file type"
+            }, status => 400);
+        }
+    }
+
     # Generate unique filename
     my ($name, $path, $ext) = fileparse($original_filename, qr/\.[^.]*/);
     my $unique_id = sha256_hex($original_filename . time() . rand());
@@ -107,7 +151,7 @@ sub upload ($self) {
     $year += 1900;
     $mon += 1;
     my $date_path = sprintf("%04d/%02d", $year, $mon);
-    my $full_dir = "$uploads_dir/$date_path";
+    my $full_dir = catdir($uploads_dir, $date_path);
 
     # Create directory if it doesn't exist
     unless (-d $full_dir) {
@@ -115,16 +159,17 @@ sub upload ($self) {
             make_path($full_dir, { chmod => 0755 });
         };
         if ($@) {
+            $self->app->log->error("Failed to create upload directory: $@");
             return $self->render(json => {
                 success => 0,
-                error => "Failed to create upload directory: $@"
+                error => "Failed to create upload directory"
             }, status => 500);
         }
     }
 
-    # Full file path
-    my $filepath = "$date_path/$unique_filename";
-    my $full_filepath = "$uploads_dir/$filepath";
+    # Full file path (using secure path construction)
+    my $filepath = catfile($date_path, $unique_filename);
+    my $full_filepath = catfile($uploads_dir, $filepath);
 
     # Save the file
     eval {
@@ -140,9 +185,10 @@ sub upload ($self) {
         }
     };
     if ($@) {
+        $self->app->log->error("Failed to save file: $@");
         return $self->render(json => {
             success => 0,
-            error => "Failed to save file: $@"
+            error => "Failed to save file"
         }, status => 500);
     }
 
@@ -339,7 +385,7 @@ sub delete ($self) {
 
     # Delete the physical file
     my $uploads_dir = $ENV{UPLOADS_DIR} || '/usr/src/hello-perld/uploads';
-    my $full_filepath = "$uploads_dir/" . $result->{filepath};
+    my $full_filepath = catfile($uploads_dir, $result->{filepath});
 
     $self->app->log->info("Attempting to delete file: $full_filepath");
     $self->app->log->info("File exists before delete: " . (-f $full_filepath ? "YES" : "NO"));
