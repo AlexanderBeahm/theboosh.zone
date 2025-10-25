@@ -654,10 +654,21 @@ sub delete_orphaned_tags {
     };
 
     if ($@) {
-        $dbh->rollback() if $dbh;
+        # Safely rollback transaction, catching any rollback exceptions
+        if ($dbh) {
+            eval { $dbh->rollback(); };
+            if ($@) {
+                if ($self->{logger}) {
+                    $self->{logger}->error("Rollback failed during orphaned tag cleanup: $@");
+                }
+            }
+        }
+
         if ($self->{logger}) {
             $self->{logger}->error("Failed to delete orphaned tags: $@");
         }
+
+        # Always disconnect, even if rollback failed
         $dbh->disconnect() if $dbh;
         return undef;
     }
