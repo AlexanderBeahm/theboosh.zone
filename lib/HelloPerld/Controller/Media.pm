@@ -8,7 +8,7 @@ use HelloPerld::Model::Media;
 use Imager;
 use File::Path qw(make_path);
 use File::Copy;
-use File::Basename;
+use File::Basename qw(fileparse dirname);
 use File::Spec::Functions qw(catfile catdir);
 use File::Type;
 use MIME::Types;
@@ -116,7 +116,7 @@ sub upload ($self) {
 
     if ($upload) {
         # For file uploads, check the file directly
-        $detected_mime_type = $file_checker->mime_type($upload->asset->to_string);
+        $detected_mime_type = $file_checker->mime_type($upload->asset->slurp);
     } elsif ($file_data) {
         # For base64 uploads, check the decoded data
         $detected_mime_type = $file_checker->mime_type($file_data);
@@ -374,39 +374,73 @@ sub delete ($self) {
         logger => $self->app->logger_instance,
         db_config => $self->db_config
     );
-    my $result = $media_model->delete($id);
 
-    unless ($result) {
+    # First, get the media record to obtain file path before deletion
+    my $media_record = $media_model->get_by_id($id);
+    unless ($media_record) {
         return $self->render(json => {
             success => 0,
-            error => 'Media not found or failed to delete'
+            error => 'Media not found'
         }, status => 404);
     }
 
-    # Delete the physical file
+    # Construct full file path
     my $uploads_dir = $ENV{UPLOADS_DIR} || '/usr/src/hello-perld/uploads';
-    my $full_filepath = catfile($uploads_dir, $result->{filepath});
+    my $full_filepath = catfile($uploads_dir, $media_record->{filepath});
 
-    $self->app->log->info("Attempting to delete file: $full_filepath");
+    $self->app->log->info("Attempting to delete media ID: $id");
+    $self->app->log->info("File path: $full_filepath");
     $self->app->log->info("File exists before delete: " . (-f $full_filepath ? "YES" : "NO"));
 
-    if (-f $full_filepath) {
-        $self->app->log->info("File permissions: " . sprintf("%04o", (stat($full_filepath))[2] & 07777));
+    # Check file permissions and existence before attempting deletion
+    my $file_deletion_success = 1;
+    my $file_deletion_error = '';
 
-        if (unlink $full_filepath) {
-            $self->app->log->info("Successfully deleted file: $full_filepath");
-        } else {
+    if (-f $full_filepath) {
+        # Log file permissions for debugging
+        my $perms = sprintf("%04o", (stat($full_filepath))[2] & 07777);
+        $self->app->log->info("File permissions: $perms");
+
+        # Check if directory is writable
+        my $dir = dirname($full_filepath);
+        my $dir_writable = -w $dir;
+        $self->app->log->info("Directory writable: " . ($dir_writable ? "YES" : "NO"));
+
+        # Attempt file deletion
+        unless (unlink $full_filepath) {
+            $file_deletion_success = 0;
+            $file_deletion_error = $!;
             $self->app->log->error("Failed to delete file: $full_filepath - Error: $!");
-            warn "Failed to delete file $full_filepath: $!";
+        } else {
+            $self->app->log->info("Successfully deleted file: $full_filepath");
         }
     } else {
         $self->app->log->warn("File not found for deletion: $full_filepath");
+        # Continue with database deletion even if file doesn't exist (cleanup orphaned records)
     }
 
-    return $self->render(json => {
-        success => 1,
-        message => 'Media deleted successfully'
-    });
+    # Only delete from database if file deletion succeeded (or file didn't exist)
+    if ($file_deletion_success) {
+        my $result = $media_model->delete($id);
+        unless ($result) {
+            $self->app->log->error("Failed to delete media record from database for ID: $id");
+            return $self->render(json => {
+                success => 0,
+                error => 'Failed to delete media record from database'
+            }, status => 500);
+        }
+
+        return $self->render(json => {
+            success => 1,
+            message => 'Media deleted successfully'
+        });
+    } else {
+        # File deletion failed, don't delete database record
+        return $self->render(json => {
+            success => 0,
+            error => "Failed to delete physical file: $file_deletion_error"
+        }, status => 500);
+    }
 }
 
 1;
