@@ -182,9 +182,17 @@ subtest 'tag usage count reflects article associations' => sub {
       ->status_is(200)
       ->json_is('/tag/usage_count' => 1, 'Usage count is 1 after associating with article');
 
-    # Clean up
-    $t->delete_ok("/api/admin/articles/$article_id")->status_is(200);
-    $t->delete_ok("/api/admin/tags/$tag_id")->status_is(200);
+    # Verify tag exists before article deletion
+    $t->get_ok("/api/admin/tags/$tag_id")
+      ->status_is(200, 'Tag exists before article deletion');
+
+    # Delete article (triggers automatic orphaned tag cleanup)
+    $t->delete_ok("/api/admin/articles/$article_id")
+      ->status_is(200, 'Article deleted successfully');
+
+    # Verify tag was automatically deleted due to orphaned tag cleanup
+    $t->get_ok("/api/admin/tags/$tag_id")
+      ->status_is(404, 'Orphaned tag was automatically deleted');
 
     $t->post_ok('/api/auth/logout')->status_is(200);
 };
