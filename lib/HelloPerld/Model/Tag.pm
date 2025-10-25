@@ -636,13 +636,13 @@ sub delete_orphaned_tags {
 
         # Delete orphaned tags
         if (@orphaned_tag_ids) {
-            my $delete_sql = "DELETE FROM tags WHERE id = ?";
+            # Use bulk DELETE with IN clause for better performance
+            my $placeholders = join(',', ('?') x @orphaned_tag_ids);
+            my $delete_sql = "DELETE FROM tags WHERE id IN ($placeholders)";
             my $delete_sth = $dbh->prepare($delete_sql);
 
-            foreach my $tag_id (@orphaned_tag_ids) {
-                $delete_sth->execute($tag_id);
-                $deleted_count++;
-            }
+            $deleted_count = $delete_sth->execute(@orphaned_tag_ids);
+            $delete_sth->finish();
         }
 
         $dbh->commit();
