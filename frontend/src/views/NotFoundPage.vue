@@ -1,16 +1,24 @@
 <template>
-    <div class="content not-found-page">
-        <div class="error-container">
-            <div class="glitch-wrapper">
-                <h1 class="glitch-text" data-text="404">404</h1>
-            </div>
-            <h2>Page Not Found</h2>
-            <p>The page you're looking for doesn't exist in this dimension.</p>
-            <router-link to="/" class="home-link">
-                <span>Return to Reality</span>
-            </router-link>
-        </div>
+  <div class="content not-found-page">
+    <div class="error-container">
+      <div class="glitch-wrapper">
+        <h1
+          class="glitch-text"
+          data-text="404"
+        >
+          404
+        </h1>
+      </div>
+      <h2>Page Not Found</h2>
+      <p>The page you're looking for doesn't exist in this dimension.</p>
+      <router-link
+        to="/"
+        class="home-link"
+      >
+        <span>Return to Reality</span>
+      </router-link>
     </div>
+  </div>
 </template>
 
 <style scoped>

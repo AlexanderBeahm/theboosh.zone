@@ -273,18 +273,6 @@ async function uploadFile() {
             throw new Error(response.data.error || "Upload failed");
         }
     } catch (err) {
-        // Enhanced error logging for debugging
-        console.error('ImageUploader upload error details:', {
-            status: err.response?.status,
-            statusText: err.response?.statusText,
-            data: err.response?.data,
-            headers: err.response?.headers,
-            config: {
-                url: err.config?.url,
-                method: err.config?.method,
-                headers: err.config?.headers
-            }
-        });
 
         error.value =
             err.response?.data?.error ||

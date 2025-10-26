@@ -708,6 +708,7 @@ async function handlePaste(event) {
         else if (file.type === 'image/webp') extension = 'webp';
 
         // Create a new File with proper name and type
+        // eslint-disable-next-line no-undef
         const properFile = new File(
             [file],
             `pasted-image-${timestamp}-${index + 1}.${extension}`,

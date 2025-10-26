@@ -29,21 +29,32 @@ const reset = () => {
 </script>
 
 <template>
-    <div v-if="error" class="error-boundary">
-        <div class="error-content">
-            <h2>Something went wrong</h2>
-            <p class="error-message">
-                {{ error.message }}
-            </p>
-            <details v-if="isDev" class="error-details">
-                <summary>Error Details</summary>
-                <pre>{{ error.stack }}</pre>
-                <p><strong>Component info:</strong> {{ errorInfo }}</p>
-            </details>
-            <button class="retry-button" @click="reset">Try Again</button>
-        </div>
+  <div
+    v-if="error"
+    class="error-boundary"
+  >
+    <div class="error-content">
+      <h2>Something went wrong</h2>
+      <p class="error-message">
+        {{ error.message }}
+      </p>
+      <details
+        v-if="isDev"
+        class="error-details"
+      >
+        <summary>Error Details</summary>
+        <pre>{{ error.stack }}</pre>
+        <p><strong>Component info:</strong> {{ errorInfo }}</p>
+      </details>
+      <button
+        class="retry-button"
+        @click="reset"
+      >
+        Try Again
+      </button>
     </div>
-    <slot v-else />
+  </div>
+  <slot v-else />
 </template>
 
 <style scoped>
