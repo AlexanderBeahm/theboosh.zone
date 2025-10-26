@@ -1,387 +1,303 @@
 <template>
-  <div class="admin-dashboard">
-    <!-- Header -->
-    <div class="dashboard-header">
-      <div class="header-content">
-        <h1>Admin Dashboard</h1>
-        <p class="welcome-message">
-          Welcome back, {{ user?.username || "Admin" }}
-        </p>
-      </div>
-    </div>
-
-    <!-- Stats Overview -->
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number">
-          {{ stats.totalArticles }}
-        </div>
-        <div class="stat-label">
-          Total Articles
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-number">
-          {{ stats.publishedArticles }}
-        </div>
-        <div class="stat-label">
-          Published
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-number">
-          {{ stats.draftArticles }}
-        </div>
-        <div class="stat-label">
-          Drafts
-        </div>
-      </div>
-
-      <div class="stat-card">
-        <div class="stat-number">
-          {{ stats.totalTags }}
-        </div>
-        <div class="stat-label">
-          Tags
-        </div>
-      </div>
-    </div>
-
-    <!-- Filters and Search -->
-    <div class="filters-section">
-      <div class="search-box">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search articles..."
-          class="search-input"
-          @input="debouncedSearch"
-        >
-      </div>
-
-      <div class="filter-controls">
-        <select
-          v-model="statusFilter"
-          class="filter-select"
-          @change="fetchArticles"
-        >
-          <option value="">
-            All Status
-          </option>
-          <option value="published">
-            Published
-          </option>
-          <option value="draft">
-            Drafts
-          </option>
-        </select>
-
-        <select
-          v-model="sortBy"
-          class="filter-select"
-          @change="fetchArticles"
-        >
-          <option value="date_updated">
-            Recently Updated
-          </option>
-          <option value="date_added">
-            Recently Created
-          </option>
-          <option value="published_at">
-            Recently Published
-          </option>
-          <option value="title">
-            Title A-Z
-          </option>
-        </select>
-
-        <button
-          class="media-library-button"
-          @click="$router.push('/admin/media')"
-        >
-          Media Library
-        </button>
-
-        <button
-          class="create-article-button"
-          @click="showCreateArticle = true"
-        >
-          New Article
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div
-      v-if="isLoading"
-      class="loading-container"
-    >
-      <div class="loading-spinner" />
-      <p>Loading articles...</p>
-    </div>
-
-    <!-- Error State -->
-    <div
-      v-else-if="error"
-      class="error-container"
-    >
-      <div class="error-icon">
-        ⚠️
-      </div>
-      <h3>Failed to load articles</h3>
-      <p>{{ error }}</p>
-      <button
-        class="retry-button"
-        @click="fetchArticles"
-      >
-        Try Again
-      </button>
-    </div>
-
-    <!-- Articles Table -->
-    <div
-      v-else
-      class="articles-section"
-    >
-      <div class="section-header">
-        <h2>Articles ({{ pagination.total_count }})</h2>
-      </div>
-
-      <!-- Empty State -->
-      <div
-        v-if="articles.length === 0"
-        class="empty-container"
-      >
-        <div class="empty-icon">
-          📝
-        </div>
-        <h3>No articles found</h3>
-        <p v-if="searchQuery">
-          No articles match your search "{{ searchQuery }}".
-        </p>
-        <p v-else-if="statusFilter">
-          No {{ statusFilter }} articles found.
-        </p>
-        <p v-else>
-          Get started by creating your first article!
-        </p>
-        <button
-          class="create-button"
-          @click="showCreateArticle = true"
-        >
-          Create Article
-        </button>
-      </div>
-
-      <!-- Articles List -->
-      <div
-        v-else
-        class="articles-table"
-      >
-        <div class="table-header">
-          <div class="col-title">
-            Title
-          </div>
-          <div class="col-status">
-            Status
-          </div>
-          <div class="col-updated">
-            Updated
-          </div>
-          <div class="col-actions">
-            Actions
-          </div>
-        </div>
-
-        <div
-          v-for="article in articles"
-          :key="article.id"
-          class="table-row"
-        >
-          <div class="col-title">
-            <div class="article-info">
-              <h4 class="article-title">
-                {{ article.title }}
-              </h4>
-              <p
-                v-if="article.excerpt"
-                class="article-excerpt"
-              >
-                {{ article.excerpt }}
-              </p>
-              <div class="article-meta">
-                <span class="slug">/{{ article.slug }}</span>
-                <div
-                  v-if="
-                    article.tags && article.tags.length > 0
-                  "
-                  class="tags"
-                >
-                  <span
-                    v-for="tag in article.tags"
-                    :key="tag.id"
-                    class="tag"
-                  >
-                    #{{ tag.name }}
-                  </span>
+    <div class="admin-dashboard">
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">
+                    {{ stats.totalArticles }}
                 </div>
-              </div>
+                <div class="stat-label">Total Articles</div>
             </div>
-          </div>
 
-          <div class="col-status">
-            <span
-              class="status-badge"
-              :class="{
-                published: article.is_published,
-                draft: !article.is_published,
-              }"
-            >
-              {{ article.is_published ? "Published" : "Draft" }}
-            </span>
-            <div
-              v-if="article.published_at"
-              class="publish-date"
-            >
-              {{ formatDate(article.published_at) }}
+            <div class="stat-card">
+                <div class="stat-number">
+                    {{ stats.publishedArticles }}
+                </div>
+                <div class="stat-label">Published</div>
             </div>
-          </div>
 
-          <div class="col-updated">
-            {{ formatDate(article.date_updated) }}
-          </div>
-
-          <div class="col-actions">
-            <div class="action-buttons">
-              <button
-                class="action-button edit-button"
-                title="Edit Article"
-                aria-label="Edit Article"
-                @click="editArticle(article)"
-              >
-                Edit
-              </button>
-
-              <button
-                class="action-button view-button"
-                title="View Article"
-                aria-label="View Article"
-                @click="viewArticle(article)"
-              >
-                View
-              </button>
-
-              <button
-                class="action-button publish-button"
-                :title="
-                  article.is_published
-                    ? 'Unpublish Article'
-                    : 'Publish Article'
-                "
-                :aria-label="
-                  article.is_published
-                    ? 'Unpublish Article'
-                    : 'Publish Article'
-                "
-                @click="togglePublish(article)"
-              >
-                {{
-                  article.is_published
-                    ? "Unpublish"
-                    : "Publish"
-                }}
-              </button>
-
-              <button
-                class="action-button delete-button"
-                title="Delete Article"
-                aria-label="Delete Article"
-                @click="confirmDelete(article)"
-              >
-                Delete
-              </button>
+            <div class="stat-card">
+                <div class="stat-number">
+                    {{ stats.draftArticles }}
+                </div>
+                <div class="stat-label">Drafts</div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Pagination -->
-      <div
-        v-if="pagination.total_pages > 1"
-        class="pagination"
-      >
-        <button
-          class="pagination-button"
-          :disabled="!pagination.has_prev"
-          @click="changePage(pagination.current_page - 1)"
-        >
-          ← Previous
-        </button>
-
-        <div class="pagination-info">
-          <span class="pagination-current">{{
-            pagination.current_page
-          }}</span>
-          <span class="pagination-separator">of</span>
-          <span class="pagination-total">{{
-            pagination.total_pages
-          }}</span>
+            <div class="stat-card">
+                <div class="stat-number">
+                    {{ stats.totalTags }}
+                </div>
+                <div class="stat-label">Tags</div>
+            </div>
         </div>
 
-        <button
-          class="pagination-button"
-          :disabled="!pagination.has_next"
-          @click="changePage(pagination.current_page + 1)"
-        >
-          Next →
-        </button>
-      </div>
-    </div>
+        <!-- Filters and Search -->
+        <div class="filters-section">
+            <div class="search-box">
+                <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search articles..."
+                    class="search-input"
+                    @input="debouncedSearch"
+                />
+            </div>
 
-    <!-- Create/Edit Article Modal -->
-    <ArticleEditor
-      v-if="showCreateArticle || editingArticle"
-      :article="editingArticle"
-      :is-visible="showCreateArticle || !!editingArticle"
-      @close="closeEditor"
-      @saved="handleArticleSaved"
-    />
+            <div class="filter-controls">
+                <select
+                    v-model="statusFilter"
+                    class="filter-select"
+                    @change="fetchArticles"
+                >
+                    <option value="">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="draft">Drafts</option>
+                </select>
 
-    <!-- Delete Confirmation Modal -->
-    <div
-      v-if="deleteConfirmation"
-      class="modal-overlay"
-      @click="cancelDelete"
-    >
-      <div
-        class="modal-content"
-        @click.stop
-      >
-        <h3>Delete Article</h3>
-        <p>
-          Are you sure you want to delete "<strong>{{
-            deleteConfirmation.title
-          }}</strong>"? This action cannot be undone.
-        </p>
-        <div class="modal-actions">
-          <button
-            class="cancel-button"
+                <select
+                    v-model="sortBy"
+                    class="filter-select"
+                    @change="fetchArticles"
+                >
+                    <option value="date_updated">Recently Updated</option>
+                    <option value="date_added">Recently Created</option>
+                    <option value="published_at">Recently Published</option>
+                    <option value="title">Title A-Z</option>
+                </select>
+
+                <button
+                    class="media-library-button"
+                    @click="$router.push('/admin/media')"
+                >
+                    Media Library
+                </button>
+
+                <button
+                    class="create-article-button"
+                    @click="showCreateArticle = true"
+                >
+                    New Article
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div v-if="isLoading" class="loading-container">
+            <div class="loading-spinner" />
+            <p>Loading articles...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h3>Failed to load articles</h3>
+            <p>{{ error }}</p>
+            <button class="retry-button" @click="fetchArticles">
+                Try Again
+            </button>
+        </div>
+
+        <!-- Articles Table -->
+        <div v-else class="articles-section">
+            <div class="section-header">
+                <h2>Articles ({{ pagination.total_count }})</h2>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="articles.length === 0" class="empty-container">
+                <div class="empty-icon">📝</div>
+                <h3>No articles found</h3>
+                <p v-if="searchQuery">
+                    No articles match your search "{{ searchQuery }}".
+                </p>
+                <p v-else-if="statusFilter">
+                    No {{ statusFilter }} articles found.
+                </p>
+                <p v-else>Get started by creating your first article!</p>
+                <button class="create-button" @click="showCreateArticle = true">
+                    Create Article
+                </button>
+            </div>
+
+            <!-- Articles List -->
+            <div v-else class="articles-table">
+                <div class="table-header">
+                    <div class="col-title">Title</div>
+                    <div class="col-status">Status</div>
+                    <div class="col-updated">Updated</div>
+                    <div class="col-actions">Actions</div>
+                </div>
+
+                <div
+                    v-for="article in articles"
+                    :key="article.id"
+                    class="table-row"
+                >
+                    <div class="col-title">
+                        <div class="article-info">
+                            <h4 class="article-title">
+                                {{ article.title }}
+                            </h4>
+                            <p v-if="article.excerpt" class="article-excerpt">
+                                {{ article.excerpt }}
+                            </p>
+                            <div class="article-meta">
+                                <span class="slug">/{{ article.slug }}</span>
+                                <div
+                                    v-if="
+                                        article.tags && article.tags.length > 0
+                                    "
+                                    class="tags"
+                                >
+                                    <span
+                                        v-for="tag in article.tags"
+                                        :key="tag.id"
+                                        class="tag"
+                                    >
+                                        #{{ tag.name }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-status">
+                        <span
+                            class="status-badge"
+                            :class="{
+                                published: article.is_published,
+                                draft: !article.is_published,
+                            }"
+                        >
+                            {{ article.is_published ? "Published" : "Draft" }}
+                        </span>
+                        <div v-if="article.published_at" class="publish-date">
+                            {{ formatDate(article.published_at) }}
+                        </div>
+                    </div>
+
+                    <div class="col-updated">
+                        {{ formatDate(article.date_updated) }}
+                    </div>
+
+                    <div class="col-actions">
+                        <div class="action-buttons">
+                            <button
+                                class="action-button edit-button"
+                                title="Edit Article"
+                                aria-label="Edit Article"
+                                @click="editArticle(article)"
+                            >
+                                Edit
+                            </button>
+
+                            <button
+                                class="action-button view-button"
+                                title="View Article"
+                                aria-label="View Article"
+                                @click="viewArticle(article)"
+                            >
+                                View
+                            </button>
+
+                            <button
+                                class="action-button publish-button"
+                                :title="
+                                    article.is_published
+                                        ? 'Unpublish Article'
+                                        : 'Publish Article'
+                                "
+                                :aria-label="
+                                    article.is_published
+                                        ? 'Unpublish Article'
+                                        : 'Publish Article'
+                                "
+                                @click="togglePublish(article)"
+                            >
+                                {{
+                                    article.is_published
+                                        ? "Unpublish"
+                                        : "Publish"
+                                }}
+                            </button>
+
+                            <button
+                                class="action-button delete-button"
+                                title="Delete Article"
+                                aria-label="Delete Article"
+                                @click="confirmDelete(article)"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="pagination.total_pages > 1" class="pagination">
+                <button
+                    class="pagination-button"
+                    :disabled="!pagination.has_prev"
+                    @click="changePage(pagination.current_page - 1)"
+                >
+                    ← Previous
+                </button>
+
+                <div class="pagination-info">
+                    <span class="pagination-current">{{
+                        pagination.current_page
+                    }}</span>
+                    <span class="pagination-separator">of</span>
+                    <span class="pagination-total">{{
+                        pagination.total_pages
+                    }}</span>
+                </div>
+
+                <button
+                    class="pagination-button"
+                    :disabled="!pagination.has_next"
+                    @click="changePage(pagination.current_page + 1)"
+                >
+                    Next →
+                </button>
+            </div>
+        </div>
+
+        <!-- Create/Edit Article Modal -->
+        <ArticleEditor
+            v-if="showCreateArticle || editingArticle"
+            :article="editingArticle"
+            :is-visible="showCreateArticle || !!editingArticle"
+            @close="closeEditor"
+            @saved="handleArticleSaved"
+        />
+
+        <!-- Delete Confirmation Modal -->
+        <div
+            v-if="deleteConfirmation"
+            class="modal-overlay"
             @click="cancelDelete"
-          >
-            Cancel
-          </button>
-          <button
-            class="delete-button"
-            @click="deleteArticle"
-          >
-            Delete
-          </button>
+        >
+            <div class="modal-content" @click.stop>
+                <h3>Delete Article</h3>
+                <p>
+                    Are you sure you want to delete "<strong>{{
+                        deleteConfirmation.title
+                    }}</strong
+                    >"? This action cannot be undone.
+                </p>
+                <div class="modal-actions">
+                    <button class="cancel-button" @click="cancelDelete">
+                        Cancel
+                    </button>
+                    <button class="delete-button" @click="deleteArticle">
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -612,71 +528,6 @@ onMounted(async () => {
     min-height: 100vh;
 }
 
-/* Header - Retro-Futuristic */
-.dashboard-header {
-    background: var(--gradient-metallic);
-    color: var(--light-text);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
-    box-shadow:
-        var(--shadow-xl),
-        0 0 40px rgba(255, 105, 180, 0.15);
-    position: relative;
-    overflow: hidden;
-}
-
-.dashboard-header::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 30px 30px;
-    pointer-events: none;
-}
-
-.dashboard-header::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--gradient-retro-secondary);
-    z-index: 1;
-}
-
-.header-content {
-    text-align: center;
-    position: relative;
-    z-index: 2;
-}
-
-.dashboard-header h1 {
-    font-size: 2.75rem;
-    margin: 0 0 var(--spacing-xs) 0;
-    font-weight: 700;
-    background: var(--gradient-retro-secondary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
-}
-
-.welcome-message {
-    margin: 0;
-    color: var(--light-text);
-    font-size: 1.125rem;
-    font-weight: 500;
-}
-
 /* Stats Grid - Retro-Futuristic */
 .stats-grid {
     display: grid;
@@ -698,7 +549,7 @@ onMounted(async () => {
 }
 
 .stat-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -2px;
     left: -2px;
@@ -742,6 +593,7 @@ onMounted(async () => {
     letter-spacing: 0.8px;
     position: relative;
     z-index: 1;
+    background: var(--card-bg);
 }
 
 /* Filters - Retro-Futuristic */
@@ -760,7 +612,7 @@ onMounted(async () => {
 }
 
 .filters-section::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -802,6 +654,7 @@ onMounted(async () => {
     display: flex;
     gap: var(--spacing-md);
     align-items: center;
+    background: var(--card-bg);
 }
 
 .filter-select {
@@ -840,18 +693,23 @@ onMounted(async () => {
 
 .media-library-button::before,
 .create-article-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
 .media-library-button {
-    background: linear-gradient(135deg, #36454F, #708090);
+    background: linear-gradient(135deg, #36454f, #708090);
     border-color: var(--steel-gray);
 }
 
@@ -924,8 +782,12 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .empty-icon,
@@ -968,7 +830,7 @@ onMounted(async () => {
 }
 
 .articles-section::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -986,7 +848,7 @@ onMounted(async () => {
 }
 
 .section-header::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -1034,7 +896,7 @@ onMounted(async () => {
 }
 
 .table-header::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 0;
@@ -1042,6 +904,13 @@ onMounted(async () => {
     height: 1px;
     background: var(--gradient-retro-secondary);
     opacity: 0.5;
+}
+
+.table-header .col-title,
+.table-header .col-status,
+.table-header .col-updated,
+.table-header .col-actions {
+    background: var(--darker-bg);
 }
 
 .table-row {
@@ -1055,7 +924,7 @@ onMounted(async () => {
 }
 
 .table-row::before {
-    content: '';
+    content: "";
     position: absolute;
     left: -2px;
     top: 0;
@@ -1106,7 +975,9 @@ onMounted(async () => {
 }
 
 .slug {
-    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
+    font-family:
+        "SF Mono", "Menlo", "Monaco", "Inconsolata", "Roboto Mono", "Consolas",
+        monospace;
     background: var(--darker-bg);
     color: var(--primary-color);
     padding: 3px 6px;
@@ -1137,13 +1008,18 @@ onMounted(async () => {
 }
 
 .tag::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -1173,13 +1049,18 @@ onMounted(async () => {
 }
 
 .status-badge::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -1189,13 +1070,13 @@ onMounted(async () => {
 
 .status-badge.published {
     background: rgba(34, 197, 94, 0.15);
-    color: #22C55E;
+    color: #22c55e;
     border-color: rgba(34, 197, 94, 0.3);
     box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
 }
 
 .status-badge.published:hover {
-    background: #22C55E;
+    background: #22c55e;
     color: var(--bg-color);
     box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
 }
@@ -1246,13 +1127,18 @@ onMounted(async () => {
 }
 
 .action-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -1290,14 +1176,14 @@ onMounted(async () => {
 
 .publish-button {
     background: rgba(34, 197, 94, 0.1);
-    color: #22C55E;
+    color: #22c55e;
     border-color: rgba(34, 197, 94, 0.3);
 }
 
 .publish-button:hover {
-    background: #22C55E;
+    background: #22c55e;
     color: var(--bg-color);
-    border-color: #22C55E;
+    border-color: #22c55e;
     box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
     transform: translateY(-1px);
 }
@@ -1329,7 +1215,7 @@ onMounted(async () => {
 }
 
 .pagination::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -1356,13 +1242,18 @@ onMounted(async () => {
 }
 
 .pagination-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -1473,7 +1364,7 @@ onMounted(async () => {
 }
 
 .modal-content::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -1484,7 +1375,7 @@ onMounted(async () => {
 }
 
 .modal-content::after {
-    content: '';
+    content: "";
     position: absolute;
     top: -2px;
     left: -2px;
@@ -1545,13 +1436,18 @@ onMounted(async () => {
 
 .cancel-button::before,
 .modal-content .delete-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 

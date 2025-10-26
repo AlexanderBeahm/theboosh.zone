@@ -73,9 +73,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-lg);
-    background: var(
-        --gradient-metallic
-    ); /* Retro-futuristic metallic gradient */
+    background: var(--gradient-retro-primary-reverse);
     border-bottom: 3px solid var(--primary-color);
     box-shadow: var(--shadow-lg);
     position: relative;

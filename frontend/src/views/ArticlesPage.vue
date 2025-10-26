@@ -1,143 +1,114 @@
 <template>
-  <div class="articles-page">
-    <div class="page-header">
-      <h1>Articles</h1>
-      <p class="page-description">
-        The articles below are written with my own personal opinions and
-        offer no reflection on any other associations I have.
-      </p>
-    </div>
-
-    <!-- Tag Filter Section -->
-    <div
-      v-if="popularTags.length > 0"
-      class="filter-section"
-    >
-      <h3>Filter by Tag</h3>
-      <div class="tag-filters">
-        <button
-          class="tag-filter"
-          :class="{ active: !selectedTag }"
-          @click="clearTagFilter"
-        >
-          All Articles ({{ totalCount }})
-        </button>
-        <button
-          v-for="tag in popularTags"
-          :key="tag.id"
-          class="tag-filter"
-          :class="{ active: selectedTag === tag.slug }"
-          @click="filterByTag(tag.slug)"
-        >
-          {{ tag.name }} ({{ tag.usage_count }})
-        </button>
-      </div>
-    </div>
-
-    <!-- Loading State -->
-    <div
-      v-if="isLoading"
-      class="loading-container"
-    >
-      <div class="loading-spinner" />
-      <p>Loading articles...</p>
-    </div>
-
-    <!-- Error State -->
-    <div
-      v-else-if="error"
-      class="error-container"
-    >
-      <h3>Failed to load articles</h3>
-      <p>{{ error }}</p>
-      <button
-        class="retry-button"
-        @click="fetchArticles"
-      >
-        Try Again
-      </button>
-    </div>
-
-    <!-- Empty State -->
-    <div
-      v-else-if="articles.length === 0"
-      class="empty-container"
-    >
-      <h3>No articles found</h3>
-      <p v-if="selectedTag">
-        No articles found with the tag "{{ selectedTag }}".
-        <button
-          class="link-button"
-          @click="clearTagFilter"
-        >
-          View all articles
-        </button>
-      </p>
-      <p v-else>
-        Check back soon for new content!
-      </p>
-    </div>
-
-    <!-- Articles List -->
-    <div
-      v-else
-      class="articles-container"
-    >
-      <div class="articles-grid">
-        <ArticleCard
-          v-for="article in articles"
-          :key="article.id"
-          :article="article"
-          @click="navigateToArticle(article.slug)"
-          @tag-click="filterByTag"
-        />
-      </div>
-
-      <!-- Pagination -->
-      <div
-        v-if="pagination.total_pages > 1"
-        class="pagination"
-      >
-        <button
-          class="pagination-button"
-          :disabled="!pagination.has_prev"
-          @click="changePage(pagination.current_page - 1)"
-        >
-          ← Previous
-        </button>
-
-        <div class="pagination-info">
-          <span class="pagination-current">{{
-            pagination.current_page
-          }}</span>
-          <span class="pagination-separator">of</span>
-          <span class="pagination-total">{{
-            pagination.total_pages
-          }}</span>
+    <div class="articles-page">
+        <div class="page-header">
+            <h1>Articles</h1>
+            <p class="page-description">
+                The articles below are written with my own personal opinions and
+                offer no reflection on any other associations I have.
+            </p>
         </div>
 
-        <button
-          class="pagination-button"
-          :disabled="!pagination.has_next"
-          @click="changePage(pagination.current_page + 1)"
-        >
-          Next →
-        </button>
-      </div>
+        <!-- Tag Filter Section -->
+        <div v-if="popularTags.length > 0" class="filter-section">
+            <h3>Filter by Tag</h3>
+            <div class="tag-filters">
+                <button
+                    class="tag-filter"
+                    :class="{ active: !selectedTag }"
+                    @click="clearTagFilter"
+                >
+                    All Articles ({{ totalCount }})
+                </button>
+                <button
+                    v-for="tag in popularTags"
+                    :key="tag.id"
+                    class="tag-filter"
+                    :class="{ active: selectedTag === tag.slug }"
+                    @click="filterByTag(tag.slug)"
+                >
+                    {{ tag.name }} ({{ tag.usage_count }})
+                </button>
+            </div>
+        </div>
 
-      <!-- Results Info -->
-      <div
-        v-if="pagination.total_count > 0"
-        class="results-info"
-      >
-        <p>
-          Showing {{ articles.length }} of
-          {{ pagination.total_count }} articles
-          <span v-if="selectedTag">with tag "{{ selectedTag }}"</span>
-        </p>
-      </div>
+        <!-- Loading State -->
+        <div v-if="isLoading" class="loading-container">
+            <div class="loading-spinner" />
+            <p>Loading articles...</p>
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-container">
+            <h3>Failed to load articles</h3>
+            <p>{{ error }}</p>
+            <button class="retry-button" @click="fetchArticles">
+                Try Again
+            </button>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="articles.length === 0" class="empty-container">
+            <h3>No articles found</h3>
+            <p v-if="selectedTag">
+                No articles found with the tag "{{ selectedTag }}".
+                <button class="link-button" @click="clearTagFilter">
+                    View all articles
+                </button>
+            </p>
+            <p v-else>Check back soon for new content!</p>
+        </div>
+
+        <!-- Articles List -->
+        <div v-else class="articles-container">
+            <div class="articles-grid">
+                <ArticleCard
+                    v-for="article in articles"
+                    :key="article.id"
+                    :article="article"
+                    @click="navigateToArticle(article.slug)"
+                    @tag-click="filterByTag"
+                />
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="pagination.total_pages > 1" class="pagination">
+                <button
+                    class="pagination-button"
+                    :disabled="!pagination.has_prev"
+                    @click="changePage(pagination.current_page - 1)"
+                >
+                    ← Previous
+                </button>
+
+                <div class="pagination-info">
+                    <span class="pagination-current">{{
+                        pagination.current_page
+                    }}</span>
+                    <span class="pagination-separator">of</span>
+                    <span class="pagination-total">{{
+                        pagination.total_pages
+                    }}</span>
+                </div>
+
+                <button
+                    class="pagination-button"
+                    :disabled="!pagination.has_next"
+                    @click="changePage(pagination.current_page + 1)"
+                >
+                    Next →
+                </button>
+            </div>
+
+            <!-- Results Info -->
+            <div v-if="pagination.total_count > 0" class="results-info">
+                <p>
+                    Showing {{ articles.length }} of
+                    {{ pagination.total_count }} articles
+                    <span v-if="selectedTag">with tag "{{ selectedTag }}"</span>
+                </p>
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -281,13 +252,17 @@ onMounted(async () => {
 }
 
 .page-header::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;
     width: 200px;
     height: 200px;
-    background: radial-gradient(circle, rgba(255, 105, 180, 0.1) 0%, transparent 70%);
+    background: radial-gradient(
+        circle,
+        rgba(255, 105, 180, 0.1) 0%,
+        transparent 70%
+    );
     transform: translate(-50%, -50%);
     border-radius: 50%;
     animation: float 8s ease-in-out infinite;
@@ -330,7 +305,7 @@ onMounted(async () => {
 }
 
 .filter-section::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -342,6 +317,7 @@ onMounted(async () => {
 .filter-section h3 {
     margin-bottom: var(--spacing-md);
     color: var(--text-primary);
+    background: var(--card-bg);
     font-weight: 600;
     font-size: 1.25rem;
 }
@@ -350,6 +326,7 @@ onMounted(async () => {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-sm);
+    background: var(--card-bg);
 }
 
 .tag-filter {
@@ -367,13 +344,18 @@ onMounted(async () => {
 }
 
 .tag-filter::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -437,13 +419,22 @@ onMounted(async () => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes float {
-    0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
-    50% { transform: translate(-50%, -50%) translateY(-10px); }
+    0%,
+    100% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-10px);
+    }
 }
 
 .error-icon,
@@ -522,13 +513,18 @@ onMounted(async () => {
 }
 
 .pagination-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -580,6 +576,10 @@ onMounted(async () => {
     background: var(--card-bg);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
+}
+
+.results-info p {
+    background: var(--card-bg);
 }
 
 /* Responsive Design - Retro-Futuristic Theme */

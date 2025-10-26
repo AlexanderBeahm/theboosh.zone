@@ -1,74 +1,72 @@
 <template>
-  <div class="content about-page">
-    <div class="page-header">
-      <h1>TheBoosh.Zone</h1>
-      <p class="subtitle">
-        A retro-futuristic digital dimension
-      </p>
-    </div>
+    <div class="content about-page">
+        <div class="page-header">
+            <h1>TheBoosh.Zone</h1>
+            <p class="subtitle">Welcome to my zone</p>
+        </div>
 
-    <div class="about-content">
-      <section class="info-card">
-        <div class="card-header">
-          <h2>Alex Beahm</h2>
-          <div class="card-accent" />
-        </div>
-        <div class="card-content">
-          <ul class="social-links">
-            <li>
-              <a
-                href="https://github.com/AlexanderBeahm"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="link-github"
-              >
-                <span class="link-icon">⚡</span>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="link-linkedin"
-              >
-                <span class="link-icon">💼</span>
-                LinkedIn
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        <div class="about-content">
+            <section class="info-card">
+                <div class="card-header">
+                    <h2>Alex Beahm</h2>
+                    <div class="card-accent" />
+                </div>
+                <div class="card-content">
+                    <ul class="social-links">
+                        <li>
+                            <a
+                                href="https://github.com/AlexanderBeahm"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="link-github"
+                            >
+                                <span class="link-icon">⚡</span>
+                                GitHub
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="link-linkedin"
+                            >
+                                <span class="link-icon">💼</span>
+                                LinkedIn
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </section>
 
-      <section class="info-card">
-        <div class="card-header">
-          <h2>Technology Stack</h2>
-          <div class="card-accent" />
+            <section class="info-card">
+                <div class="card-header">
+                    <h2>Technology Stack</h2>
+                    <div class="card-accent" />
+                </div>
+                <div class="card-content">
+                    <ul class="tech-list">
+                        <li>
+                            <span class="tech-icon">🐪</span>
+                            Perl with Mojolicious framework
+                        </li>
+                        <li>
+                            <span class="tech-icon">⚡</span>
+                            Vue 3 for frontend interactivity
+                        </li>
+                        <li>
+                            <span class="tech-icon">🐘</span>
+                            PostgreSQL for database
+                        </li>
+                        <li>
+                            <span class="tech-icon">🐳</span>
+                            Docker for containerization
+                        </li>
+                    </ul>
+                </div>
+            </section>
         </div>
-        <div class="card-content">
-          <ul class="tech-list">
-            <li>
-              <span class="tech-icon">🐪</span>
-              Perl with Mojolicious framework
-            </li>
-            <li>
-              <span class="tech-icon">⚡</span>
-              Vue 3 for frontend interactivity
-            </li>
-            <li>
-              <span class="tech-icon">🐘</span>
-              PostgreSQL for database
-            </li>
-            <li>
-              <span class="tech-icon">🐳</span>
-              Docker for containerization
-            </li>
-          </ul>
-        </div>
-      </section>
     </div>
-  </div>
 </template>
 
 <style scoped>
@@ -81,21 +79,29 @@
 
 /* Animated retro-futuristic background */
 .content::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -50%;
     left: -50%;
     right: -50%;
     bottom: -50%;
     background:
-        radial-gradient(circle at 30% 20%, rgba(255, 105, 180, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 70% 80%, rgba(255, 105, 180, 0.08) 0%, transparent 50%);
+        radial-gradient(
+            circle at 30% 20%,
+            rgba(255, 105, 180, 0.08) 0%,
+            transparent 50%
+        ),
+        radial-gradient(
+            circle at 70% 80%,
+            rgba(255, 105, 180, 0.08) 0%,
+            transparent 50%
+        );
     animation: float 25s ease-in-out infinite;
     z-index: 0;
 }
 
 .content::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -110,15 +116,28 @@
 }
 
 @keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(15px, -15px) rotate(0.5deg); }
-    50% { transform: translate(-8px, 8px) rotate(-0.5deg); }
-    75% { transform: translate(-15px, -8px) rotate(0.5deg); }
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(15px, -15px) rotate(0.5deg);
+    }
+    50% {
+        transform: translate(-8px, 8px) rotate(-0.5deg);
+    }
+    75% {
+        transform: translate(-15px, -8px) rotate(0.5deg);
+    }
 }
 
 @keyframes slidePattern {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(40px, 40px); }
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(40px, 40px);
+    }
 }
 
 .about-page {
@@ -187,7 +206,7 @@
 }
 
 .info-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -2px;
     left: -2px;
@@ -214,6 +233,7 @@
 .card-header {
     padding: var(--spacing-lg) var(--spacing-lg) 0;
     position: relative;
+    background: var(--card-bg);
 }
 
 .card-header h2 {
@@ -238,23 +258,33 @@
 }
 
 .card-accent::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
     animation: shimmer 2s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
 }
 
 .card-content {
     padding: 0 var(--spacing-lg) var(--spacing-lg);
+    background: var(--card-bg);
 }
 
 .social-links,
@@ -262,6 +292,7 @@
     list-style: none;
     padding: 0;
     margin: 0;
+    background: var(--card-bg);
 }
 
 .social-links li,
@@ -292,13 +323,18 @@
 }
 
 .social-links a::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.1),
+        transparent
+    );
     transition: left 0.6s;
 }
 

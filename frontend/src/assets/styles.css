@@ -10,7 +10,7 @@
     --bg-color: #1f2527; /* Dark charcoal - primary background */
     --card-bg: #2a2f31; /* Slightly lighter for cards and sections */
     --light-bg: #364043; /* Dark slate for secondary backgrounds */
-    --dark-bg: #36454F; /* Dark Slate Gray for headers/nav */
+    --dark-bg: #36454f; /* Dark Slate Gray for headers/nav */
     --darker-bg: #1a1d1f; /* Deeper black for contrast areas */
 
     /* Text Colors */
@@ -21,11 +21,11 @@
     --text-color: #ffffff; /* Alias for text-primary, used by markdown renderer */
 
     /* Industrial Retrofuturistic Accent Colors */
-    --accent-amber: #CC8800; /* Muted Amber - warnings, progress */
+    --accent-amber: #cc8800; /* Muted Amber - warnings, progress */
     --accent-orange: #ff4500; /* Red-Orange - errors, alerts */
     --steel-gray: #708090; /* Steel Gray - secondary UI elements */
-    --chrome-silver: #B8BCC8; /* Chrome Silver - hover states, highlights */
-    --dark-slate: #36454F; /* Dark Slate Gray - backgrounds, borders */
+    --chrome-silver: #b8bcc8; /* Chrome Silver - hover states, highlights */
+    --dark-slate: #36454f; /* Dark Slate Gray - backgrounds, borders */
 
     /* Code Colors - Dark Theme */
     --code-bg: #1a1d1f; /* Deep black for code blocks */
@@ -41,7 +41,7 @@
     --success-text: #ff69b4;
 
     --warning-bg: rgba(204, 136, 0, 0.1);
-    --warning-text: #CC8800;
+    --warning-text: #cc8800;
 
     /* Border and Shadow - Enhanced for Dark Theme */
     --border-color: #444a4d; /* Dark gray borders */
@@ -51,9 +51,10 @@
     --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 
     /* Industrial Retrofuturistic Gradients */
-    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #36454F);
-    --gradient-retro-secondary: linear-gradient(135deg, #ff69b4, #B8BCC8);
-    --gradient-metallic: linear-gradient(135deg, #36454F, #708090, #B8BCC8);
+    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #36454f);
+    --gradient-retro-primary-reverse: linear-gradient(135deg, #36454f, #ff69b4);
+    --gradient-retro-secondary: linear-gradient(135deg, #ff69b4, #b8bcc8);
+    --gradient-metallic: linear-gradient(135deg, #36454f, #708090);
 
     /* Spacing */
     --spacing-xs: 0.5rem;

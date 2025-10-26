@@ -1,89 +1,65 @@
 <template>
-  <div class="home-page">
-    <!-- Hero Header -->
-    <div class="hero-header">
-      <h1>TheBoosh.Zone</h1>
-    </div>
-
-    <!-- Articles Feed -->
-    <div class="articles-feed">
-      <!-- Loading State (Initial) -->
-      <div
-        v-if="isInitialLoading"
-        class="loading-container"
-      >
-        <div class="loading-spinner" />
-        <p>Loading articles...</p>
-      </div>
-
-      <!-- Error State -->
-      <div
-        v-else-if="error"
-        class="error-container"
-      >
-        <h3>Failed to load articles</h3>
-        <p>{{ error }}</p>
-        <button
-          class="retry-button"
-          @click="fetchInitialArticles"
-        >
-          Try Again
-        </button>
-      </div>
-
-      <!-- Empty State -->
-      <div
-        v-else-if="articles.length === 0"
-        class="empty-container"
-      >
-        <h3>No articles yet</h3>
-        <p>Check back soon for new content!</p>
-      </div>
-
-      <!-- Articles List -->
-      <div
-        v-else
-        class="articles-list"
-      >
-        <ArticleCard
-          v-for="article in articles"
-          :key="article.id"
-          :article="article"
-          @click="navigateToArticle(article.slug)"
-          @tag-click="navigateToTag"
-        />
-
-        <!-- Loading More Indicator -->
-        <div
-          v-if="isLoadingMore"
-          class="loading-more"
-        >
-          <div class="loading-spinner" />
-          <p>Loading more articles...</p>
+    <div class="home-page">
+        <!-- Hero Header -->
+        <div class="hero-header">
+            <h1>TheBoosh.Zone</h1>
         </div>
 
-        <!-- End of Articles -->
-        <div
-          v-else-if="!hasMore && articles.length > 0"
-          class="end-message"
-        >
-          <p>You've reached the end of the articles</p>
-          <router-link
-            to="/articles"
-            class="view-all-link"
-          >
-            View all articles →
-          </router-link>
-        </div>
+        <!-- Articles Feed -->
+        <div class="articles-feed">
+            <!-- Loading State (Initial) -->
+            <div v-if="isInitialLoading" class="loading-container">
+                <div class="loading-spinner" />
+                <p>Loading articles...</p>
+            </div>
 
-        <!-- Intersection Observer Sentinel -->
-        <div
-          ref="sentinel"
-          class="sentinel"
-        />
-      </div>
+            <!-- Error State -->
+            <div v-else-if="error" class="error-container">
+                <h3>Failed to load articles</h3>
+                <p>{{ error }}</p>
+                <button class="retry-button" @click="fetchInitialArticles">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="articles.length === 0" class="empty-container">
+                <h3>No articles yet</h3>
+                <p>Check back soon for new content!</p>
+            </div>
+
+            <!-- Articles List -->
+            <div v-else class="articles-list">
+                <ArticleCard
+                    v-for="article in articles"
+                    :key="article.id"
+                    :article="article"
+                    @click="navigateToArticle(article.slug)"
+                    @tag-click="navigateToTag"
+                />
+
+                <!-- Loading More Indicator -->
+                <div v-if="isLoadingMore" class="loading-more">
+                    <div class="loading-spinner" />
+                    <p>Loading more articles...</p>
+                </div>
+
+                <!-- End of Articles -->
+                <div
+                    v-else-if="!hasMore && articles.length > 0"
+                    class="end-message"
+                >
+                    <p>You've reached the end of the articles</p>
+                    <router-link to="/articles" class="view-all-link">
+                        View all articles →
+                    </router-link>
+                </div>
+
+                <!-- Intersection Observer Sentinel -->
+                <div ref="sentinel" class="sentinel" />
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -238,7 +214,11 @@ onUnmounted(() => {
         linear-gradient(90deg, rgba(255, 105, 180, 0.03) 1px, transparent 1px),
         linear-gradient(rgba(255, 105, 180, 0.03) 1px, transparent 1px),
         /* Main gradient background */
-        radial-gradient(ellipse at center, var(--card-bg) 0%, var(--bg-color) 70%);
+            radial-gradient(
+                ellipse at center,
+                var(--card-bg) 0%,
+                var(--bg-color) 70%
+            );
     background-size:
         40px 40px,
         40px 40px,
@@ -249,30 +229,52 @@ onUnmounted(() => {
 
 /* Animated background elements */
 .hero-header::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -50%;
     left: -50%;
     right: -50%;
     bottom: -50%;
     background:
-        radial-gradient(circle at 20% 20%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 60% 40%, rgba(184, 188, 200, 0.05) 0%, transparent 50%);
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(255, 105, 180, 0.1) 0%,
+            transparent 50%
+        ),
+        radial-gradient(
+            circle at 80% 80%,
+            rgba(255, 105, 180, 0.1) 0%,
+            transparent 50%
+        ),
+        radial-gradient(
+            circle at 60% 40%,
+            rgba(184, 188, 200, 0.05) 0%,
+            transparent 50%
+        );
     animation: float 20s ease-in-out infinite;
     z-index: 0;
 }
 
 .hero-header::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background:
-        linear-gradient(45deg, transparent 49%, rgba(255, 105, 180, 0.02) 50%, transparent 51%),
-        linear-gradient(-45deg, transparent 49%, rgba(255, 105, 180, 0.02) 50%, transparent 51%);
+        linear-gradient(
+            45deg,
+            transparent 49%,
+            rgba(255, 105, 180, 0.02) 50%,
+            transparent 51%
+        ),
+        linear-gradient(
+            -45deg,
+            transparent 49%,
+            rgba(255, 105, 180, 0.02) 50%,
+            transparent 51%
+        );
     background-size: 60px 60px;
     animation: slidePattern 30s linear infinite;
     z-index: 0;
@@ -308,20 +310,35 @@ onUnmounted(() => {
 
     /* Ensure fallback for browsers without clip support */
     background-size: 200% 200%;
-    animation: textGlow 4s ease-in-out infinite alternate, gradientShift 8s ease infinite;
+    animation:
+        textGlow 4s ease-in-out infinite alternate,
+        gradientShift 8s ease infinite;
 }
 
 /* Animations */
 @keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(10px, -10px) rotate(1deg); }
-    50% { transform: translate(-5px, 5px) rotate(-1deg); }
-    75% { transform: translate(-10px, -5px) rotate(1deg); }
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(10px, -10px) rotate(1deg);
+    }
+    50% {
+        transform: translate(-5px, 5px) rotate(-1deg);
+    }
+    75% {
+        transform: translate(-10px, -5px) rotate(1deg);
+    }
 }
 
 @keyframes slidePattern {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(60px, 60px); }
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(60px, 60px);
+    }
 }
 
 @keyframes textGlow {
@@ -340,9 +357,15 @@ onUnmounted(() => {
 }
 
 @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 /* Articles Feed - Dark Theme */
@@ -402,8 +425,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .retry-button {
@@ -463,6 +490,7 @@ onUnmounted(() => {
 .end-message p {
     margin: 0 0 var(--spacing-md) 0;
     color: var(--text-secondary);
+    background-color: var(--card-bg);
 }
 
 .view-all-link {
