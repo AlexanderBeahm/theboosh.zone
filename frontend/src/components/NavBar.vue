@@ -1,64 +1,53 @@
 <template>
-  <div class="nav-bar">
-    <nav
-      class="nav-links"
-      aria-label="Main navigation"
-    >
-      <router-link
-        to="/"
-        :class="{ active: $route.path === '/' }"
-      >
-        Home
-      </router-link>
-      <router-link
-        to="/about"
-        :class="{ active: $route.path === '/about' }"
-      >
-        About
-      </router-link>
-      <router-link
-        to="/articles"
-        :class="{ active: $route.path.startsWith('/articles') }"
-      >
-        Articles
-      </router-link>
-      <a
-        v-if="config.enableSwagger"
-        href="/swagger"
-        target="_blank"
-        aria-label="View API documentation in Swagger UI (opens in new tab)"
-        rel="noopener noreferrer"
-      >Swagger</a>
-      <router-link
-        v-if="isAuthenticated"
-        to="/admin"
-        :class="{ active: $route.path.startsWith('/admin') }"
-      >
-        Admin
-      </router-link>
-    </nav>
-    <div
-      class="nav-title"
-      aria-label="Site name"
-    >
-      TheBoosh.Zone
-    </div>
-    <div class="nav-spacer" />
+    <div class="nav-bar">
+        <nav class="nav-links" aria-label="Main navigation">
+            <router-link to="/" :class="{ active: $route.path === '/' }">
+                THEBOOSH.ZONE
+            </router-link>
+            <router-link
+                to="/about"
+                :class="{ active: $route.path === '/about' }"
+            >
+                ABOUT
+            </router-link>
+            <router-link
+                to="/articles"
+                :class="{ active: $route.path.startsWith('/articles') }"
+            >
+                ARTICLES
+            </router-link>
+            <a
+                v-if="config.enableSwagger"
+                href="/swagger"
+                target="_blank"
+                aria-label="View API documentation in Swagger UI (opens in new tab)"
+                rel="noopener noreferrer"
+                >SWAGGER</a
+            >
+            <router-link
+                v-if="isAuthenticated"
+                to="/admin"
+                :class="{ active: $route.path.endsWith('/admin') }"
+            >
+                ADMIN
+            </router-link>
+            <router-link
+                v-if="isAuthenticated"
+                to="/admin/media"
+                :class="{ active: $route.path.startsWith('/admin/media') }"
+            >
+                MEDIA
+            </router-link>
+        </nav>
+        <div class="nav-spacer" />
 
-    <!-- Admin Logout Button (only visible when authenticated) -->
-    <div
-      v-if="isAuthenticated"
-      class="nav-actions"
-    >
-      <button
-        class="logout-button"
-        title="Logout"
-        @click="handleLogout"
-      >
-        Logout
-      </button>
+        <!-- Admin Logout Button (only visible when authenticated) -->
+        <div v-if="isAuthenticated" class="nav-actions">
+            <button class="logout-button" title="Logout" @click="handleLogout">
+                Logout
+            </button>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -84,7 +73,9 @@ onMounted(() => {
     display: flex;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-lg);
-    background: var(--gradient-metallic); /* Retro-futuristic metallic gradient */
+    background: var(
+        --gradient-metallic
+    ); /* Retro-futuristic metallic gradient */
     border-bottom: 3px solid var(--primary-color);
     box-shadow: var(--shadow-lg);
     position: relative;
@@ -93,7 +84,7 @@ onMounted(() => {
 
 /* Subtle geometric grid pattern overlay */
 .nav-bar::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -140,23 +131,6 @@ onMounted(() => {
     color: var(--light-text);
     box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     border: 1px solid var(--primary-color);
-}
-
-.nav-title {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--light-text);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: var(--gradient-retro-secondary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 0 20px rgba(184, 188, 200, 0.3);
-    z-index: 1;
 }
 
 .nav-spacer {
