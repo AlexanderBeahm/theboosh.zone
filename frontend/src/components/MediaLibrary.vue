@@ -713,10 +713,10 @@ defineExpose({
 
 .search-input:focus {
     outline: none;
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     box-shadow:
-        0 0 0 2px rgba(0, 206, 209, 0.2),
-        0 0 20px rgba(0, 206, 209, 0.3);
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
     background: var(--card-bg);
 }
 
@@ -742,8 +742,8 @@ defineExpose({
 
 .filter-select:focus {
     outline: none;
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 0 2px rgba(0, 206, 209, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.2);
 }
 
 .loading-container,
@@ -762,24 +762,24 @@ defineExpose({
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--accent-cyan);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
     0% {
         transform: rotate(0deg);
-        box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+        box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
     }
     50% {
-        box-shadow: 0 0 30px rgba(0, 206, 209, 0.5);
+        box-shadow: 0 0 30px rgba(255, 105, 180, 0.5);
     }
     100% {
         transform: rotate(360deg);
-        box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+        box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
     }
 }
 
@@ -851,11 +851,11 @@ defineExpose({
 }
 
 .media-item:hover {
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     transform: translateY(-4px);
     box-shadow:
         var(--shadow-lg),
-        0 0 25px rgba(0, 206, 209, 0.2);
+        0 0 25px rgba(255, 105, 180, 0.2);
 }
 
 .media-item:hover::before {
@@ -972,16 +972,16 @@ defineExpose({
 }
 
 .edit-button {
-    background: rgba(0, 206, 209, 0.1);
-    color: var(--accent-cyan);
-    border-color: rgba(0, 206, 209, 0.3);
+    background: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
+    border-color: rgba(255, 105, 180, 0.3);
 }
 
 .edit-button:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -1156,9 +1156,9 @@ defineExpose({
 }
 
 .upload-zone:hover {
-    border-color: var(--accent-cyan);
-    background: rgba(0, 206, 209, 0.05);
-    box-shadow: inset 0 0 20px rgba(0, 206, 209, 0.1);
+    border-color: var(--primary-color);
+    background: rgba(255, 105, 180, 0.05);
+    box-shadow: inset 0 0 20px rgba(255, 105, 180, 0.1);
 }
 
 .upload-zone:hover::before {
@@ -1180,10 +1180,10 @@ defineExpose({
 }
 
 .upload-zone.uploading {
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     background: var(--card-bg);
     cursor: default;
-    box-shadow: 0 0 25px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 25px rgba(255, 105, 180, 0.3);
 }
 
 .hidden-file-input {

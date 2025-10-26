@@ -1190,10 +1190,10 @@ onMounted(() => {
 .form-input:focus,
 .form-textarea:focus {
     outline: none;
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     box-shadow:
-        0 0 0 2px rgba(0, 206, 209, 0.2),
-        0 0 20px rgba(0, 206, 209, 0.3);
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
     background: var(--card-bg);
 }
 
@@ -1267,9 +1267,9 @@ onMounted(() => {
 
 .tab-button.active {
     background: var(--card-bg);
-    color: var(--accent-cyan);
-    border-bottom-color: var(--accent-cyan);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
 .tab-button.active::before {
@@ -1277,9 +1277,9 @@ onMounted(() => {
 }
 
 .tab-button:not(.active):hover {
-    background: rgba(0, 206, 209, 0.05);
-    color: var(--accent-cyan);
-    border-bottom-color: rgba(0, 206, 209, 0.5);
+    background: rgba(255, 105, 180, 0.05);
+    color: var(--primary-color);
+    border-bottom-color: rgba(255, 105, 180, 0.5);
 }
 
 .tab-button:not(.active):hover::before {

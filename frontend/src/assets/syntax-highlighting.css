@@ -33,12 +33,12 @@
 .hljs-keyword,
 .hljs-selector-tag,
 .hljs-built_in {
-    color: var(--accent-cyan) !important; /* Cyan for keywords */
+    color: var(--primary-color) !important; /* Pink for keywords */
 }
 
 .hljs-string,
 .hljs-attr {
-    color: var(--accent-yellow) !important; /* Yellow for strings */
+    color: var(--chrome-silver) !important; /* Chrome silver for strings */
 }
 
 .hljs-number,
@@ -58,5 +58,5 @@
 
 .hljs-variable,
 .hljs-name {
-    color: var(--accent-purple) !important; /* Purple for variables */
+    color: var(--steel-gray) !important; /* Steel gray for variables */
 }

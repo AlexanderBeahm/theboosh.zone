@@ -391,11 +391,11 @@ onUnmounted(() => {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--accent-cyan);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
@@ -437,10 +437,10 @@ onUnmounted(() => {
 }
 
 .back-button:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -487,15 +487,15 @@ onUnmounted(() => {
 }
 
 .breadcrumb-link {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: 600;
     transition: all var(--transition-fast);
 }
 
 .breadcrumb-link:hover {
-    color: var(--accent-yellow);
-    text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+    color: var(--chrome-silver);
+    text-shadow: 0 0 5px rgba(184, 188, 200, 0.3);
 }
 
 .breadcrumb-separator {
@@ -557,7 +557,7 @@ onUnmounted(() => {
 
 .meta-value,
 .meta-item time {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     font-weight: 600;
 }
 
@@ -570,9 +570,9 @@ onUnmounted(() => {
 
 .article-tag {
     font-size: 0.875rem;
-    color: var(--accent-cyan);
-    background: rgba(0, 206, 209, 0.1);
-    border: 1px solid rgba(0, 206, 209, 0.3);
+    color: var(--primary-color);
+    background: rgba(255, 105, 180, 0.1);
+    border: 1px solid rgba(255, 105, 180, 0.3);
     padding: var(--spacing-xs) var(--spacing-md);
     border-radius: var(--radius-full);
     text-decoration: none;
@@ -589,15 +589,15 @@ onUnmounted(() => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .article-tag:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 10px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -609,7 +609,7 @@ onUnmounted(() => {
     padding: var(--spacing-lg);
     background: linear-gradient(135deg, var(--card-bg) 0%, var(--light-bg) 100%);
     border-radius: var(--radius-md);
-    border-left: 4px solid var(--accent-yellow);
+    border-left: 4px solid var(--chrome-silver);
     margin-bottom: var(--spacing-lg);
     position: relative;
     overflow: hidden;
@@ -654,7 +654,7 @@ onUnmounted(() => {
         rgba(255, 105, 180, 0.05) 0%,
         transparent 30%,
         transparent 70%,
-        rgba(0, 206, 209, 0.05) 100%);
+        rgba(255, 105, 180, 0.05) 100%);
     pointer-events: none;
 }
 
@@ -730,16 +730,16 @@ onUnmounted(() => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .share-button:hover,
 .scroll-top-button:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -749,12 +749,12 @@ onUnmounted(() => {
 }
 
 .back-to-articles {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: 600;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
-    border: 1px solid var(--accent-cyan);
+    border: 1px solid var(--primary-color);
     transition: all var(--transition-fast);
     position: relative;
     overflow: hidden;
@@ -767,14 +767,14 @@ onUnmounted(() => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .back-to-articles:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -852,13 +852,13 @@ onUnmounted(() => {
 
 .related-article h4 {
     margin-bottom: var(--spacing-sm);
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     font-weight: 600;
     transition: color var(--transition-fast);
 }
 
 .related-article:hover h4 {
-    color: var(--accent-yellow);
+    color: var(--chrome-silver);
 }
 
 .related-article p {

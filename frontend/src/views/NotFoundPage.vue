@@ -35,8 +35,8 @@
     bottom: -50%;
     background:
         radial-gradient(circle at 25% 25%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(0, 206, 209, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+        radial-gradient(circle at 75% 75%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(184, 188, 200, 0.05) 0%, transparent 50%);
     animation: float 20s ease-in-out infinite;
     z-index: 0;
 }
@@ -111,20 +111,20 @@
     text-transform: uppercase;
     letter-spacing: 0.1em;
     position: relative;
-    text-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+    text-shadow: 0 0 50px rgba(184, 188, 200, 0.5);
     animation: textGlow 3s ease-in-out infinite alternate;
 }
 
 @keyframes textGlow {
     from {
         text-shadow:
-            0 0 20px rgba(255, 215, 0, 0.4),
-            0 0 40px rgba(0, 206, 209, 0.3);
+            0 0 20px rgba(184, 188, 200, 0.4),
+            0 0 40px rgba(255, 105, 180, 0.3);
     }
     to {
         text-shadow:
-            0 0 30px rgba(255, 215, 0, 0.6),
-            0 0 60px rgba(0, 206, 209, 0.5);
+            0 0 30px rgba(184, 188, 200, 0.6),
+            0 0 60px rgba(255, 105, 180, 0.5);
     }
 }
 
@@ -144,7 +144,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     opacity: 0.8;
     animation: glitch2 2s infinite;
     clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%);

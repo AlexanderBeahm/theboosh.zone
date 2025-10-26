@@ -10,7 +10,7 @@
     --bg-color: #1f2527; /* Dark charcoal - primary background */
     --card-bg: #2a2f31; /* Slightly lighter for cards and sections */
     --light-bg: #364043; /* Dark slate for secondary backgrounds */
-    --dark-bg: #4b0082; /* Metallic Blue-Purple for headers/nav */
+    --dark-bg: #36454F; /* Dark Slate Gray for headers/nav */
     --darker-bg: #1a1d1f; /* Deeper black for contrast areas */
 
     /* Text Colors */
@@ -20,15 +20,16 @@
     --text-secondary: #e0e0e0; /* Secondary text - light gray */
     --text-color: #ffffff; /* Alias for text-primary, used by markdown renderer */
 
-    /* Retro-Futuristic Accent Colors */
-    --accent-cyan: #00ced1; /* Cyan/Turquoise - links, hover states */
-    --accent-yellow: #ffd700; /* Bright Yellow - warnings, progress */
+    /* Industrial Retrofuturistic Accent Colors */
+    --accent-amber: #CC8800; /* Muted Amber - warnings, progress */
     --accent-orange: #ff4500; /* Red-Orange - errors, alerts */
-    --accent-purple: #9932cc; /* Deep purple for special elements */
+    --steel-gray: #708090; /* Steel Gray - secondary UI elements */
+    --chrome-silver: #B8BCC8; /* Chrome Silver - hover states, highlights */
+    --dark-slate: #36454F; /* Dark Slate Gray - backgrounds, borders */
 
     /* Code Colors - Dark Theme */
     --code-bg: #1a1d1f; /* Deep black for code blocks */
-    --code-text: #00ced1; /* Cyan for inline code */
+    --code-text: #ff69b4; /* Pink for inline code */
 
     /* Status Colors - Dark Theme Optimized */
     --error-color: #ff4500; /* Red-Orange for errors */
@@ -36,11 +37,11 @@
     --error-text: #ff6b47;
     --error-border: rgba(255, 69, 0, 0.3);
 
-    --success-bg: rgba(0, 206, 209, 0.1);
-    --success-text: #00ced1;
+    --success-bg: rgba(255, 105, 180, 0.1);
+    --success-text: #ff69b4;
 
-    --warning-bg: rgba(255, 215, 0, 0.1);
-    --warning-text: #ffd700;
+    --warning-bg: rgba(204, 136, 0, 0.1);
+    --warning-text: #CC8800;
 
     /* Border and Shadow - Enhanced for Dark Theme */
     --border-color: #444a4d; /* Dark gray borders */
@@ -49,10 +50,10 @@
     --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
     --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 
-    /* Retro-Futuristic Gradients */
-    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #4b0082);
-    --gradient-retro-secondary: linear-gradient(135deg, #00ced1, #ffd700);
-    --gradient-metallic: linear-gradient(135deg, #4b0082, #6a5acd, #9932cc);
+    /* Industrial Retrofuturistic Gradients */
+    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #36454F);
+    --gradient-retro-secondary: linear-gradient(135deg, #ff69b4, #B8BCC8);
+    --gradient-metallic: linear-gradient(135deg, #36454F, #708090, #B8BCC8);
 
     /* Spacing */
     --spacing-xs: 0.5rem;

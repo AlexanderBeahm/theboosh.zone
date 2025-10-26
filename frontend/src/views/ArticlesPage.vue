@@ -305,7 +305,7 @@ onMounted(async () => {
     letter-spacing: 0.05em;
     position: relative;
     z-index: 1;
-    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
 }
 
 .page-description {
@@ -373,15 +373,15 @@ onMounted(async () => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .tag-filter:hover {
-    background: rgba(0, 206, 209, 0.1);
-    border-color: var(--accent-cyan);
-    color: var(--accent-cyan);
-    box-shadow: 0 0 10px rgba(0, 206, 209, 0.3);
+    background: rgba(255, 105, 180, 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
     transform: translateY(-1px);
 }
 
@@ -429,11 +429,11 @@ onMounted(async () => {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--accent-cyan);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
@@ -470,7 +470,7 @@ onMounted(async () => {
 
 .link-button {
     background: transparent;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     border: none;
     padding: 0;
     text-decoration: underline;
@@ -483,7 +483,7 @@ onMounted(async () => {
 
 .link-button:hover {
     background: transparent;
-    color: var(--accent-yellow);
+    color: var(--chrome-silver);
     text-decoration: none;
 }
 
@@ -528,15 +528,15 @@ onMounted(async () => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .pagination-button:hover:not(:disabled) {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -562,7 +562,7 @@ onMounted(async () => {
 }
 
 .pagination-current {
-    color: var(--accent-yellow);
+    color: var(--chrome-silver);
     font-weight: 700;
     font-size: 1.1em;
 }

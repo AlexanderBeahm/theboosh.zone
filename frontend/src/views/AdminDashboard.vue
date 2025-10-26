@@ -667,7 +667,7 @@ onMounted(async () => {
     background-clip: text;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
 }
 
 .welcome-message {
@@ -787,10 +787,10 @@ onMounted(async () => {
 
 .search-input:focus {
     outline: none;
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     box-shadow:
-        0 0 0 2px rgba(0, 206, 209, 0.2),
-        0 0 20px rgba(0, 206, 209, 0.3);
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
     background: var(--card-bg);
 }
 
@@ -817,8 +817,8 @@ onMounted(async () => {
 
 .filter-select:focus {
     outline: none;
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 0 2px rgba(0, 206, 209, 0.2);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.2);
 }
 
 .media-library-button,
@@ -851,13 +851,13 @@ onMounted(async () => {
 }
 
 .media-library-button {
-    background: linear-gradient(135deg, #4B0082, #6A5ACD);
-    border-color: var(--accent-purple);
+    background: linear-gradient(135deg, #36454F, #708090);
+    border-color: var(--steel-gray);
 }
 
 .media-library-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 20px rgba(75, 0, 130, 0.4);
+    box-shadow: 0 0 20px rgba(112, 128, 144, 0.4);
 }
 
 .media-library-button:hover::before {
@@ -916,11 +916,11 @@ onMounted(async () => {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--accent-cyan);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
@@ -993,8 +993,8 @@ onMounted(async () => {
     right: 0;
     bottom: 0;
     background:
-        linear-gradient(90deg, rgba(0, 206, 209, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(0, 206, 209, 0.02) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(255, 105, 180, 0.02) 1px, transparent 1px),
+        linear-gradient(rgba(255, 105, 180, 0.02) 1px, transparent 1px);
     background-size: 25px 25px;
     pointer-events: none;
 }
@@ -1026,7 +1026,7 @@ onMounted(async () => {
     background: var(--darker-bg);
     border-bottom: 1px solid var(--border-color);
     font-weight: 700;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -1108,10 +1108,10 @@ onMounted(async () => {
 .slug {
     font-family: 'SF Mono', 'Menlo', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
     background: var(--darker-bg);
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     padding: 3px 6px;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(0, 206, 209, 0.3);
+    border: 1px solid rgba(255, 105, 180, 0.3);
     align-self: flex-start;
     font-size: 0.75rem;
     font-weight: 600;
@@ -1201,16 +1201,16 @@ onMounted(async () => {
 }
 
 .status-badge.draft {
-    background: rgba(255, 215, 0, 0.15);
-    color: var(--accent-yellow);
-    border-color: rgba(255, 215, 0, 0.3);
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    background: rgba(204, 136, 0, 0.15);
+    color: var(--accent-amber);
+    border-color: rgba(204, 136, 0, 0.3);
+    box-shadow: 0 0 10px rgba(204, 136, 0, 0.2);
 }
 
 .status-badge.draft:hover {
-    background: var(--accent-yellow);
+    background: var(--accent-amber);
     color: var(--bg-color);
-    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 15px rgba(204, 136, 0, 0.4);
 }
 
 .publish-date {
@@ -1275,16 +1275,16 @@ onMounted(async () => {
 }
 
 .view-button {
-    background: rgba(0, 206, 209, 0.1);
-    color: var(--accent-cyan);
-    border-color: rgba(0, 206, 209, 0.3);
+    background: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
+    border-color: rgba(255, 105, 180, 0.3);
 }
 
 .view-button:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 
@@ -1341,9 +1341,9 @@ onMounted(async () => {
 
 .pagination-button {
     padding: var(--spacing-sm) var(--spacing-lg);
-    border: 1px solid var(--accent-cyan);
-    background: rgba(0, 206, 209, 0.1);
-    color: var(--accent-cyan);
+    border: 1px solid var(--primary-color);
+    background: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
     border-radius: var(--radius-md);
     cursor: pointer;
     font-weight: 700;
@@ -1362,15 +1362,15 @@ onMounted(async () => {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
     transition: left 0.6s;
 }
 
 .pagination-button:hover:not(:disabled) {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.4);
     transform: translateY(-2px);
 }
 
@@ -1415,7 +1415,7 @@ onMounted(async () => {
 }
 
 .pagination-total {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     font-weight: 700;
 }
 
@@ -1556,16 +1556,16 @@ onMounted(async () => {
 }
 
 .cancel-button {
-    background: rgba(0, 206, 209, 0.1);
-    color: var(--accent-cyan);
-    border-color: var(--accent-cyan);
+    background: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .cancel-button:hover {
-    background: var(--accent-cyan);
+    background: var(--primary-color);
     color: var(--bg-color);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.4);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.4);
     transform: translateY(-2px);
 }
 

@@ -257,8 +257,8 @@ onUnmounted(() => {
     bottom: -50%;
     background:
         radial-gradient(circle at 20% 20%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(0, 206, 209, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 60% 40%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+        radial-gradient(circle at 80% 80%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 60% 40%, rgba(184, 188, 200, 0.05) 0%, transparent 50%);
     animation: float 20s ease-in-out infinite;
     z-index: 0;
 }
@@ -272,7 +272,7 @@ onUnmounted(() => {
     bottom: 0;
     background:
         linear-gradient(45deg, transparent 49%, rgba(255, 105, 180, 0.02) 50%, transparent 51%),
-        linear-gradient(-45deg, transparent 49%, rgba(0, 206, 209, 0.02) 50%, transparent 51%);
+        linear-gradient(-45deg, transparent 49%, rgba(255, 105, 180, 0.02) 50%, transparent 51%);
     background-size: 60px 60px;
     animation: slidePattern 30s linear infinite;
     z-index: 0;
@@ -295,8 +295,8 @@ onUnmounted(() => {
 
     /* Glowing text shadow */
     text-shadow:
-        0 0 20px rgba(255, 215, 0, 0.3),
-        0 0 40px rgba(0, 206, 209, 0.2),
+        0 0 20px rgba(184, 188, 200, 0.3),
+        0 0 40px rgba(255, 105, 180, 0.2),
         0 0 60px rgba(255, 105, 180, 0.1);
 
     /* Text animation */
@@ -327,14 +327,14 @@ onUnmounted(() => {
 @keyframes textGlow {
     0% {
         text-shadow:
-            0 0 20px rgba(255, 215, 0, 0.3),
-            0 0 40px rgba(0, 206, 209, 0.2),
+            0 0 20px rgba(184, 188, 200, 0.3),
+            0 0 40px rgba(255, 105, 180, 0.2),
             0 0 60px rgba(255, 105, 180, 0.1);
     }
     100% {
         text-shadow:
-            0 0 30px rgba(255, 215, 0, 0.5),
-            0 0 60px rgba(0, 206, 209, 0.3),
+            0 0 30px rgba(184, 188, 200, 0.5),
+            0 0 60px rgba(255, 105, 180, 0.3),
             0 0 80px rgba(255, 105, 180, 0.2);
     }
 }
@@ -394,11 +394,11 @@ onUnmounted(() => {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--accent-cyan);
+    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
-    box-shadow: 0 0 10px rgba(0, 206, 209, 0.3);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
@@ -466,11 +466,11 @@ onUnmounted(() => {
 }
 
 .view-all-link {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     text-decoration: none;
     font-weight: 600;
     padding: var(--spacing-sm) var(--spacing-lg);
-    border: 1px solid var(--accent-cyan);
+    border: 1px solid var(--primary-color);
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     position: relative;
@@ -478,9 +478,9 @@ onUnmounted(() => {
 }
 
 .view-all-link:hover {
-    background-color: var(--accent-cyan);
+    background-color: var(--primary-color);
     color: var(--bg-color);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
     transform: translateY(-1px);
 }
 

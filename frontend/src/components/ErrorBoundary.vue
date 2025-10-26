@@ -141,7 +141,7 @@ const reset = () => {
 .error-details summary {
     cursor: pointer;
     font-weight: 700;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     margin-bottom: var(--spacing-sm);
     font-size: 1rem;
     text-transform: uppercase;
@@ -150,7 +150,7 @@ const reset = () => {
 }
 
 .error-details summary:hover {
-    color: var(--accent-yellow);
+    color: var(--chrome-silver);
 }
 
 .error-details pre {
@@ -173,7 +173,7 @@ const reset = () => {
 }
 
 .error-details strong {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
 }
 
 .retry-button {

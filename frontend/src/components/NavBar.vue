@@ -111,10 +111,10 @@ onMounted(() => {
 
 /* Hover effect with retro-futuristic glow */
 .nav-links a:hover {
-    background-color: rgba(0, 206, 209, 0.1);
-    color: var(--accent-cyan);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 10px rgba(0, 206, 209, 0.3);
+    background-color: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
     transform: translateY(-1px);
 }
 
@@ -138,7 +138,7 @@ onMounted(() => {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 20px rgba(184, 188, 200, 0.3);
     z-index: 1;
 }
 

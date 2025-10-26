@@ -143,8 +143,8 @@ onMounted(async () => {
     bottom: -50%;
     background:
         radial-gradient(circle at 25% 25%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(0, 206, 209, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.05) 0%, transparent 50%);
+        radial-gradient(circle at 75% 75%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(184, 188, 200, 0.05) 0%, transparent 50%);
     animation: float 20s ease-in-out infinite;
     z-index: 0;
 }
@@ -242,7 +242,7 @@ onMounted(async () => {
     margin-bottom: var(--spacing-sm);
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 20px rgba(184, 188, 200, 0.3);
 }
 
 .login-header p {
@@ -264,7 +264,7 @@ onMounted(async () => {
 .form-group label {
     display: block;
     font-weight: 600;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     margin-bottom: var(--spacing-xs);
     font-size: 0.875rem;
     text-transform: uppercase;
@@ -285,10 +285,10 @@ onMounted(async () => {
 
 .form-input:focus {
     outline: none;
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     box-shadow:
-        0 0 0 2px rgba(0, 206, 209, 0.2),
-        0 0 20px rgba(0, 206, 209, 0.3);
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
     background: var(--card-bg);
 }
 
@@ -392,7 +392,7 @@ onMounted(async () => {
 }
 
 .back-link {
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     text-decoration: none;
     font-size: 0.875rem;
     font-weight: 600;
@@ -403,10 +403,10 @@ onMounted(async () => {
 }
 
 .back-link:hover {
-    color: var(--accent-yellow);
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
-    border-color: var(--accent-yellow);
-    background: rgba(255, 215, 0, 0.05);
+    color: var(--chrome-silver);
+    text-shadow: 0 0 10px rgba(184, 188, 200, 0.3);
+    border-color: var(--chrome-silver);
+    background: rgba(184, 188, 200, 0.05);
 }
 
 /* Responsive design - Retro-Futuristic */

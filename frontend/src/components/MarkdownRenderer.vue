@@ -302,7 +302,7 @@ onUpdated(() => {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 20px rgba(184, 188, 200, 0.3);
     position: relative;
 }
 
@@ -319,7 +319,7 @@ onUpdated(() => {
 .markdown-content h2 {
     font-size: 1.875rem;
     border-bottom: 2px solid transparent;
-    background-image: var(--gradient-retro-secondary), linear-gradient(90deg, var(--accent-cyan), transparent);
+    background-image: var(--gradient-retro-secondary), linear-gradient(90deg, var(--primary-color), transparent);
     background-origin: border-box;
     background-clip: text, border-box;
     padding-bottom: 0.25rem;
@@ -382,8 +382,8 @@ onUpdated(() => {
 
 .markdown-content a:hover {
     border-bottom-color: var(--primary-color);
-    color: var(--accent-cyan);
-    text-shadow: 0 0 10px rgba(0, 206, 209, 0.5);
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
 }
 
 .markdown-content a:hover::before {
@@ -463,7 +463,7 @@ onUpdated(() => {
     top: 0.5rem;
     right: 1rem;
     font-size: 3rem;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     opacity: 0.3;
     font-family: serif;
     line-height: 1;
@@ -474,8 +474,8 @@ onUpdated(() => {
 }
 
 .markdown-content blockquote:hover {
-    background: rgba(0, 206, 209, 0.05);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.1);
+    background: rgba(255, 105, 180, 0.05);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.1);
 }
 
 /* Tables */
@@ -525,7 +525,7 @@ onUpdated(() => {
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, var(--accent-cyan), transparent, var(--accent-cyan));
+    background: linear-gradient(90deg, var(--primary-color), transparent, var(--primary-color));
 }
 
 .markdown-content tbody tr:nth-child(even) {
@@ -533,7 +533,7 @@ onUpdated(() => {
 }
 
 .markdown-content tbody tr:hover {
-    background-color: rgba(0, 206, 209, 0.05);
+    background-color: rgba(255, 105, 180, 0.05);
 }
 
 /* Images */

@@ -86,7 +86,7 @@
     right: -50%;
     bottom: -50%;
     background:
-        radial-gradient(circle at 30% 20%, rgba(0, 206, 209, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 30% 20%, rgba(255, 105, 180, 0.08) 0%, transparent 50%),
         radial-gradient(circle at 70% 80%, rgba(255, 105, 180, 0.08) 0%, transparent 50%);
     animation: float 25s ease-in-out infinite;
     z-index: 0;
@@ -100,8 +100,8 @@
     right: 0;
     bottom: 0;
     background:
-        linear-gradient(90deg, rgba(0, 206, 209, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(0, 206, 209, 0.02) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(255, 105, 180, 0.02) 1px, transparent 1px),
+        linear-gradient(rgba(255, 105, 180, 0.02) 1px, transparent 1px);
     background-size: 40px 40px;
     animation: slidePattern 35s linear infinite;
     z-index: 0;
@@ -143,20 +143,20 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
     animation: textGlow 4s ease-in-out infinite alternate;
 }
 
 @keyframes textGlow {
     from {
         text-shadow:
-            0 0 20px rgba(255, 215, 0, 0.3),
-            0 0 40px rgba(0, 206, 209, 0.2);
+            0 0 20px rgba(184, 188, 200, 0.3),
+            0 0 40px rgba(255, 105, 180, 0.2);
     }
     to {
         text-shadow:
-            0 0 30px rgba(255, 215, 0, 0.5),
-            0 0 60px rgba(0, 206, 209, 0.4);
+            0 0 30px rgba(184, 188, 200, 0.5),
+            0 0 60px rgba(255, 105, 180, 0.4);
     }
 }
 
@@ -296,14 +296,14 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
     transition: left 0.6s;
 }
 
 .social-links a:hover {
-    border-color: var(--accent-cyan);
-    color: var(--accent-cyan);
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.3);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
 .social-links a:hover::before {
@@ -317,9 +317,9 @@
 }
 
 .link-linkedin:hover {
-    border-color: var(--accent-cyan) !important;
-    color: var(--accent-cyan) !important;
-    box-shadow: 0 0 20px rgba(0, 206, 209, 0.3) !important;
+    border-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3) !important;
 }
 
 .link-icon {
@@ -336,15 +336,15 @@
     font-weight: 500;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--radius-md);
-    background: rgba(0, 206, 209, 0.05);
-    border: 1px solid rgba(0, 206, 209, 0.2);
+    background: rgba(255, 105, 180, 0.05);
+    border: 1px solid rgba(255, 105, 180, 0.2);
     transition: all var(--transition-fast);
 }
 
 .tech-list li:hover {
-    background: rgba(0, 206, 209, 0.1);
-    border-color: var(--accent-cyan);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.2);
+    background: rgba(255, 105, 180, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
 }
 
 .tech-icon {

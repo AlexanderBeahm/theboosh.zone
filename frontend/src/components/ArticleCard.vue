@@ -134,7 +134,7 @@ function formatDate(dateString) {
   background: linear-gradient(135deg,
     rgba(255, 105, 180, 0.1) 0%,
     transparent 50%,
-    rgba(0, 206, 209, 0.1) 100%);
+    rgba(255, 105, 180, 0.1) 100%);
   opacity: 0;
   transition: opacity var(--transition-fast);
 }
@@ -171,7 +171,7 @@ function formatDate(dateString) {
 }
 
 .article-meta time {
-  color: var(--accent-cyan);
+  color: var(--primary-color);
 }
 
 .article-meta::after {
@@ -193,7 +193,7 @@ function formatDate(dateString) {
 }
 
 .article-card:hover .article-title {
-  color: var(--accent-cyan);
+  color: var(--primary-color);
 }
 
 .article-excerpt {
@@ -215,9 +215,9 @@ function formatDate(dateString) {
 
 .article-tag {
   font-size: 0.75rem;
-  color: var(--accent-cyan);
-  background: rgba(0, 206, 209, 0.1);
-  border: 1px solid rgba(0, 206, 209, 0.3);
+  color: var(--primary-color);
+  background: rgba(255, 105, 180, 0.1);
+  border: 1px solid rgba(255, 105, 180, 0.3);
   padding: var(--spacing-xs) var(--spacing-sm);
   border-radius: var(--radius-full);
   cursor: pointer;
@@ -234,15 +234,15 @@ function formatDate(dateString) {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.2), transparent);
   transition: left 0.6s;
 }
 
 .article-tag:hover {
-  background: var(--accent-cyan);
+  background: var(--primary-color);
   color: var(--bg-color);
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(0, 206, 209, 0.4);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(255, 105, 180, 0.4);
   transform: translateY(-1px);
 }
 
@@ -269,7 +269,7 @@ function formatDate(dateString) {
 }
 
 .article-card:hover .read-more {
-  color: var(--accent-yellow);
+  color: var(--chrome-silver);
   transform: translateX(4px);
 }
 

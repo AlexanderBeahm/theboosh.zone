@@ -342,9 +342,9 @@ defineExpose({
 }
 
 .upload-area:hover {
-    border-color: var(--accent-cyan);
-    background: rgba(0, 206, 209, 0.05);
-    box-shadow: inset 0 0 20px rgba(0, 206, 209, 0.1);
+    border-color: var(--primary-color);
+    background: rgba(255, 105, 180, 0.05);
+    box-shadow: inset 0 0 20px rgba(255, 105, 180, 0.1);
 }
 
 .upload-area:hover::before {
@@ -452,7 +452,7 @@ defineExpose({
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
     animation: scanline 2s linear infinite;
 }
 
@@ -467,7 +467,7 @@ defineExpose({
     transition: width var(--transition-fast);
     position: relative;
     border-radius: var(--radius-full);
-    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
 }
 
 .progress-fill::after {
@@ -568,7 +568,7 @@ defineExpose({
 .form-group label {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--accent-cyan);
+    color: var(--primary-color);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -585,10 +585,10 @@ defineExpose({
 
 .form-input:focus {
     outline: none;
-    border-color: var(--accent-cyan);
+    border-color: var(--primary-color);
     box-shadow:
-        0 0 0 2px rgba(0, 206, 209, 0.2),
-        0 0 20px rgba(0, 206, 209, 0.3);
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
     background: var(--card-bg);
 }
 
