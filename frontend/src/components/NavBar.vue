@@ -44,7 +44,7 @@
         <!-- Admin Logout Button (only visible when authenticated) -->
         <div v-if="isAuthenticated" class="nav-actions">
             <button class="logout-button" title="Logout" @click="handleLogout">
-                Logout
+                LOGOUT
             </button>
         </div>
     </div>

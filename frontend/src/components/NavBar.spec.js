@@ -36,28 +36,28 @@ describe("NavBar", () => {
             routes: [
                 {
                     path: "/",
-                    name: "Home",
-                    component: { template: "<div>Home</div>" },
+                    name: "THEBOOSH.ZONE",
+                    component: { template: "<div>THEBOOSH.ZONE</div>" },
                 },
                 {
                     path: "/about",
-                    name: "About",
-                    component: { template: "<div>About</div>" },
+                    name: "ABOUT",
+                    component: { template: "<div>ABOUT</div>" },
                 },
                 {
                     path: "/articles",
-                    name: "Articles",
-                    component: { template: "<div>Articles</div>" },
+                    name: "ARTICLES",
+                    component: { template: "<div>ARTICLES</div>" },
                 },
                 {
                     path: "/admin",
-                    name: "Admin",
-                    component: { template: "<div>Admin</div>" },
+                    name: "ADMIN",
+                    component: { template: "<div>ADMIN</div>" },
                 },
                 {
                     path: "/admin/login",
-                    name: "AdminLogin",
-                    component: { template: "<div>Login</div>" },
+                    name: "ADMIN_LOGIN",
+                    component: { template: "<div>LOGIN</div>" },
                 },
             ],
         });
@@ -89,23 +89,9 @@ describe("NavBar", () => {
                 global: { plugins: [router] },
             });
 
-            expect(wrapper.text()).toContain("Home");
-            expect(wrapper.text()).toContain("About");
-            expect(wrapper.text()).toContain("Articles");
-            expect(wrapper.text()).toContain("TheBoosh.Zone");
-        });
-
-        it("renders site title", async () => {
-            await router.push("/");
-            await router.isReady();
-
-            const wrapper = mount(NavBar, {
-                global: { plugins: [router] },
-            });
-
-            const title = wrapper.find(".nav-title");
-            expect(title.exists()).toBe(true);
-            expect(title.text()).toBe("TheBoosh.Zone");
+            expect(wrapper.text()).toContain("THEBOOSH.ZONE");
+            expect(wrapper.text()).toContain("ABOUT");
+            expect(wrapper.text()).toContain("ARTICLES");
         });
 
         it("contains router-links for internal pages", async () => {
@@ -220,7 +206,7 @@ describe("NavBar", () => {
 
             const adminLink = wrapper.find('a[href="/admin"]');
             expect(adminLink.exists()).toBe(true);
-            expect(adminLink.text()).toBe("Admin");
+            expect(adminLink.text()).toBe("ADMIN");
         });
 
         it("highlights Admin link when on admin pages", async () => {
@@ -249,7 +235,7 @@ describe("NavBar", () => {
 
             const logoutButton = wrapper.find(".logout-button");
             expect(logoutButton.exists()).toBe(true);
-            expect(logoutButton.text()).toBe("Logout");
+            expect(logoutButton.text()).toBe("LOGOUT");
         });
 
         it("calls logout with redirect path when logout button is clicked", async () => {
@@ -282,18 +268,6 @@ describe("NavBar", () => {
             expect(nav.attributes("aria-label")).toBe("Main navigation");
         });
 
-        it("has aria-label on site title", async () => {
-            await router.push("/");
-            await router.isReady();
-
-            const wrapper = mount(NavBar, {
-                global: { plugins: [router] },
-            });
-
-            const title = wrapper.find(".nav-title");
-            expect(title.attributes("aria-label")).toBe("Site name");
-        });
-
         it("has title attribute on logout button", async () => {
             mockIsAuthenticated.value = true;
 
@@ -320,7 +294,6 @@ describe("NavBar", () => {
 
             expect(wrapper.find(".nav-bar").exists()).toBe(true);
             expect(wrapper.find(".nav-links").exists()).toBe(true);
-            expect(wrapper.find(".nav-title").exists()).toBe(true);
             expect(wrapper.find(".nav-spacer").exists()).toBe(true);
         });
 
@@ -351,7 +324,7 @@ describe("NavBar", () => {
 
             const swaggerLink = wrapper.find('a[href="/swagger"]');
             expect(swaggerLink.exists()).toBe(true);
-            expect(swaggerLink.text()).toBe("Swagger");
+            expect(swaggerLink.text()).toBe("SWAGGER");
         });
 
         it("hides Swagger link when enableSwagger is false", async () => {
