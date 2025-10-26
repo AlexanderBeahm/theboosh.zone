@@ -252,9 +252,6 @@ async function uploadFile() {
 
     try {
         const response = await axios.post("/api/admin/media/upload", formData, {
-            headers: {
-                "Content-Type": "multipart/form-data",
-            },
             onUploadProgress: (progressEvent) => {
                 if (progressEvent.total) {
                     uploadProgress.value = Math.round(
@@ -276,10 +273,23 @@ async function uploadFile() {
             throw new Error(response.data.error || "Upload failed");
         }
     } catch (err) {
+        // Enhanced error logging for debugging
+        console.error('ImageUploader upload error details:', {
+            status: err.response?.status,
+            statusText: err.response?.statusText,
+            data: err.response?.data,
+            headers: err.response?.headers,
+            config: {
+                url: err.config?.url,
+                method: err.config?.method,
+                headers: err.config?.headers
+            }
+        });
+
         error.value =
             err.response?.data?.error ||
             err.message ||
-            "Failed to upload image";
+            `Failed to upload image (${err.response?.status || 'unknown error'})`;
         emit("upload-error", error.value);
     } finally {
         isUploading.value = false;

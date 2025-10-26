@@ -581,6 +581,34 @@ function handleFileSelect(event) {
     event.target.value = '';
 }
 
+
+function validateImageFile(file) {
+    const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml'
+    ];
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!allowedTypes.includes(file.type)) {
+        throw new Error(`Invalid file type: ${file.type}. Allowed types: ${allowedTypes.join(', ')}`);
+    }
+
+    if (file.size > maxSize) {
+        throw new Error(`File too large: ${Math.round(file.size / 1024 / 1024)}MB. Maximum allowed: 10MB`);
+    }
+
+    if (file.size === 0) {
+        throw new Error('File is empty');
+    }
+
+    return true;
+}
+
+
 async function uploadFiles(files) {
     if (isUploading.value) return;
 
@@ -589,6 +617,11 @@ async function uploadFiles(files) {
     uploadProgress.value = 0;
 
     try {
+        // Validate all files first
+        for (const file of files) {
+            validateImageFile(file);
+        }
+
         const uploadPromises = files.map((file, index) =>
             uploadSingleFile(file, index, files.length)
         );
@@ -601,8 +634,8 @@ async function uploadFiles(files) {
         // Reset upload state
         uploadQueue.value = [];
         uploadProgress.value = 0;
-    } catch {
-        alert('Some uploads failed. Please try again.');
+    } catch (error) {
+        alert(`Upload failed: ${error.message}`);
     } finally {
         isUploading.value = false;
     }
@@ -611,21 +644,28 @@ async function uploadFiles(files) {
 async function uploadSingleFile(file, index, total) {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('alt_text', file.name);
-    formData.append('caption', '');
 
-    const response = await axios.post('/api/admin/media/upload', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
+    // Only add alt_text if it's meaningful (not just the filename)
+    if (file.name && file.name.trim()) {
+        formData.append('alt_text', file.name);
+    }
+
+    try {
+        const response = await axios.post('/api/admin/media/upload', formData);
+
+        if (response.data.success) {
+            // Update progress
+            uploadProgress.value = Math.round(((index + 1) / total) * 100);
+            return response.data.media;
+        } else {
+            throw new Error(response.data.error || 'Upload failed');
         }
-    });
-
-    if (response.data.success) {
-        // Update progress
-        uploadProgress.value = Math.round(((index + 1) / total) * 100);
-        return response.data.media;
-    } else {
-        throw new Error(response.data.error || 'Upload failed');
+    } catch (err) {
+        throw new Error(
+            err.response?.data?.error ||
+            err.message ||
+            `Upload failed (${err.response?.status || 'unknown error'})`
+        );
     }
 }
 
@@ -653,8 +693,33 @@ async function handlePaste(event) {
     // Prevent default paste behavior when images are detected
     event.preventDefault();
 
-    // Process all pasted images
-    const imageFiles = imageItems.map(item => item.getAsFile()).filter(file => file);
+    // Process all pasted images with proper file naming
+    const imageFiles = imageItems.map((item, index) => {
+        const file = item.getAsFile();
+        if (!file) return null;
+
+        // Create a proper filename based on MIME type
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        let extension = 'png'; // default
+
+        if (file.type === 'image/jpeg') extension = 'jpg';
+        else if (file.type === 'image/png') extension = 'png';
+        else if (file.type === 'image/gif') extension = 'gif';
+        else if (file.type === 'image/webp') extension = 'webp';
+
+        // Create a new File with proper name and type
+        const properFile = new File(
+            [file],
+            `pasted-image-${timestamp}-${index + 1}.${extension}`,
+            {
+                type: file.type || 'image/png',
+                lastModified: Date.now()
+            }
+        );
+
+
+        return properFile;
+    }).filter(file => file);
 
     if (imageFiles.length > 0) {
         // Upload the pasted images
