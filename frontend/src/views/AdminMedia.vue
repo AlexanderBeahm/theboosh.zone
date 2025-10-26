@@ -247,7 +247,7 @@ function handleMediaDeleted(media) {
     bottom: var(--spacing-xl);
     right: var(--spacing-xl);
     background-color: var(--success-color);
-    color: white;
+    color: var(--light-text);
     padding: var(--spacing-md) var(--spacing-xl);
     border-radius: var(--radius-lg);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);

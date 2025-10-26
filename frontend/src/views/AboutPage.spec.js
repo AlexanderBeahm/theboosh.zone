@@ -21,7 +21,7 @@ describe("AboutPage", () => {
         );
 
         expect(githubLink.exists()).toBe(true);
-        expect(githubLink.text()).toBe("GitHub");
+        expect(githubLink.text()).toBe("⚡ GitHub");
         expect(githubLink.attributes("target")).toBe("_blank");
         expect(githubLink.attributes("rel")).toBe("noopener noreferrer");
     });
@@ -33,7 +33,7 @@ describe("AboutPage", () => {
         );
 
         expect(linkedinLink.exists()).toBe(true);
-        expect(linkedinLink.text()).toBe("LinkedIn");
+        expect(linkedinLink.text()).toBe("💼 LinkedIn");
         expect(linkedinLink.attributes("target")).toBe("_blank");
         expect(linkedinLink.attributes("rel")).toBe("noopener noreferrer");
     });

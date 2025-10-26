@@ -67,44 +67,79 @@ onMounted(() => {
     display: flex;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-lg);
-    background-color: var(--dark-bg);
+    background: var(--gradient-metallic); /* Retro-futuristic metallic gradient */
     border-bottom: 3px solid var(--primary-color);
-    box-shadow: var(--shadow-sm);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle geometric grid pattern overlay */
+.nav-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
 }
 
 .nav-links {
     display: flex;
     gap: var(--spacing-md);
+    position: relative;
+    z-index: 1;
 }
 
 .nav-links a {
     text-decoration: none;
     color: var(--light-text);
-    font-weight: 500;
+    font-weight: 600;
     padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
     cursor: pointer;
+    border: 1px solid transparent;
+    position: relative;
+    overflow: hidden;
 }
 
+/* Hover effect with retro-futuristic glow */
 .nav-links a:hover {
-    background-color: var(--darker-bg);
-    color: var(--primary-color);
+    background-color: rgba(0, 206, 209, 0.1);
+    color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 206, 209, 0.3);
+    transform: translateY(-1px);
 }
 
 .nav-links a.active {
-    background-color: var(--primary-color);
-    color: #fff;
+    background: var(--gradient-retro-primary);
+    color: var(--light-text);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
+    border: 1px solid var(--primary-color);
 }
 
 .nav-title {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 1.5rem;
-    font-weight: bold;
+    font-size: 1.75rem;
+    font-weight: 700;
     color: var(--light-text);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: var(--gradient-retro-secondary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    z-index: 1;
 }
 
 .nav-spacer {
@@ -115,12 +150,14 @@ onMounted(() => {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    position: relative;
+    z-index: 1;
 }
 
 .logout-button {
     padding: var(--spacing-xs) var(--spacing-md);
-    border: 1px solid rgba(255, 0, 0, 0.3);
-    background-color: rgba(255, 0, 0, 0.1);
+    border: 1px solid var(--accent-orange);
+    background: rgba(255, 69, 0, 0.1);
     color: var(--light-text);
     border-radius: var(--radius-md);
     font-weight: 600;
@@ -128,16 +165,38 @@ onMounted(() => {
     cursor: pointer;
     transition: all var(--transition-fast);
     white-space: nowrap;
+    position: relative;
+    overflow: hidden;
 }
 
 .logout-button:hover {
-    background-color: rgba(255, 0, 0, 0.25);
-    border-color: rgba(255, 0, 0, 0.5);
+    background: rgba(255, 69, 0, 0.2);
+    border-color: var(--accent-orange);
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(255, 0, 0, 0.2);
+    box-shadow: 0 0 10px rgba(255, 69, 0, 0.4);
+    color: var(--accent-orange);
 }
 
 .logout-button:active {
     transform: translateY(0);
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .nav-title {
+        position: static;
+        transform: none;
+        font-size: 1.25rem;
+        margin-left: var(--spacing-md);
+    }
+
+    .nav-links {
+        gap: var(--spacing-sm);
+    }
+
+    .nav-links a {
+        padding: var(--spacing-xs);
+        font-size: 0.875rem;
+    }
 }
 </style>

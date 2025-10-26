@@ -269,40 +269,81 @@ onMounted(async () => {
     max-width: 1200px;
     margin: 0 auto;
     padding: var(--spacing-lg);
+    background-color: var(--bg-color);
+    min-height: 100vh;
 }
 
 .page-header {
     text-align: center;
     margin-bottom: var(--spacing-xl);
+    position: relative;
+    padding: var(--spacing-xl) 0;
+}
+
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255, 105, 180, 0.1) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
 }
 
 .page-header h1 {
-    font-size: 3rem;
-    color: var(--primary-color);
+    font-size: 3.5rem;
+    background: var(--gradient-retro-secondary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: var(--spacing-sm);
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
 }
 
 .page-description {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     color: var(--text-secondary);
     max-width: 600px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
+    line-height: 1.6;
 }
 
-/* Filter Section */
+/* Filter Section - Retro-Futuristic */
 .filter-section {
     margin-bottom: var(--spacing-xl);
     padding: var(--spacing-lg);
-    background-color: var(--light-bg);
+    background: var(--card-bg);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-retro-primary);
 }
 
 .filter-section h3 {
     margin-bottom: var(--spacing-md);
     color: var(--text-primary);
     font-weight: 600;
+    font-size: 1.25rem;
 }
 
 .tag-filters {
@@ -314,27 +355,48 @@ onMounted(async () => {
 .tag-filter {
     padding: var(--spacing-xs) var(--spacing-md);
     border: 1px solid var(--border-color);
-    background-color: var(--bg-color);
+    background: var(--bg-color);
     color: var(--text-primary);
     border-radius: var(--radius-full);
     cursor: pointer;
     transition: all var(--transition-fast);
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+}
+
+.tag-filter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    transition: left 0.6s;
 }
 
 .tag-filter:hover {
-    background-color: var(--primary-color-light);
-    border-color: var(--primary-color);
+    background: rgba(0, 206, 209, 0.1);
+    border-color: var(--accent-cyan);
+    color: var(--accent-cyan);
+    box-shadow: 0 0 10px rgba(0, 206, 209, 0.3);
+    transform: translateY(-1px);
+}
+
+.tag-filter:hover::before {
+    left: 100%;
 }
 
 .tag-filter.active {
-    background-color: var(--primary-color);
-    color: white;
+    background: var(--gradient-retro-primary);
+    color: var(--light-text);
     border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
 }
 
-/* Loading, Error, Empty States */
+/* Loading, Error, Empty States - Dark Theme */
 .loading-container,
 .error-container,
 .empty-container {
@@ -344,64 +406,88 @@ onMounted(async () => {
     justify-content: center;
     padding: var(--spacing-xxl);
     text-align: center;
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    margin: var(--spacing-lg) 0;
+}
+
+.loading-container h3,
+.error-container h3,
+.empty-container h3 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.loading-container p,
+.error-container p,
+.empty-container p {
+    color: var(--text-secondary);
 }
 
 .loading-spinner {
     width: 40px;
     height: 40px;
     border: 3px solid var(--border-color);
-    border-top: 3px solid var(--primary-color);
+    border-top: 3px solid var(--accent-cyan);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
+    box-shadow: 0 0 15px rgba(0, 206, 209, 0.3);
 }
 
 @keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+    50% { transform: translate(-50%, -50%) translateY(-10px); }
 }
 
 .error-icon,
 .empty-icon {
     font-size: 3rem;
     margin-bottom: var(--spacing-md);
+    color: var(--accent-orange);
 }
 
 .retry-button,
 .link-button {
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
+    background: var(--gradient-retro-primary);
+    color: var(--light-text);
+    border: 1px solid var(--primary-color);
     padding: var(--spacing-sm) var(--spacing-lg);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 500;
-    transition: background-color var(--transition-fast);
+    font-weight: 600;
+    transition: all var(--transition-fast);
     margin-top: var(--spacing-md);
+    position: relative;
+    overflow: hidden;
 }
 
 .link-button {
-    background-color: transparent;
-    color: var(--primary-color);
+    background: transparent;
+    color: var(--accent-cyan);
+    border: none;
     padding: 0;
     text-decoration: underline;
 }
 
-.retry-button:hover,
-.link-button:hover {
-    background-color: var(--primary-color-dark);
+.retry-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.4);
 }
 
 .link-button:hover {
-    background-color: transparent;
+    background: transparent;
+    color: var(--accent-yellow);
     text-decoration: none;
 }
 
-/* Articles Grid */
+/* Articles Grid - Enhanced for Dark Theme */
 .articles-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -409,68 +495,110 @@ onMounted(async () => {
     margin-bottom: var(--spacing-xl);
 }
 
-/* Pagination */
+/* Pagination - Retro-Futuristic */
 .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
 }
 
 .pagination-button {
     padding: var(--spacing-sm) var(--spacing-lg);
     border: 1px solid var(--border-color);
-    background-color: var(--bg-color);
+    background: var(--bg-color);
     color: var(--text-primary);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.pagination-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.2), transparent);
+    transition: left 0.6s;
 }
 
 .pagination-button:hover:not(:disabled) {
-    background-color: var(--primary-color);
-    color: white;
-    border-color: var(--primary-color);
+    background: var(--accent-cyan);
+    color: var(--bg-color);
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+    transform: translateY(-1px);
+}
+
+.pagination-button:hover:not(:disabled)::before {
+    left: 100%;
 }
 
 .pagination-button:disabled {
-    opacity: 0.5;
+    opacity: 0.3;
     cursor: not-allowed;
+    background: var(--darker-bg);
 }
 
 .pagination-info {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    font-weight: 500;
+    font-weight: 600;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-color);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
 }
 
 .pagination-current {
-    color: var(--primary-color);
-    font-weight: 600;
+    color: var(--accent-yellow);
+    font-weight: 700;
+    font-size: 1.1em;
 }
 
 .pagination-separator {
     color: var(--text-secondary);
 }
 
-/* Results Info */
+/* Results Info - Dark Theme */
 .results-info {
     text-align: center;
     color: var(--text-secondary);
     font-size: 0.875rem;
+    padding: var(--spacing-md);
+    background: var(--card-bg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
 }
 
-/* Responsive Design */
+/* Responsive Design - Retro-Futuristic Theme */
 @media (max-width: 768px) {
     .articles-page {
         padding: var(--spacing-md);
     }
 
     .page-header h1 {
-        font-size: 2rem;
+        font-size: 2.5rem;
+    }
+
+    .page-header::before {
+        width: 150px;
+        height: 150px;
+    }
+
+    .filter-section {
+        padding: var(--spacing-md);
     }
 
     .articles-grid {
@@ -480,15 +608,58 @@ onMounted(async () => {
 
     .tag-filters {
         justify-content: center;
+        gap: var(--spacing-xs);
+    }
+
+    .tag-filter {
+        font-size: 0.8rem;
+        padding: calc(var(--spacing-xs) * 0.75) var(--spacing-sm);
     }
 
     .pagination {
         flex-direction: column;
         gap: var(--spacing-md);
+        padding: var(--spacing-md);
     }
 
     .pagination-info {
         order: -1;
+    }
+
+    .pagination-button {
+        padding: var(--spacing-xs) var(--spacing-md);
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 2rem;
+        letter-spacing: 0.02em;
+    }
+
+    .page-description {
+        font-size: 1rem;
+    }
+
+    .tag-filters {
+        gap: calc(var(--spacing-xs) * 0.5);
+    }
+
+    .tag-filter {
+        font-size: 0.75rem;
+        padding: calc(var(--spacing-xs) * 0.6) var(--spacing-xs);
+    }
+
+    .articles-grid {
+        gap: var(--spacing-md);
+    }
+
+    .loading-container,
+    .error-container,
+    .empty-container {
+        padding: var(--spacing-lg);
+        margin: var(--spacing-md) 0;
     }
 }
 </style>

@@ -1,47 +1,58 @@
-/* Global CSS Variables for Theming */
+/* Global CSS Variables for Dark Retro-Futuristic Theming */
 :root {
-    /* Primary Colors */
-    --primary-color: #3498db;
-    --primary-dark: #2980b9;
-    --primary-color-light: rgba(52, 152, 219, 0.1);
-    --primary-color-dark: rgba(41, 128, 185, 0.1);
+    /* Primary Colors - Retro-Futuristic Accents */
+    --primary-color: #ff69b4; /* Hot Pink/Magenta - CTAs, active states */
+    --primary-dark: #e91e63; /* Darker pink for hover states */
+    --primary-color-light: rgba(255, 105, 180, 0.1);
+    --primary-color-dark: rgba(255, 105, 180, 0.2);
 
-    /* Background Colors - Pearl White Theme */
-    --bg-color: #f8f9fa;
-    --card-bg: #ffffff;
-    --light-bg: #f8f9fa;
-    --dark-bg: #2c3e50;
-    --darker-bg: #34495e;
+    /* Background Colors - Dark Theme */
+    --bg-color: #1f2527; /* Dark charcoal - primary background */
+    --card-bg: #2a2f31; /* Slightly lighter for cards and sections */
+    --light-bg: #364043; /* Dark slate for secondary backgrounds */
+    --dark-bg: #4b0082; /* Metallic Blue-Purple for headers/nav */
+    --darker-bg: #1a1d1f; /* Deeper black for contrast areas */
 
     /* Text Colors */
-    --light-text: #ecf0f1;
-    --dark-text: #2c3e50;
-    --text-primary: #333;
-    --text-secondary: #666;
-    --text-color: #333; /* Alias for text-primary, used by markdown renderer */
+    --light-text: #ffffff; /* Pure white for primary text */
+    --dark-text: #ffffff; /* White text for dark theme */
+    --text-primary: #ffffff; /* Primary text on dark backgrounds */
+    --text-secondary: #e0e0e0; /* Secondary text - light gray */
+    --text-color: #ffffff; /* Alias for text-primary, used by markdown renderer */
 
-    /* Code Colors */
-    --code-bg: #f5f5f5;
-    --code-text: #e83e8c;
+    /* Retro-Futuristic Accent Colors */
+    --accent-cyan: #00ced1; /* Cyan/Turquoise - links, hover states */
+    --accent-yellow: #ffd700; /* Bright Yellow - warnings, progress */
+    --accent-orange: #ff4500; /* Red-Orange - errors, alerts */
+    --accent-purple: #9932cc; /* Deep purple for special elements */
 
-    /* Status Colors */
-    --error-color: #e74c3c;
-    --error-bg: #fee;
-    --error-text: #c33;
-    --error-border: #fcc;
+    /* Code Colors - Dark Theme */
+    --code-bg: #1a1d1f; /* Deep black for code blocks */
+    --code-text: #00ced1; /* Cyan for inline code */
 
-    --success-bg: #d4edda;
-    --success-text: #155724;
+    /* Status Colors - Dark Theme Optimized */
+    --error-color: #ff4500; /* Red-Orange for errors */
+    --error-bg: rgba(255, 69, 0, 0.1);
+    --error-text: #ff6b47;
+    --error-border: rgba(255, 69, 0, 0.3);
 
-    --warning-bg: #fff3cd;
-    --warning-text: #856404;
+    --success-bg: rgba(0, 206, 209, 0.1);
+    --success-text: #00ced1;
 
-    /* Border and Shadow */
-    --border-color: #ddd;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    --warning-bg: rgba(255, 215, 0, 0.1);
+    --warning-text: #ffd700;
+
+    /* Border and Shadow - Enhanced for Dark Theme */
+    --border-color: #444a4d; /* Dark gray borders */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+
+    /* Retro-Futuristic Gradients */
+    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #4b0082);
+    --gradient-retro-secondary: linear-gradient(135deg, #00ced1, #ffd700);
+    --gradient-metallic: linear-gradient(135deg, #4b0082, #6a5acd, #9932cc);
 
     /* Spacing */
     --spacing-xs: 0.5rem;
@@ -59,4 +70,10 @@
 
     /* Transitions */
     --transition-fast: 0.2s;
+}
+
+/* Default Overrides */
+* {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
 }

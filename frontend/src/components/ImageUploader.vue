@@ -318,27 +318,56 @@ defineExpose({
     text-align: center;
     cursor: pointer;
     transition: all var(--transition-fast);
-    background-color: var(--light-bg);
+    background: var(--light-bg);
     min-height: 200px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+}
+
+.upload-area::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--gradient-retro-primary);
+    border-radius: var(--radius-lg);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
 }
 
 .upload-area:hover {
-    border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
+    border-color: var(--accent-cyan);
+    background: rgba(0, 206, 209, 0.05);
+    box-shadow: inset 0 0 20px rgba(0, 206, 209, 0.1);
+}
+
+.upload-area:hover::before {
+    opacity: 0.1;
 }
 
 .upload-area.drag-over {
     border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
+    background: rgba(255, 105, 180, 0.1);
     transform: scale(1.02);
+    box-shadow:
+        inset 0 0 30px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
+}
+
+.upload-area.drag-over::before {
+    opacity: 0.2;
 }
 
 .upload-area.has-error {
-    border-color: var(--error-color);
+    border-color: var(--accent-orange);
+    background: rgba(255, 69, 0, 0.05);
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.2);
 }
 
 .preview-container {
@@ -360,7 +389,7 @@ defineExpose({
     top: var(--spacing-sm);
     right: var(--spacing-sm);
     background-color: var(--error-color);
-    color: white;
+    color: var(--light-text);
     border: none;
     border-radius: var(--radius-md);
     padding: var(--spacing-xs) var(--spacing-sm);
@@ -407,17 +436,55 @@ defineExpose({
 
 .progress-bar {
     width: 100%;
-    height: 8px;
-    background-color: var(--border-color);
+    height: 10px;
+    background: var(--darker-bg);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-full);
     overflow: hidden;
     margin-bottom: var(--spacing-sm);
+    position: relative;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(0, 206, 209, 0.1), transparent);
+    animation: scanline 2s linear infinite;
+}
+
+@keyframes scanline {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 .progress-fill {
     height: 100%;
-    background-color: var(--primary-color);
+    background: var(--gradient-retro-secondary);
     transition: width var(--transition-fast);
+    position: relative;
+    border-radius: var(--radius-full);
+    box-shadow: 0 0 15px rgba(0, 206, 209, 0.4);
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-full);
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 .progress-text {
@@ -429,22 +496,60 @@ defineExpose({
 .error-message {
     margin-top: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
-    background-color: #fee;
-    border: 1px solid var(--error-color);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
     border-radius: var(--radius-md);
-    color: var(--error-color);
+    color: var(--error-text);
     font-size: 0.875rem;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+}
+
+.error-message::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent-orange);
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .success-message {
     margin-top: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
-    background-color: #efe;
-    border: 1px solid var(--success-color);
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
     border-radius: var(--radius-md);
-    color: var(--success-color);
+    color: #22C55E;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+}
+
+.success-message::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #22C55E;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 5px #22C55E; }
+    to { box-shadow: 0 0 15px #22C55E; }
 }
 
 .metadata-inputs {
@@ -462,8 +567,10 @@ defineExpose({
 
 .form-group label {
     font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 700;
+    color: var(--accent-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .form-input {
@@ -471,29 +578,61 @@ defineExpose({
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: 1rem;
-    transition: border-color var(--transition-fast);
+    background: var(--bg-color);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
 }
 
 .form-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--accent-cyan);
+    box-shadow:
+        0 0 0 2px rgba(0, 206, 209, 0.2),
+        0 0 20px rgba(0, 206, 209, 0.3);
+    background: var(--card-bg);
+}
+
+.form-input::placeholder {
+    color: var(--text-secondary);
 }
 
 .upload-button {
     margin-top: var(--spacing-lg);
     padding: var(--spacing-sm) var(--spacing-xl);
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
+    background: var(--gradient-retro-primary);
+    color: var(--light-text);
+    border: 1px solid var(--primary-color);
     border-radius: var(--radius-md);
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: background-color var(--transition-fast);
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
 }
 
 .upload-button:hover {
-    background-color: var(--primary-color-dark);
+    transform: translateY(-2px);
+    box-shadow:
+        var(--shadow-lg),
+        0 0 30px rgba(255, 105, 180, 0.4);
+}
+
+.upload-button:hover::before {
+    left: 100%;
 }
 
 @media (max-width: 768px) {
