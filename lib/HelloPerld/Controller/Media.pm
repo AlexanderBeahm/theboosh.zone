@@ -10,7 +10,6 @@ use File::Path qw(make_path);
 use File::Copy;
 use File::Basename qw(fileparse dirname);
 use File::Spec::Functions qw(catfile catdir);
-use File::Type;
 use MIME::Types;
 use MIME::Base64;
 use Digest::SHA qw(sha256_hex);
@@ -113,44 +112,83 @@ sub upload ($self) {
         }, status => 400);
     }
 
-    # File signature validation - verify actual file content matches declared MIME type
-    # TEMPORARY FIX: Disable File::Type validation due to unreliable detection
-    # The frontend already validates file types using proper browser APIs
-    #
-    # TODO: Replace File::Type with more reliable validation or update library
-    #
-    # my $file_checker = File::Type->new();
-    # my $detected_mime_type;
-    #
-    # if ($upload) {
-    #     # For file uploads, check the file directly
-    #     $detected_mime_type = $file_checker->mime_type($upload->asset->slurp);
-    # } elsif ($file_data) {
-    #     # For base64 uploads, check the decoded data
-    #     $detected_mime_type = $file_checker->mime_type($file_data);
-    # }
-    #
-    # # Verify the detected MIME type matches what was declared
-    # if ($detected_mime_type && $detected_mime_type ne $mime_type) {
-    #     # Allow some common variations (e.g., image/jpg vs image/jpeg)
-    #     my %mime_aliases = (
-    #         'image/jpg' => 'image/jpeg',
-    #         'image/jpeg' => 'image/jpg'
-    #     );
-    #
-    #     my $normalized_detected = $mime_aliases{$detected_mime_type} || $detected_mime_type;
-    #     my $normalized_declared = $mime_aliases{$mime_type} || $mime_type;
-    #
-    #     unless ($normalized_detected eq $normalized_declared) {
-    #         return $self->render(json => {
-    #             success => 0,
-    #             error => "File content does not match declared file type"
-    #         }, status => 400);
-    #     }
-    # }
+    # Server-side file content validation - SECURITY CRITICAL
+    # Multi-layer validation approach:
+    # 1. MIME type and size validation (already done above)
+    # 2. File signature/magic number validation
+    # 3. Image processing validation for image files
 
-    # Log that we're skipping File::Type validation temporarily
-    $self->app->log->info("Skipping File::Type validation - using frontend validation instead");
+    my $file_content;
+    if ($upload) {
+        $file_content = $upload->asset->slurp;
+    } elsif ($file_data) {
+        $file_content = $file_data;
+    }
+
+    # Validate file signatures (magic numbers) for common types
+    my $is_valid_signature = $self->_validate_file_signature($file_content, $mime_type);
+    unless ($is_valid_signature) {
+        $self->app->log->warn("File signature validation failed for MIME type: $mime_type");
+        return $self->render(json => {
+            success => 0,
+            error => "File content does not match declared file type"
+        }, status => 400);
+    }
+
+    # Additional validation for images using Imager library
+    # This ensures the file is actually parseable as an image
+    if ($mime_type =~ /^image\// && $mime_type ne 'image/svg+xml') {
+        my $validation_img = Imager->new();
+
+        # Try to read the file content
+        my $can_read;
+        if ($upload) {
+            # Create a temporary file for validation (Imager needs a file path)
+            my $temp_file = "/tmp/upload_validation_" . time() . "_" . rand();
+            eval {
+                open(my $fh, '>', $temp_file) or die "Cannot create temp file: $!";
+                binmode $fh;
+                print $fh $file_content;
+                close $fh;
+
+                $can_read = $validation_img->read(file => $temp_file);
+                unlink $temp_file; # Clean up
+            };
+            if ($@) {
+                $self->app->log->error("Image validation error: $@");
+                unlink $temp_file if -e $temp_file;
+                $can_read = 0;
+            }
+        } elsif ($file_data) {
+            # For base64 data, read from data directly
+            $can_read = $validation_img->read(data => $file_data);
+        }
+
+        unless ($can_read) {
+            my $error_msg = $validation_img->errstr() || "Unknown image validation error";
+            $self->app->log->warn("Image processing validation failed: $error_msg");
+            return $self->render(json => {
+                success => 0,
+                error => "File appears to be corrupted or is not a valid image"
+            }, status => 400);
+        }
+
+        $self->app->log->info("Image content validation passed for MIME type: $mime_type");
+    }
+
+    # Special validation for SVG files (XML-based, requires different approach)
+    if ($mime_type eq 'image/svg+xml') {
+        my $is_valid_svg = $self->_validate_svg_content($file_content);
+        unless ($is_valid_svg) {
+            $self->app->log->warn("SVG validation failed - potentially malicious content");
+            return $self->render(json => {
+                success => 0,
+                error => "SVG file contains invalid or potentially dangerous content"
+            }, status => 400);
+        }
+    }
+
+    $self->app->log->info("File validation passed for MIME type: $mime_type");
 
     # Generate unique filename
     my ($name, $path, $ext) = fileparse($original_filename, qr/\.[^.]*/);
@@ -458,6 +496,113 @@ sub delete ($self) {
             error => "Failed to delete physical file: $file_deletion_error"
         }, status => 500);
     }
+}
+
+# Private helper method: Validate file signature (magic numbers)
+sub _validate_file_signature ($self, $content, $mime_type) {
+    return 0 unless $content;
+
+    # Get first 16 bytes for magic number checking
+    my $header = substr($content, 0, 16);
+
+    # Magic number signatures for common image formats
+    # Reference: https://en.wikipedia.org/wiki/List_of_file_signatures
+    my %signatures = (
+        'image/jpeg' => [
+            qr/^\xFF\xD8\xFF/,  # JPEG/JFIF
+        ],
+        'image/png' => [
+            qr/^\x89PNG\r\n\x1A\n/,  # PNG signature
+        ],
+        'image/gif' => [
+            qr/^GIF87a/,  # GIF87a
+            qr/^GIF89a/,  # GIF89a
+        ],
+        'image/webp' => [
+            qr/^RIFF....WEBP/s,  # WebP (RIFF container)
+        ],
+        'image/svg+xml' => [
+            qr/^\s*<\?xml/,          # XML declaration
+            qr/^\s*<svg/,            # Direct SVG tag
+            qr/^\s*<!DOCTYPE\s+svg/i, # SVG DOCTYPE
+        ],
+    );
+
+    # Get expected signatures for this MIME type
+    my $expected_sigs = $signatures{$mime_type};
+    unless ($expected_sigs) {
+        # Unknown MIME type - reject for security
+        $self->app->log->warn("No signature validation defined for MIME type: $mime_type");
+        return 0;
+    }
+
+    # Check if file header matches any of the expected signatures
+    foreach my $sig (@$expected_sigs) {
+        if ($header =~ $sig) {
+            return 1; # Valid signature found
+        }
+    }
+
+    # Also check full content for SVG (might have leading whitespace/comments)
+    if ($mime_type eq 'image/svg+xml') {
+        my $first_1kb = substr($content, 0, 1024);
+        foreach my $sig (@$expected_sigs) {
+            if ($first_1kb =~ $sig) {
+                return 1;
+            }
+        }
+    }
+
+    return 0; # No matching signature found
+}
+
+# Private helper method: Validate SVG content for security
+sub _validate_svg_content ($self, $content) {
+    return 0 unless $content;
+
+    # SVG security checks - prevent XXE, script injection, etc.
+
+    # 1. Basic XML structure check
+    unless ($content =~ /<svg/i) {
+        $self->app->log->warn("SVG validation failed: No <svg> tag found");
+        return 0;
+    }
+
+    # 2. Check for dangerous elements/attributes (blacklist approach)
+    my @dangerous_patterns = (
+        qr/<script[>\s]/i,           # Script tags
+        qr/on\w+\s*=/i,              # Event handlers (onclick, onload, etc.)
+        qr/<iframe[>\s]/i,           # Iframes
+        qr/<embed[>\s]/i,            # Embed tags
+        qr/<object[>\s]/i,           # Object tags
+        qr/<!ENTITY/i,               # External entities (XXE vulnerability)
+        qr/<!DOCTYPE[^>]*\[/i,       # DOCTYPE with internal DTD
+        qr/javascript:/i,            # JavaScript URLs
+        qr/data:text\/html/i,        # Data URLs with HTML
+        qr/<foreignObject[>\s]/i,    # Foreign objects (can embed HTML)
+    );
+
+    foreach my $pattern (@dangerous_patterns) {
+        if ($content =~ $pattern) {
+            $self->app->log->warn("SVG validation failed: Dangerous pattern detected");
+            return 0;
+        }
+    }
+
+    # 3. Size check - prevent billion laughs attack
+    if (length($content) > 5_000_000) { # 5MB limit for SVG
+        $self->app->log->warn("SVG validation failed: File too large");
+        return 0;
+    }
+
+    # 4. Depth check - prevent deeply nested XML (DoS)
+    my $depth = ($content =~ tr/<//);
+    if ($depth > 10000) { # Reasonable limit for SVG tags
+        $self->app->log->warn("SVG validation failed: Too many XML tags");
+        return 0;
+    }
+
+    return 1; # SVG appears safe
 }
 
 1;

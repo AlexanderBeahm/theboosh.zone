@@ -78,8 +78,17 @@
     --transition-fast: 0.2s;
 }
 
-/* Default Overrides */
-* {
+/* Default Overrides - Apply to body and let inheritance work naturally */
+body {
     background-color: var(--bg-color);
     color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+/* Reset box-sizing for better layout control */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
