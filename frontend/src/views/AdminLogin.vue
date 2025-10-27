@@ -1,67 +1,76 @@
 <template>
-    <div class="admin-login-page">
-        <div class="login-container">
-            <div class="login-card">
-                <div class="login-header">
-                    <h1>Admin Login</h1>
-                    <p>Access the TheBoosh.Zone admin panel</p>
-                </div>
-
-                <form class="login-form" @submit.prevent="handleLogin">
-                    <div class="form-group">
-                        <label for="username">Username</label>
-                        <input
-                            id="username"
-                            v-model="loginForm.username"
-                            type="text"
-                            required
-                            :disabled="isLoading"
-                            autocomplete="username"
-                            class="form-input"
-                        />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input
-                            id="password"
-                            v-model="loginForm.password"
-                            type="password"
-                            required
-                            :disabled="isLoading"
-                            autocomplete="current-password"
-                            class="form-input"
-                        />
-                    </div>
-
-                    <div class="form-actions">
-                        <button
-                            type="submit"
-                            :disabled="
-                                isLoading ||
-                                !loginForm.username ||
-                                !loginForm.password
-                            "
-                            class="login-button"
-                        >
-                            <span v-if="isLoading">Logging in...</span>
-                            <span v-else>Login</span>
-                        </button>
-                    </div>
-
-                    <div v-if="error" class="error-message">
-                        {{ error }}
-                    </div>
-                </form>
-
-                <div class="login-footer">
-                    <router-link to="/" class="back-link">
-                        ← Back to Home
-                    </router-link>
-                </div>
-            </div>
+  <div class="admin-login-page">
+    <div class="login-container">
+      <div class="login-card">
+        <div class="login-header">
+          <h1>Admin Login</h1>
+          <p>Access the TheBoosh.Zone admin panel</p>
         </div>
+
+        <form
+          class="login-form"
+          @submit.prevent="handleLogin"
+        >
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input
+              id="username"
+              v-model="loginForm.username"
+              type="text"
+              required
+              :disabled="isLoading"
+              autocomplete="username"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              v-model="loginForm.password"
+              type="password"
+              required
+              :disabled="isLoading"
+              autocomplete="current-password"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-actions">
+            <button
+              type="submit"
+              :disabled="
+                isLoading ||
+                  !loginForm.username ||
+                  !loginForm.password
+              "
+              class="login-button"
+            >
+              <span v-if="isLoading">Logging in...</span>
+              <span v-else>Login</span>
+            </button>
+          </div>
+
+          <div
+            v-if="error"
+            class="error-message"
+          >
+            {{ error }}
+          </div>
+        </form>
+
+        <div class="login-footer">
+          <router-link
+            to="/"
+            class="back-link"
+          >
+            ← Back to Home
+          </router-link>
+        </div>
+      </div>
     </div>
+  </div>
 </template>
 
 <script setup>
