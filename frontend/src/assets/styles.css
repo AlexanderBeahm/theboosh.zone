@@ -1,57 +1,98 @@
-/* Global CSS Variables for Theming */
+/* Global CSS Variables for Dark Retro-Futuristic Theming */
 :root {
-  /* Primary Colors */
-  --primary-color: #3498db;
-  --primary-dark: #2980b9;
-  --primary-color-light: rgba(52, 152, 219, 0.1);
-  --primary-color-dark: rgba(41, 128, 185, 0.1);
+    /* Primary Colors - Retro-Futuristic Accents */
+    --primary-color: #ff69b4; /* Hot Pink/Magenta - CTAs, active states */
+    --primary-dark: #e91e63; /* Darker pink for hover states */
+    --primary-color-light: rgba(255, 105, 180, 0.1);
+    --primary-color-dark: rgba(255, 105, 180, 0.2);
 
-  /* Background Colors - Pearl White Theme */
-  --bg-color: #f8f9fa;
-  --card-bg: #ffffff;
-  --light-bg: #f8f9fa;
-  --dark-bg: #2c3e50;
-  --darker-bg: #34495e;
+    /* Background Colors - Dark Theme */
+    --bg-color: #1f2527; /* Dark charcoal - primary background */
+    --card-bg: #2a2f31; /* Slightly lighter for cards and sections */
+    --light-bg: #364043; /* Dark slate for secondary backgrounds */
+    --dark-bg: #36454f; /* Dark Slate Gray for headers/nav */
+    --darker-bg: #1a1d1f; /* Deeper black for contrast areas */
 
-  /* Text Colors */
-  --light-text: #ecf0f1;
-  --dark-text: #2c3e50;
-  --text-primary: #333;
-  --text-secondary: #666;
+    /* Text Colors */
+    --light-text: #ffffff; /* Pure white for primary text */
+    --dark-text: #ffffff; /* White text for dark theme */
+    --text-primary: #ffffff; /* Primary text on dark backgrounds */
+    --text-secondary: #e0e0e0; /* Secondary text - light gray */
+    --text-color: #ffffff; /* Alias for text-primary, used by markdown renderer */
 
-  /* Status Colors */
-  --error-color: #e74c3c;
-  --error-bg: #fee;
-  --error-text: #c33;
-  --error-border: #fcc;
+    /* Industrial Retrofuturistic Accent Colors */
+    --accent-amber: #cc8800; /* Muted Amber - warnings, progress */
+    --accent-orange: #ff4500; /* Red-Orange - errors, alerts */
+    --steel-gray: #708090; /* Steel Gray - secondary UI elements */
+    --chrome-silver: #b8bcc8; /* Chrome Silver - hover states, highlights */
+    --dark-slate: #36454f; /* Dark Slate Gray - backgrounds, borders */
 
-  --success-bg: #d4edda;
-  --success-text: #155724;
+    /* Code Colors - Dark Theme */
+    --code-bg: #1a1d1f; /* Deep black for code blocks */
+    --code-text: #ff69b4; /* Pink for inline code */
 
-  --warning-bg: #fff3cd;
-  --warning-text: #856404;
+    /* Status Colors - Dark Theme Optimized */
+    --error-color: #ff4500; /* Red-Orange for errors */
+    --error-bg: rgba(255, 69, 0, 0.1);
+    --error-text: #ff6b47;
+    --error-border: rgba(255, 69, 0, 0.3);
 
-  /* Border and Shadow */
-  --border-color: #ddd;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+    --success-bg: rgba(255, 105, 180, 0.1);
+    --success-text: #ff69b4;
 
-  /* Spacing */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 3rem;
-  --spacing-xxl: 4rem;
+    --warning-bg: rgba(204, 136, 0, 0.1);
+    --warning-text: #cc8800;
 
-  /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+    /* Border and Shadow - Enhanced for Dark Theme */
+    --border-color: #444a4d; /* Dark gray borders */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 
-  /* Transitions */
-  --transition-fast: 0.2s;
+    /* Industrial Retrofuturistic Gradients */
+    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, var(--bg-color));
+    --gradient-retro-primary-reverse: linear-gradient(
+        20deg,
+        var(--bg-color),
+        #ff69b4
+    );
+    --gradient-retro-secondary: linear-gradient(135deg, #ff69b4, #b8bcc8);
+    --gradient-metallic: linear-gradient(135deg, #36454f, #708090);
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 3rem;
+    --spacing-xxl: 4rem;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 0.2s;
+
+    /* Component-Specific Variables */
+    --article-card-image-height: 200px;
+    --article-card-hover-scale: 1.08;
+}
+
+/* Default Overrides - Apply to body and let inheritance work naturally */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+}
+
+/* Reset box-sizing for better layout control */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }

@@ -21,7 +21,7 @@ describe("AboutPage", () => {
         );
 
         expect(githubLink.exists()).toBe(true);
-        expect(githubLink.text()).toBe("GitHub");
+        expect(githubLink.text()).toBe("🖥️ GitHub");
         expect(githubLink.attributes("target")).toBe("_blank");
         expect(githubLink.attributes("rel")).toBe("noopener noreferrer");
     });
@@ -33,9 +33,21 @@ describe("AboutPage", () => {
         );
 
         expect(linkedinLink.exists()).toBe(true);
-        expect(linkedinLink.text()).toBe("LinkedIn");
+        expect(linkedinLink.text()).toBe("💼 LinkedIn");
         expect(linkedinLink.attributes("target")).toBe("_blank");
         expect(linkedinLink.attributes("rel")).toBe("noopener noreferrer");
+    });
+
+    it("displays X link with correct attributes", () => {
+        const wrapper = mount(AboutPage);
+        const xLink = wrapper.find(
+            'a[href="https://x.com/BooshnawBeahm"]',
+        );
+
+        expect(xLink.exists()).toBe(true);
+        expect(xLink.text()).toBe("✖️ X");
+        expect(xLink.attributes("target")).toBe("_blank");
+        expect(xLink.attributes("rel")).toBe("noopener noreferrer");
     });
 
     it("renders the Technology Stack section", () => {
@@ -75,7 +87,7 @@ describe("AboutPage", () => {
         const lists = wrapper.findAll("ul");
 
         expect(lists.length).toBe(2);
-        expect(lists[0].findAll("li").length).toBe(2); // GitHub and LinkedIn
+        expect(lists[0].findAll("li").length).toBe(3); // GitHub, LinkedIn, and X
         expect(lists[1].findAll("li").length).toBe(4); // 4 technology items
     });
 });

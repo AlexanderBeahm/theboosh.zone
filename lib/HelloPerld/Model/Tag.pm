@@ -602,6 +602,80 @@ sub get_count {
     return $count || 0;
 }
 
+sub delete_orphaned_tags {
+    my ($self) = @_;
+
+    my $dbh;
+    if ($self->{db_config} && %{$self->{db_config}}) {
+        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
+    } else {
+        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
+    }
+    return undef unless $dbh;
+
+    my $deleted_count = 0;
+    eval {
+        $dbh->begin_work();
+
+        # Find tags that have no article associations
+        my $find_sql = q{
+            SELECT t.id
+            FROM tags t
+            LEFT JOIN article_tags at ON t.id = at.tag_id
+            WHERE at.tag_id IS NULL
+        };
+
+        my $find_sth = $dbh->prepare($find_sql);
+        $find_sth->execute();
+
+        my @orphaned_tag_ids;
+        while (my ($tag_id) = $find_sth->fetchrow_array()) {
+            push @orphaned_tag_ids, $tag_id;
+        }
+        $find_sth->finish();
+
+        # Delete orphaned tags
+        if (@orphaned_tag_ids) {
+            # Use bulk DELETE with IN clause for better performance
+            my $placeholders = join(',', ('?') x @orphaned_tag_ids);
+            my $delete_sql = "DELETE FROM tags WHERE id IN ($placeholders)";
+            my $delete_sth = $dbh->prepare($delete_sql);
+
+            $deleted_count = $delete_sth->execute(@orphaned_tag_ids);
+            $delete_sth->finish();
+        }
+
+        $dbh->commit();
+        $dbh->disconnect();
+
+        if ($self->{logger} && $deleted_count > 0) {
+            $self->{logger}->info("Deleted $deleted_count orphaned tag(s)");
+        }
+    };
+
+    if ($@) {
+        # Safely rollback transaction, catching any rollback exceptions
+        if ($dbh) {
+            eval { $dbh->rollback(); };
+            if ($@) {
+                if ($self->{logger}) {
+                    $self->{logger}->error("Rollback failed during orphaned tag cleanup: $@");
+                }
+            }
+        }
+
+        if ($self->{logger}) {
+            $self->{logger}->error("Failed to delete orphaned tags: $@");
+        }
+
+        # Always disconnect, even if rollback failed
+        $dbh->disconnect() if $dbh;
+        return undef;
+    }
+
+    return $deleted_count;
+}
+
 # Security: Escape SQL wildcard characters in user input
 # Prevents users from using % or _ as wildcards in LIKE/ILIKE queries
 sub _escape_sql_wildcards {
@@ -716,6 +790,10 @@ Searches for tags by name.
 =head2 find_or_create_by_name
 
 Finds an existing tag by name or creates a new one.
+
+=head2 delete_orphaned_tags
+
+Finds and deletes tags that have no article associations. Returns the number of deleted tags.
 
 =head1 AUTHOR
 

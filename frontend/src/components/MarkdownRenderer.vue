@@ -251,13 +251,56 @@ function handleLinkClick(event) {
         ) {
             event.preventDefault();
 
-            // Use Vue Router for internal navigation
-            if (href.startsWith("/")) {
-                // Import router and navigate
-                const router = useRouter();
-                router.push(href);
+            // Enhanced security validation for internal navigation
+            if (href.startsWith("/") && !href.includes("//") && isValidInternalUrl(href)) {
+                try {
+                    const router = useRouter();
+                    router.push(href);
+                } catch {
+                    // Router not available (likely in test environment)
+                    // eslint-disable-next-line no-console
+                    console.log('Router not available for navigation to:', href);
+                }
             }
         }
+    }
+}
+
+// Validate that URL is safe for internal navigation
+function isValidInternalUrl(href) {
+    // Check for malicious patterns
+    const maliciousPatterns = [
+        /javascript:/i,      // JavaScript URLs
+        /data:/i,           // Data URLs
+        /vbscript:/i,       // VBScript URLs
+        /about:/i,          // About URLs
+        /file:/i,           // File URLs
+        /ftp:/i,            // FTP URLs
+        /%2f%2f/i,          // Double-encoded slashes
+        /%252f%252f/i,      // Triple-encoded slashes
+        /\\/,               // Backslashes (Windows paths)
+        /#.*?javascript:/i,  // Fragment with javascript
+        /\?.*?javascript:/i, // Query with javascript
+    ];
+
+    // Check against malicious patterns
+    for (const pattern of maliciousPatterns) {
+        if (pattern.test(href)) {
+            // eslint-disable-next-line no-console
+            console.warn('Blocked potentially malicious URL:', href);
+            return false;
+        }
+    }
+
+    // Additional validation: ensure it's a valid Vue Router path
+    try {
+        // Basic path validation - should be alphanumeric, slashes, hyphens, underscores, and common URL characters
+        const validPathPattern = /^\/[a-zA-Z0-9/_\-.~!$&'()*+,;=:@%]*$/;
+        return validPathPattern.test(href);
+    } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('URL validation error:', error);
+        return false;
     }
 }
 
@@ -284,10 +327,10 @@ onUpdated(() => {
 <style scoped>
 .markdown-content {
     line-height: 1.6;
-    color: var(--text-color);
+    color: var(--text-primary);
 }
 
-/* Typography */
+/* Typography - Retro-Futuristic */
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,
@@ -296,21 +339,34 @@ onUpdated(() => {
 .markdown-content h6 {
     margin-top: 2rem;
     margin-bottom: 1rem;
-    font-weight: 600;
+    font-weight: 700;
     line-height: 1.25;
-    color: var(--primary-color);
+    background: var(--gradient-retro-secondary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 20px rgba(184, 188, 200, 0.3);
+    position: relative;
 }
 
 .markdown-content h1 {
     font-size: 2.25rem;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 3px solid transparent;
+    background-image: var(--gradient-retro-secondary), var(--gradient-retro-primary);
+    background-origin: border-box;
+    background-clip: text, border-box;
     padding-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
 }
 
 .markdown-content h2 {
     font-size: 1.875rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px solid transparent;
+    background-image: var(--gradient-retro-secondary), linear-gradient(90deg, var(--primary-color), transparent);
+    background-origin: border-box;
+    background-clip: text, border-box;
     padding-bottom: 0.25rem;
+    margin-bottom: 1.25rem;
 }
 
 .markdown-content h3 {
@@ -347,11 +403,34 @@ onUpdated(() => {
     color: var(--primary-color);
     text-decoration: none;
     border-bottom: 1px solid transparent;
-    transition: border-bottom-color var(--transition-fast);
+    transition: all var(--transition-fast);
+    position: relative;
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+}
+
+.markdown-content a::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
+    border-radius: var(--radius-sm);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
 }
 
 .markdown-content a:hover {
     border-bottom-color: var(--primary-color);
+    color: var(--primary-color);
+    text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+}
+
+.markdown-content a:hover::before {
+    opacity: 1;
 }
 
 /* Lists */
@@ -400,39 +479,104 @@ onUpdated(() => {
 
 /* Blockquotes */
 .markdown-content blockquote {
-    border-left: 4px solid var(--primary-color);
-    background-color: var(--light-bg);
-    padding: 1rem;
-    margin: 1rem 0;
+    border-left: 4px solid transparent;
+    background: var(--light-bg);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
     font-style: italic;
+    position: relative;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    overflow: hidden;
+}
+
+.markdown-content blockquote::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-retro-primary);
+    border-radius: var(--radius-sm);
+}
+
+.markdown-content blockquote::after {
+    content: '"';
+    position: absolute;
+    top: 0.5rem;
+    right: 1rem;
+    font-size: 3rem;
+    color: var(--primary-color);
+    opacity: 0.3;
+    font-family: serif;
+    line-height: 1;
 }
 
 .markdown-content blockquote p:last-child {
     margin-bottom: 0;
 }
 
+.markdown-content blockquote:hover {
+    background: rgba(255, 105, 180, 0.05);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.1);
+}
+
 /* Tables */
 .markdown-content table {
     border-collapse: collapse;
     width: 100%;
-    margin: 1rem 0;
+    margin: 1.5rem 0;
     border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.markdown-content table::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-retro-primary);
 }
 
 .markdown-content th,
 .markdown-content td {
     border: 1px solid var(--border-color);
-    padding: 0.75rem;
+    padding: 0.875rem 1rem;
     text-align: left;
+    transition: background-color var(--transition-fast);
 }
 
 .markdown-content th {
-    background-color: var(--light-bg);
+    background: var(--light-bg);
     font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    font-size: 0.875rem;
+    position: relative;
+}
+
+.markdown-content th::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, var(--primary-color), transparent, var(--primary-color));
 }
 
 .markdown-content tbody tr:nth-child(even) {
     background-color: var(--light-bg);
+}
+
+.markdown-content tbody tr:hover {
+    background-color: rgba(255, 105, 180, 0.05);
 }
 
 /* Images */
@@ -447,32 +591,66 @@ onUpdated(() => {
 /* Horizontal rules */
 .markdown-content hr {
     border: none;
-    border-top: 2px solid var(--border-color);
-    margin: 2rem 0;
+    height: 3px;
+    background: var(--gradient-retro-primary);
+    margin: 3rem 0;
+    border-radius: var(--radius-full);
+    position: relative;
+    overflow: hidden;
+}
+
+.markdown-content hr::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
 }
 
 /* Error state */
 .markdown-content .error {
-    background-color: var(--error-bg);
+    background: var(--error-bg);
     color: var(--error-text);
-    padding: 1rem;
+    padding: 1.5rem;
     border-radius: var(--radius-md);
     border: 1px solid var(--error-border);
-    margin: 1rem 0;
-}
-</style>
-
-<style>
-/* Global styles for syntax highlighting (not scoped) */
-.hljs {
-    background: #0d1117 !important;
-    color: #c9d1d9 !important;
-    border-radius: 6px;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 69, 0, 0.2);
 }
 
-/* Ensure code blocks have proper styling */
-.markdown-content pre.hljs {
-    background: #0d1117;
-    border: 1px solid #30363d;
+.markdown-content .error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-orange), #FF8C00, var(--accent-orange));
+    animation: errorPulse 2s ease-in-out infinite;
+}
+
+.markdown-content .error::after {
+    content: '⚠';
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.5rem;
+    color: var(--accent-orange);
+    opacity: 0.6;
+}
+
+@keyframes errorPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
 }
 </style>

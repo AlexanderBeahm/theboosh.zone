@@ -1,0 +1,62 @@
+/* Global Syntax Highlighting Styles for highlight.js */
+/* Retro-Futuristic Dark Theme */
+/* These styles are intentionally global (not scoped) to apply to dynamically rendered code blocks */
+
+.hljs {
+    background: var(--code-bg) !important; /* Deep black background */
+    color: var(--light-text) !important; /* White text */
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+/* Retro-futuristic accent for code blocks */
+.hljs::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--gradient-retro-secondary);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+/* Ensure code blocks within markdown have proper styling */
+.markdown-content pre.hljs {
+    background: var(--code-bg);
+    border: 1px solid var(--border-color);
+}
+
+/* Syntax highlighting color customization */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in {
+    color: var(--primary-color) !important; /* Pink for keywords */
+}
+
+.hljs-string,
+.hljs-attr {
+    color: var(--chrome-silver) !important; /* Chrome silver for strings */
+}
+
+.hljs-number,
+.hljs-literal {
+    color: var(--primary-color) !important; /* Hot pink for numbers */
+}
+
+.hljs-comment {
+    color: var(--text-secondary) !important; /* Gray for comments */
+    font-style: italic;
+}
+
+.hljs-function,
+.hljs-title {
+    color: var(--accent-orange) !important; /* Orange for function names */
+}
+
+.hljs-variable,
+.hljs-name {
+    color: var(--steel-gray) !important; /* Steel gray for variables */
+}
