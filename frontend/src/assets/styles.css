@@ -51,8 +51,12 @@
     --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
 
     /* Industrial Retrofuturistic Gradients */
-    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, #36454f);
-    --gradient-retro-primary-reverse: linear-gradient(135deg, #36454f, #ff69b4);
+    --gradient-retro-primary: linear-gradient(135deg, #ff69b4, var(--bg-color));
+    --gradient-retro-primary-reverse: linear-gradient(
+        20deg,
+        var(--bg-color),
+        #ff69b4
+    );
     --gradient-retro-secondary: linear-gradient(135deg, #ff69b4, #b8bcc8);
     --gradient-metallic: linear-gradient(135deg, #36454f, #708090);
 

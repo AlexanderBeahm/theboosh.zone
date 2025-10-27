@@ -85,18 +85,7 @@
     left: -50%;
     right: -50%;
     bottom: -50%;
-    background:
-        radial-gradient(
-            circle at 30% 20%,
-            rgba(255, 105, 180, 0.08) 0%,
-            transparent 50%
-        ),
-        radial-gradient(
-            circle at 70% 80%,
-            rgba(255, 105, 180, 0.08) 0%,
-            transparent 50%
-        );
-    animation: float 25s ease-in-out infinite;
+    background: --var(--bg-color);
     z-index: 0;
 }
 
@@ -107,37 +96,10 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background:
-        linear-gradient(90deg, rgba(255, 105, 180, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(255, 105, 180, 0.02) 1px, transparent 1px);
+    background: --var(--bg-color);
     background-size: 40px 40px;
     animation: slidePattern 35s linear infinite;
     z-index: 0;
-}
-
-@keyframes float {
-    0%,
-    100% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    25% {
-        transform: translate(15px, -15px) rotate(0.5deg);
-    }
-    50% {
-        transform: translate(-8px, 8px) rotate(-0.5deg);
-    }
-    75% {
-        transform: translate(-15px, -8px) rotate(0.5deg);
-    }
-}
-
-@keyframes slidePattern {
-    0% {
-        transform: translate(0, 0);
-    }
-    100% {
-        transform: translate(40px, 40px);
-    }
 }
 
 .about-page {

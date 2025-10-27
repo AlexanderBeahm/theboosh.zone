@@ -209,16 +209,7 @@ onUnmounted(() => {
     justify-content: center;
     min-height: 60vh;
     padding: var(--spacing-xl);
-    background:
-        /* Animated grid overlay */
-        linear-gradient(90deg, rgba(255, 105, 180, 0.03) 1px, transparent 1px),
-        linear-gradient(rgba(255, 105, 180, 0.03) 1px, transparent 1px),
-        /* Main gradient background */
-            radial-gradient(
-                ellipse at center,
-                var(--card-bg) 0%,
-                var(--bg-color) 70%
-            );
+    background: var(--bg-color);
     background-size:
         40px 40px,
         40px 40px,
@@ -235,23 +226,7 @@ onUnmounted(() => {
     left: -50%;
     right: -50%;
     bottom: -50%;
-    background:
-        radial-gradient(
-            circle at 20% 20%,
-            rgba(255, 105, 180, 0.1) 0%,
-            transparent 50%
-        ),
-        radial-gradient(
-            circle at 80% 80%,
-            rgba(255, 105, 180, 0.1) 0%,
-            transparent 50%
-        ),
-        radial-gradient(
-            circle at 60% 40%,
-            rgba(184, 188, 200, 0.05) 0%,
-            transparent 50%
-        );
-    animation: float 20s ease-in-out infinite;
+    background: var(--bg-color);
     z-index: 0;
 }
 
@@ -262,19 +237,7 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background:
-        linear-gradient(
-            45deg,
-            transparent 49%,
-            rgba(255, 105, 180, 0.02) 50%,
-            transparent 51%
-        ),
-        linear-gradient(
-            -45deg,
-            transparent 49%,
-            rgba(255, 105, 180, 0.02) 50%,
-            transparent 51%
-        );
+    background: var(--bg-color);
     background-size: 60px 60px;
     animation: slidePattern 30s linear infinite;
     z-index: 0;
