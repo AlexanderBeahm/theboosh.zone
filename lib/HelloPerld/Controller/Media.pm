@@ -10,6 +10,7 @@ use File::Path qw(make_path);
 use File::Copy;
 use File::Basename qw(fileparse dirname);
 use File::Spec::Functions qw(catfile catdir);
+use File::Temp qw(tempfile);
 use MIME::Types;
 use MIME::Base64;
 use Digest::SHA qw(sha256_hex);
@@ -143,20 +144,18 @@ sub upload ($self) {
         # Try to read the file content
         my $can_read;
         if ($upload) {
-            # Create a temporary file for validation (Imager needs a file path)
-            my $temp_file = "/tmp/upload_validation_" . time() . "_" . rand();
+            # Create a secure temporary file for validation (Imager needs a file path)
+            my ($temp_fh, $temp_file) = tempfile(UNLINK => 1);
             eval {
-                open(my $fh, '>', $temp_file) or die "Cannot create temp file: $!";
-                binmode $fh;
-                print $fh $file_content;
-                close $fh;
+                binmode $temp_fh;
+                print $temp_fh $file_content;
+                close $temp_fh;
 
                 $can_read = $validation_img->read(file => $temp_file);
-                unlink $temp_file; # Clean up
+                # No need to unlink - UNLINK => 1 handles cleanup automatically
             };
             if ($@) {
                 $self->app->log->error("Image validation error: $@");
-                unlink $temp_file if -e $temp_file;
                 $can_read = 0;
             }
         } elsif ($file_data) {
@@ -254,9 +253,21 @@ sub upload ($self) {
     # Get uploaded_by from session
     my $uploaded_by = $self->session('admin_user_id');
 
-    # Get optional metadata from request (support both form and JSON)
-    my $alt_text = $self->param('alt_text') || $body->{alt_text};
-    my $caption = $self->param('caption') || $body->{caption};
+    # Get optional metadata from request (support both form and JSON) with length validation
+    my $alt_text_raw = $self->param('alt_text') || $body->{alt_text} || '';
+    my $caption_raw = $self->param('caption') || $body->{caption} || '';
+
+    # Apply length limits to prevent oversized inputs
+    my $alt_text = substr($alt_text_raw, 0, 255);
+    my $caption = substr($caption_raw, 0, 500);
+
+    # Log if input was truncated for debugging
+    if (length($alt_text_raw) > 255) {
+        $self->app->log->warn("Alt text truncated from " . length($alt_text_raw) . " to 255 characters");
+    }
+    if (length($caption_raw) > 500) {
+        $self->app->log->warn("Caption truncated from " . length($caption_raw) . " to 500 characters");
+    }
 
     # Create media record in database
     my $media_model = HelloPerld::Model::Media->new(
@@ -378,10 +389,22 @@ sub update ($self) {
         }, status => 400);
     }
 
-    # Get request body
+    # Get request body with length validation
     my $body = $self->req->json || {};
-    my $alt_text = $self->param('alt_text') || $body->{alt_text};
-    my $caption = $self->param('caption') || $body->{caption};
+    my $alt_text_raw = $self->param('alt_text') || $body->{alt_text} || '';
+    my $caption_raw = $self->param('caption') || $body->{caption} || '';
+
+    # Apply length limits to prevent oversized inputs
+    my $alt_text = substr($alt_text_raw, 0, 255);
+    my $caption = substr($caption_raw, 0, 500);
+
+    # Log if input was truncated for debugging
+    if (length($alt_text_raw) > 255) {
+        $self->app->log->warn("Alt text truncated from " . length($alt_text_raw) . " to 255 characters in update");
+    }
+    if (length($caption_raw) > 500) {
+        $self->app->log->warn("Caption truncated from " . length($caption_raw) . " to 500 characters in update");
+    }
 
     my $media_model = HelloPerld::Model::Media->new(
         logger => $self->app->logger_instance,
@@ -571,7 +594,8 @@ sub _validate_svg_content ($self, $content) {
     # 2. Check for dangerous elements/attributes (blacklist approach)
     my @dangerous_patterns = (
         qr/<script[>\s]/i,           # Script tags
-        qr/on\w+\s*=/i,              # Event handlers (onclick, onload, etc.)
+        qr/\bon\w+\s*=/is,           # Event handlers (onclick, onload, etc.) - enhanced with word boundary and multiline
+        qr/on\s+\w+\s*=/is,          # Event handlers with spaces (e.g., "on click=")
         qr/<iframe[>\s]/i,           # Iframes
         qr/<embed[>\s]/i,            # Embed tags
         qr/<object[>\s]/i,           # Object tags
@@ -580,6 +604,9 @@ sub _validate_svg_content ($self, $content) {
         qr/javascript:/i,            # JavaScript URLs
         qr/data:text\/html/i,        # Data URLs with HTML
         qr/<foreignObject[>\s]/i,    # Foreign objects (can embed HTML)
+        qr/expression\s*\(/i,        # CSS expressions (IE legacy vulnerability)
+        qr/\@import/i,               # CSS imports (potential for external content)
+        qr/xlink:href\s*=\s*["']javascript:/i, # XLink JavaScript URLs
     );
 
     foreach my $pattern (@dangerous_patterns) {

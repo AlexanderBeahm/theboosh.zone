@@ -76,6 +76,10 @@
 
     /* Transitions */
     --transition-fast: 0.2s;
+
+    /* Component-Specific Variables */
+    --article-card-image-height: 200px;
+    --article-card-hover-scale: 1.08;
 }
 
 /* Default Overrides - Apply to body and let inheritance work naturally */

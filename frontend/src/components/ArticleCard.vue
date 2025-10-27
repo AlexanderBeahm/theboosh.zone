@@ -119,7 +119,7 @@ function formatDate(dateString) {
 
 .article-image {
   width: 100%;
-  height: 200px;
+  height: var(--article-card-image-height);
   overflow: hidden;
   position: relative;
 }
@@ -151,7 +151,7 @@ function formatDate(dateString) {
 }
 
 .article-card:hover .article-image img {
-  transform: scale(1.08);
+  transform: scale(var(--article-card-hover-scale));
 }
 
 .article-content {

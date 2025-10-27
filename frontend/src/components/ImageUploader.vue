@@ -273,11 +273,16 @@ async function uploadFile() {
             throw new Error(response.data.error || "Upload failed");
         }
     } catch (err) {
+        // Log detailed error information for debugging (but don't expose to user)
+        console.error('Image upload error details:', {
+            message: err.message,
+            status: err.response?.status,
+            data: err.response?.data,
+            stack: err.stack
+        });
 
-        error.value =
-            err.response?.data?.error ||
-            err.message ||
-            `Failed to upload image (${err.response?.status || 'unknown error'})`;
+        // Always use generic error message to prevent information disclosure
+        error.value = "Failed to upload image. Please check the file format and size, then try again.";
         emit("upload-error", error.value);
     } finally {
         isUploading.value = false;

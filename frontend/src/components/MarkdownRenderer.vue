@@ -251,13 +251,53 @@ function handleLinkClick(event) {
         ) {
             event.preventDefault();
 
-            // Use Vue Router for internal navigation
-            if (href.startsWith("/")) {
-                // Import router and navigate
-                const router = useRouter();
-                router.push(href);
+            // Enhanced security validation for internal navigation
+            if (href.startsWith("/") && !href.includes("//") && isValidInternalUrl(href)) {
+                try {
+                    const router = useRouter();
+                    router.push(href);
+                } catch (error) {
+                    // Router not available (likely in test environment)
+                    console.log('Router not available for navigation to:', href);
+                }
             }
         }
+    }
+}
+
+// Validate that URL is safe for internal navigation
+function isValidInternalUrl(href) {
+    // Check for malicious patterns
+    const maliciousPatterns = [
+        /javascript:/i,      // JavaScript URLs
+        /data:/i,           // Data URLs
+        /vbscript:/i,       // VBScript URLs
+        /about:/i,          // About URLs
+        /file:/i,           // File URLs
+        /ftp:/i,            // FTP URLs
+        /%2f%2f/i,          // Double-encoded slashes
+        /%252f%252f/i,      // Triple-encoded slashes
+        /\\/,               // Backslashes (Windows paths)
+        /#.*?javascript:/i,  // Fragment with javascript
+        /\?.*?javascript:/i, // Query with javascript
+    ];
+
+    // Check against malicious patterns
+    for (const pattern of maliciousPatterns) {
+        if (pattern.test(href)) {
+            console.warn('Blocked potentially malicious URL:', href);
+            return false;
+        }
+    }
+
+    // Additional validation: ensure it's a valid Vue Router path
+    try {
+        // Basic path validation - should be alphanumeric, slashes, hyphens, underscores, and common URL characters
+        const validPathPattern = /^\/[a-zA-Z0-9\/_\-\.~!$&'()*+,;=:@%]*$/;
+        return validPathPattern.test(href);
+    } catch (error) {
+        console.warn('URL validation error:', error);
+        return false;
     }
 }
 
