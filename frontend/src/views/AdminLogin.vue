@@ -1,76 +1,67 @@
 <template>
-  <div class="admin-login-page">
-    <div class="login-container">
-      <div class="login-card">
-        <div class="login-header">
-          <h1>Admin Login</h1>
-          <p>Access the TheBoosh.Zone admin panel</p>
+    <div class="admin-login-page">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-header">
+                    <h1>Admin Login</h1>
+                    <p>Access the TheBoosh.Zone admin panel</p>
+                </div>
+
+                <form class="login-form" @submit.prevent="handleLogin">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input
+                            id="username"
+                            v-model="loginForm.username"
+                            type="text"
+                            required
+                            :disabled="isLoading"
+                            autocomplete="username"
+                            class="form-input"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input
+                            id="password"
+                            v-model="loginForm.password"
+                            type="password"
+                            required
+                            :disabled="isLoading"
+                            autocomplete="current-password"
+                            class="form-input"
+                        />
+                    </div>
+
+                    <div class="form-actions">
+                        <button
+                            type="submit"
+                            :disabled="
+                                isLoading ||
+                                !loginForm.username ||
+                                !loginForm.password
+                            "
+                            class="login-button"
+                        >
+                            <span v-if="isLoading">Logging in...</span>
+                            <span v-else>Login</span>
+                        </button>
+                    </div>
+
+                    <div v-if="error" class="error-message">
+                        {{ error }}
+                    </div>
+                </form>
+
+                <div class="login-footer">
+                    <router-link to="/" class="back-link">
+                        ← Back to Home
+                    </router-link>
+                </div>
+            </div>
         </div>
-
-        <form
-          class="login-form"
-          @submit.prevent="handleLogin"
-        >
-          <div class="form-group">
-            <label for="username">Username</label>
-            <input
-              id="username"
-              v-model="loginForm.username"
-              type="text"
-              required
-              :disabled="isLoading"
-              autocomplete="username"
-              class="form-input"
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input
-              id="password"
-              v-model="loginForm.password"
-              type="password"
-              required
-              :disabled="isLoading"
-              autocomplete="current-password"
-              class="form-input"
-            >
-          </div>
-
-          <div class="form-actions">
-            <button
-              type="submit"
-              :disabled="
-                isLoading ||
-                  !loginForm.username ||
-                  !loginForm.password
-              "
-              class="login-button"
-            >
-              <span v-if="isLoading">Logging in...</span>
-              <span v-else>Login</span>
-            </button>
-          </div>
-
-          <div
-            v-if="error"
-            class="error-message"
-          >
-            {{ error }}
-          </div>
-        </form>
-
-        <div class="login-footer">
-          <router-link
-            to="/"
-            class="back-link"
-          >
-            ← Back to Home
-          </router-link>
-        </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -135,45 +126,53 @@ onMounted(async () => {
 
 /* Animated retro-futuristic background */
 .admin-login-page::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -50%;
     left: -50%;
     right: -50%;
     bottom: -50%;
-    background:
-        radial-gradient(circle at 25% 25%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 75% 75%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 50% 50%, rgba(184, 188, 200, 0.05) 0%, transparent 50%);
+    background: var(--bg-color);
     animation: float 20s ease-in-out infinite;
     z-index: 0;
 }
 
 .admin-login-page::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background:
-        linear-gradient(90deg, rgba(255, 105, 180, 0.02) 1px, transparent 1px),
-        linear-gradient(rgba(255, 105, 180, 0.02) 1px, transparent 1px);
+    background: var(--bg-color);
     background-size: 50px 50px;
     animation: slidePattern 30s linear infinite;
     z-index: 0;
 }
 
 @keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    25% { transform: translate(20px, -20px) rotate(1deg); }
-    50% { transform: translate(-10px, 10px) rotate(-1deg); }
-    75% { transform: translate(-20px, -10px) rotate(1deg); }
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    25% {
+        transform: translate(20px, -20px) rotate(1deg);
+    }
+    50% {
+        transform: translate(-10px, 10px) rotate(-1deg);
+    }
+    75% {
+        transform: translate(-20px, -10px) rotate(1deg);
+    }
 }
 
 @keyframes slidePattern {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(50px, 50px); }
+    0% {
+        transform: translate(0, 0);
+    }
+    100% {
+        transform: translate(50px, 50px);
+    }
 }
 
 .login-container {
@@ -197,7 +196,7 @@ onMounted(async () => {
 
 /* Retro-futuristic card accent */
 .login-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -208,7 +207,7 @@ onMounted(async () => {
 }
 
 .login-card::after {
-    content: '';
+    content: "";
     position: absolute;
     top: -2px;
     left: -2px;
@@ -230,10 +229,12 @@ onMounted(async () => {
     margin-bottom: var(--spacing-xl);
     position: relative;
     z-index: 2;
+    background: var(--card-bg);
 }
 
 .login-header h1 {
     background: var(--gradient-retro-secondary);
+    background-color: var(--card-bg);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -249,16 +250,19 @@ onMounted(async () => {
     color: var(--text-secondary);
     font-size: 0.875rem;
     font-weight: 500;
+    background-color: var(--card-bg);
 }
 
 .login-form {
     margin-bottom: var(--spacing-lg);
     position: relative;
     z-index: 2;
+    background: var(--card-bg);
 }
 
 .form-group {
     margin-bottom: var(--spacing-lg);
+    background: var(--card-bg);
 }
 
 .form-group label {
@@ -269,6 +273,7 @@ onMounted(async () => {
     font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    background: var(--card-bg);
 }
 
 .form-input {
@@ -320,13 +325,18 @@ onMounted(async () => {
 }
 
 .login-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
     transition: left 0.6s;
 }
 
@@ -365,7 +375,7 @@ onMounted(async () => {
 }
 
 .error-message::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0;
     top: 0;
@@ -376,8 +386,13 @@ onMounted(async () => {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .error-icon {
@@ -389,6 +404,7 @@ onMounted(async () => {
     text-align: center;
     position: relative;
     z-index: 2;
+    background: var(--card-bg);
 }
 
 .back-link {
