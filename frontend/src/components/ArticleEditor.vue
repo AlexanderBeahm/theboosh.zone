@@ -1,585 +1,501 @@
 <template>
-  <div
-    v-if="isVisible"
-    class="modal-overlay"
-    @click="handleOverlayClick"
-  >
-    <div
-      class="editor-container"
-      @click.stop
-    >
-      <div class="editor-header">
-        <h2>{{ article ? "Edit Article" : "Create New Article" }}</h2>
-        <button
-          class="close-button"
-          @click="$emit('close')"
-        >
-          ✕
-        </button>
-      </div>
-
-      <form
-        class="editor-form"
-        @submit.prevent="handleSave"
-      >
-        <div class="form-row">
-          <div class="form-group">
-            <label for="title">Title *</label>
-            <input
-              id="title"
-              v-model="form.title"
-              type="text"
-              required
-              :disabled="isSaving"
-              class="form-input"
-              placeholder="Enter article title"
-              @input="generateSlug"
-            >
-          </div>
-
-          <div class="form-group">
-            <label for="slug">URL Slug *</label>
-            <input
-              id="slug"
-              v-model="form.slug"
-              type="text"
-              required
-              :disabled="isSaving"
-              class="form-input"
-              placeholder="article-url-slug"
-            >
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="excerpt">Excerpt</label>
-          <textarea
-            id="excerpt"
-            v-model="form.excerpt"
-            :disabled="isSaving"
-            class="form-textarea"
-            placeholder="Brief description of the article (optional)"
-            rows="2"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="content">Content *</label>
-          <div class="editor-tabs">
-            <button
-              type="button"
-              class="tab-button"
-              :class="{ active: activeTab === 'write' }"
-              @click="activeTab = 'write'"
-            >
-              Write
-            </button>
-            <button
-              type="button"
-              class="tab-button"
-              :class="{ active: activeTab === 'preview' }"
-              @click="activeTab = 'preview'"
-            >
-              Preview
-            </button>
-            <button
-              type="button"
-              class="tab-button insert-image-button"
-              :disabled="isSaving"
-              @click="openUnifiedInsertModal"
-            >
-              Insert Image
-            </button>
-          </div>
-
-          <div class="editor-content">
-            <textarea
-              v-show="activeTab === 'write'"
-              id="content"
-              ref="contentTextarea"
-              v-model="form.content"
-              required
-              :disabled="isSaving"
-              class="content-textarea"
-              placeholder="Write your article content in Markdown..."
-              rows="20"
-              @keydown="handleTabKey"
-              @paste="handlePaste"
-            />
-
-            <div
-              v-show="activeTab === 'preview'"
-              class="preview-container"
-            >
-              <MarkdownRenderer
-                v-if="form.content"
-                :content="form.content"
-                :sanitize="true"
-              />
-              <div
-                v-else
-                class="empty-preview"
-              >
-                <p>
-                  Nothing to preview yet. Switch to the Write
-                  tab and add some content!
-                </p>
-              </div>
+    <div v-if="isVisible" class="modal-overlay" @click="handleOverlayClick">
+        <div class="editor-container" @click.stop>
+            <div class="editor-header">
+                <h2>{{ article ? "Edit Article" : "Create New Article" }}</h2>
+                <button class="close-button" @click="$emit('close')">✕</button>
             </div>
-          </div>
-        </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="tags">Tags</label>
-            <div class="tags-input-container">
-              <input
-                v-model="tagInput"
-                type="text"
-                :disabled="isSaving"
-                class="tag-input"
-                placeholder="Add tags..."
-                @keydown="handleTagInput"
-                @input="searchTags"
-              >
+            <form class="editor-form" @submit.prevent="handleSave">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="title">Title *</label>
+                        <input
+                            id="title"
+                            v-model="form.title"
+                            type="text"
+                            required
+                            :disabled="isSaving"
+                            class="form-input"
+                            placeholder="Enter article title"
+                            @input="generateSlug"
+                        />
+                    </div>
 
-              <div
-                v-if="tagSuggestions.length > 0"
-                class="tag-suggestions"
-              >
-                <div
-                  v-for="tag in tagSuggestions"
-                  :key="tag.id"
-                  class="tag-suggestion"
-                  @click="addTag(tag)"
-                >
-                  {{ tag.name }}
-                  <span class="usage-count">({{ tag.usage_count }})</span>
+                    <div class="form-group">
+                        <label for="slug">URL Slug *</label>
+                        <input
+                            id="slug"
+                            v-model="form.slug"
+                            type="text"
+                            required
+                            :disabled="isSaving"
+                            class="form-input"
+                            placeholder="article-url-slug"
+                        />
+                    </div>
                 </div>
-              </div>
-              <div class="selected-tags">
-                <span
-                  v-for="tag in selectedTags"
-                  :key="tag.id"
-                  class="selected-tag"
-                >
-                  {{ tag.name }}
-                  <button
-                    type="button"
-                    class="remove-tag-button"
-                    @click="removeTag(tag)"
-                  >
-                    ✕
-                  </button>
-                </span>
-              </div>
-            </div>
-          </div>
 
-          <div class="form-group">
-            <label for="author">Author</label>
-            <input
-              id="author"
-              v-model="form.author"
-              type="text"
-              :disabled="isSaving"
-              class="form-input"
-              placeholder="Author name"
-            >
-          </div>
+                <div class="form-group">
+                    <label for="excerpt">Excerpt</label>
+                    <textarea
+                        id="excerpt"
+                        v-model="form.excerpt"
+                        :disabled="isSaving"
+                        class="form-textarea"
+                        placeholder="Brief description of the article (optional)"
+                        rows="2"
+                    />
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Content *</label>
+                    <div class="editor-tabs">
+                        <button
+                            type="button"
+                            class="tab-button"
+                            :class="{ active: activeTab === 'write' }"
+                            @click="activeTab = 'write'"
+                        >
+                            Write
+                        </button>
+                        <button
+                            type="button"
+                            class="tab-button"
+                            :class="{ active: activeTab === 'preview' }"
+                            @click="activeTab = 'preview'"
+                        >
+                            Preview
+                        </button>
+                        <button
+                            type="button"
+                            class="tab-button insert-image-button"
+                            :disabled="isSaving"
+                            @click="openUnifiedInsertModal"
+                        >
+                            Insert Image
+                        </button>
+                    </div>
+
+                    <div class="editor-content">
+                        <textarea
+                            v-show="activeTab === 'write'"
+                            id="content"
+                            ref="contentTextarea"
+                            v-model="form.content"
+                            required
+                            :disabled="isSaving"
+                            class="content-textarea"
+                            placeholder="Write your article content in Markdown..."
+                            rows="20"
+                            @keydown="handleTabKey"
+                            @paste="handlePaste"
+                        />
+
+                        <div
+                            v-show="activeTab === 'preview'"
+                            class="preview-container"
+                        >
+                            <MarkdownRenderer
+                                v-if="form.content"
+                                :content="form.content"
+                                :sanitize="true"
+                            />
+                            <div v-else class="empty-preview">
+                                <p>
+                                    Nothing to preview yet. Switch to the Write
+                                    tab and add some content!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="tags">Tags</label>
+                        <div class="tags-input-container">
+                            <input
+                                v-model="tagInput"
+                                type="text"
+                                :disabled="isSaving"
+                                class="tag-input"
+                                placeholder="Add tags..."
+                                @keydown="handleTagInput"
+                                @input="searchTags"
+                            />
+
+                            <div
+                                v-if="tagSuggestions.length > 0"
+                                class="tag-suggestions"
+                            >
+                                <div
+                                    v-for="tag in tagSuggestions"
+                                    :key="tag.id"
+                                    class="tag-suggestion"
+                                    @click="addTag(tag)"
+                                >
+                                    {{ tag.name }}
+                                    <span class="usage-count"
+                                        >({{ tag.usage_count }})</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="selected-tags">
+                                <span
+                                    v-for="tag in selectedTags"
+                                    :key="tag.id"
+                                    class="selected-tag"
+                                >
+                                    {{ tag.name }}
+                                    <button
+                                        type="button"
+                                        class="remove-tag-button"
+                                        @click="removeTag(tag)"
+                                    >
+                                        ✕
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="author">Author</label>
+                        <input
+                            id="author"
+                            v-model="form.author"
+                            type="text"
+                            :disabled="isSaving"
+                            class="form-input"
+                            placeholder="Author name"
+                        />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Featured Image</label>
+                    <div class="featured-image-section">
+                        <div
+                            v-if="form.featured_image"
+                            class="featured-image-preview"
+                        >
+                            <img
+                                :src="form.featured_image"
+                                alt="Featured image preview"
+                            />
+                            <button
+                                type="button"
+                                class="remove-image-button"
+                                :disabled="isSaving"
+                                @click="removeFeaturedImage"
+                            >
+                                Remove Image
+                            </button>
+                        </div>
+
+                        <div v-else class="image-selection-buttons">
+                            <button
+                                type="button"
+                                class="select-image-button"
+                                :disabled="isSaving"
+                                @click="showMediaLibraryModal = true"
+                            >
+                                Browse Media Library
+                            </button>
+                        </div>
+
+                        <input
+                            v-model="form.featured_image"
+                            :type="isRelativeUrl ? 'text' : 'url'"
+                            :disabled="isSaving"
+                            class="form-input featured-image-url"
+                            placeholder="Or enter image URL directly"
+                        />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="meta_description">Meta Description</label>
+                    <input
+                        id="meta_description"
+                        v-model="form.meta_description"
+                        type="text"
+                        :disabled="isSaving"
+                        class="form-input"
+                        placeholder="SEO meta description"
+                        maxlength="160"
+                    />
+                    <small v-if="form.meta_description">
+                        {{ form.meta_description.length }}/160 characters
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <div class="publish-controls">
+                        <div class="checkbox-group">
+                            <input
+                                id="is_published"
+                                v-model="form.is_published"
+                                type="checkbox"
+                                :disabled="isSaving"
+                                class="form-checkbox"
+                            />
+                            <label for="is_published" class="checkbox-label">
+                                Publish immediately
+                            </label>
+                        </div>
+
+                        <div
+                            v-if="form.is_published && !article"
+                            class="publish-note"
+                        >
+                            This article will be published with the current date
+                            and time.
+                        </div>
+
+                        <div
+                            v-if="
+                                article &&
+                                !article.is_published &&
+                                form.is_published
+                            "
+                            class="publish-note"
+                        >
+                            This article will be published with the current date
+                            and time.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <div class="action-buttons">
+                        <button
+                            type="button"
+                            :disabled="isSaving"
+                            class="cancel-button"
+                            @click="$emit('close')"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="submit"
+                            :disabled="isSaving || !isFormValid"
+                            class="save-button"
+                        >
+                            <span v-if="isSaving">{{
+                                article ? "Updating..." : "Creating..."
+                            }}</span>
+                            <span v-else>{{
+                                article ? "Update Article" : "Create Article"
+                            }}</span>
+                        </button>
+                    </div>
+
+                    <div v-if="error" class="error-message">
+                        {{ error }}
+                    </div>
+                </div>
+            </form>
         </div>
 
-        <div class="form-group">
-          <label>Featured Image</label>
-          <div class="featured-image-section">
-            <div
-              v-if="form.featured_image"
-              class="featured-image-preview"
-            >
-              <img
-                :src="form.featured_image"
-                alt="Featured image preview"
-              >
-              <button
-                type="button"
-                class="remove-image-button"
-                :disabled="isSaving"
-                @click="removeFeaturedImage"
-              >
-                Remove Image
-              </button>
-            </div>
-
-            <div
-              v-else
-              class="image-selection-buttons"
-            >
-              <button
-                type="button"
-                class="select-image-button"
-                :disabled="isSaving"
-                @click="showMediaLibraryModal = true"
-              >
-                Browse Media Library
-              </button>
-              <button
-                type="button"
-                class="upload-image-button"
-                :disabled="isSaving"
-                @click="showImageUploadModal = true"
-              >
-                Upload New Image
-              </button>
-            </div>
-
-            <input
-              v-model="form.featured_image"
-              :type="isRelativeUrl ? 'text' : 'url'"
-              :disabled="isSaving"
-              class="form-input featured-image-url"
-              placeholder="Or enter image URL directly"
-            >
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="meta_description">Meta Description</label>
-          <input
-            id="meta_description"
-            v-model="form.meta_description"
-            type="text"
-            :disabled="isSaving"
-            class="form-input"
-            placeholder="SEO meta description"
-            maxlength="160"
-          >
-          <small v-if="form.meta_description">
-            {{ form.meta_description.length }}/160 characters
-          </small>
-        </div>
-
-        <div class="form-group">
-          <div class="publish-controls">
-            <div class="checkbox-group">
-              <input
-                id="is_published"
-                v-model="form.is_published"
-                type="checkbox"
-                :disabled="isSaving"
-                class="form-checkbox"
-              >
-              <label
-                for="is_published"
-                class="checkbox-label"
-              >
-                Publish immediately
-              </label>
-            </div>
-
-            <div
-              v-if="form.is_published && !article"
-              class="publish-note"
-            >
-              This article will be published with the current date
-              and time.
-            </div>
-
-            <div
-              v-if="
-                article &&
-                  !article.is_published &&
-                  form.is_published
-              "
-              class="publish-note"
-            >
-              This article will be published with the current date
-              and time.
-            </div>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <div class="action-buttons">
-            <button
-              type="button"
-              :disabled="isSaving"
-              class="cancel-button"
-              @click="$emit('close')"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              :disabled="isSaving || !isFormValid"
-              class="save-button"
-            >
-              <span v-if="isSaving">{{
-                article ? "Updating..." : "Creating..."
-              }}</span>
-              <span v-else>{{
-                article ? "Update Article" : "Create Article"
-              }}</span>
-            </button>
-          </div>
-
-          <div
-            v-if="error"
-            class="error-message"
-          >
-            {{ error }}
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <!-- Media Library Modal -->
-    <div
-      v-if="showMediaLibraryModal"
-      class="image-modal-overlay"
-      @click="showMediaLibraryModal = false"
-    >
-      <div
-        class="image-modal-content"
-        @click.stop
-      >
-        <div class="image-modal-header">
-          <h3>Select Featured Image</h3>
-          <button
-            class="close-button"
+        <!-- Media Library Modal -->
+        <div
+            v-if="showMediaLibraryModal"
+            class="image-modal-overlay"
             @click="showMediaLibraryModal = false"
-          >
-            ✕
-          </button>
+        >
+            <div class="image-modal-content" @click.stop>
+                <div class="image-modal-header">
+                    <h3>Select Featured Image</h3>
+                    <button
+                        class="close-button"
+                        @click="showMediaLibraryModal = false"
+                    >
+                        ✕
+                    </button>
+                </div>
+                <div class="image-modal-body">
+                    <MediaLibrary
+                        ref="mediaLibrary"
+                        selection-mode="single"
+                        @media-selected="handleMediaSelected"
+                    />
+                </div>
+            </div>
         </div>
-        <div class="image-modal-body">
-          <MediaLibrary
-            ref="mediaLibrary"
-            selection-mode="single"
-            @media-selected="handleMediaSelected"
-          />
-        </div>
-      </div>
-    </div>
 
-    <!-- Image Upload Modal -->
-    <div
-      v-if="showImageUploadModal"
-      class="image-modal-overlay"
-      @click="showImageUploadModal = false"
-    >
-      <div
-        class="image-modal-content"
-        @click.stop
-      >
-        <div class="image-modal-header">
-          <h3>Upload Featured Image</h3>
-          <button
-            class="close-button"
-            @click="showImageUploadModal = false"
-          >
-            ✕
-          </button>
-        </div>
-        <div class="image-modal-body">
-          <ImageUploader
-            ref="imageUploader"
-            :max-size-m-b="5"
-            :show-metadata="true"
-            :auto-upload="false"
-            @upload-success="handleImageUpload"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Paste Image Confirmation Modal -->
-    <div
-      v-if="showPasteImageModal"
-      class="image-modal-overlay"
-      @click="closePasteImageModal"
-    >
-      <div
-        class="image-modal-content"
-        @click.stop
-      >
-        <div class="image-modal-header">
-          <h3>Confirm Pasted Image</h3>
-          <button
-            class="close-button"
+        <!-- Paste Image Confirmation Modal -->
+        <div
+            v-if="showPasteImageModal"
+            class="image-modal-overlay"
             @click="closePasteImageModal"
-          >
-            ✕
-          </button>
+        >
+            <div class="image-modal-content" @click.stop>
+                <div class="image-modal-header">
+                    <h3>Confirm Pasted Image</h3>
+                    <button class="close-button" @click="closePasteImageModal">
+                        ✕
+                    </button>
+                </div>
+                <div class="image-modal-body">
+                    <div v-if="pastedImageData" class="paste-image-preview">
+                        <div class="preview-image-container">
+                            <img
+                                :src="pastedImageData.dataUrl"
+                                :alt="pastedImageData.name"
+                                class="preview-image"
+                            />
+                        </div>
+
+                        <div class="paste-image-info">
+                            <p>
+                                <strong>File:</strong>
+                                {{ pastedImageData.name }}
+                            </p>
+                            <p>
+                                <strong>Type:</strong>
+                                {{ pastedImageData.type }}
+                            </p>
+                            <p>
+                                <strong>Size:</strong>
+                                {{ formatFileSize(pastedImageData.size) }}
+                            </p>
+                        </div>
+
+                        <div class="paste-image-actions">
+                            <button
+                                type="button"
+                                class="button-secondary"
+                                @click="closePasteImageModal"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                class="button-primary"
+                                :disabled="isPastingImage"
+                                @click="handlePastedImageConfirm"
+                            >
+                                <span v-if="isPastingImage">Uploading...</span>
+                                <span v-else>Upload and Insert</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="isPastingImage" class="uploading-indicator">
+                        <div class="loading-spinner" />
+                        <p>Processing pasted image...</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="image-modal-body">
-          <div
-            v-if="pastedImageData"
-            class="paste-image-preview"
-          >
-            <div class="preview-image-container">
-              <img
-                :src="pastedImageData.dataUrl"
-                :alt="pastedImageData.name"
-                class="preview-image"
-              >
-            </div>
 
-            <div class="paste-image-info">
-              <p>
-                <strong>File:</strong>
-                {{ pastedImageData.name }}
-              </p>
-              <p>
-                <strong>Type:</strong>
-                {{ pastedImageData.type }}
-              </p>
-              <p>
-                <strong>Size:</strong>
-                {{ formatFileSize(pastedImageData.size) }}
-              </p>
-            </div>
-
-            <div class="paste-image-actions">
-              <button
-                type="button"
-                class="button-secondary"
-                @click="closePasteImageModal"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="button-primary"
-                :disabled="isPastingImage"
-                @click="handlePastedImageConfirm"
-              >
-                <span v-if="isPastingImage">Uploading...</span>
-                <span v-else>Upload and Insert</span>
-              </button>
-            </div>
-          </div>
-
-          <div
-            v-if="isPastingImage"
-            class="uploading-indicator"
-          >
-            <div class="loading-spinner" />
-            <p>Processing pasted image...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Unified Insert Image Modal -->
-    <div
-      v-if="showUnifiedInsertModal"
-      class="image-modal-overlay"
-      @click="closeUnifiedInsertModal"
-    >
-      <div
-        class="image-modal-content unified-modal"
-        @click.stop
-      >
-        <div class="image-modal-header">
-          <h3>Insert Image</h3>
-          <button
-            class="close-button"
+        <!-- Unified Insert Image Modal -->
+        <div
+            v-if="showUnifiedInsertModal"
+            class="image-modal-overlay"
             @click="closeUnifiedInsertModal"
-          >
-            ✕
-          </button>
-        </div>
+        >
+            <div class="image-modal-content unified-modal" @click.stop>
+                <div class="image-modal-header">
+                    <h3>Insert Image</h3>
+                    <button
+                        class="close-button"
+                        @click="closeUnifiedInsertModal"
+                    >
+                        ✕
+                    </button>
+                </div>
 
-        <div class="unified-modal-tabs">
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'browse' }"
-            @click="unifiedModalActiveTab = 'browse'"
-          >
-            Browse Library
-          </button>
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'upload' }"
-            @click="unifiedModalActiveTab = 'upload'"
-          >
-            Upload New
-          </button>
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'paste' }"
-            @click="unifiedModalActiveTab = 'paste'"
-          >
-            Paste Image
-          </button>
-        </div>
+                <div class="unified-modal-tabs">
+                    <button
+                        type="button"
+                        class="unified-tab-button"
+                        :class="{ active: unifiedModalActiveTab === 'browse' }"
+                        @click="unifiedModalActiveTab = 'browse'"
+                    >
+                        Browse Library
+                    </button>
+                    <button
+                        type="button"
+                        class="unified-tab-button"
+                        :class="{ active: unifiedModalActiveTab === 'upload' }"
+                        @click="unifiedModalActiveTab = 'upload'"
+                    >
+                        Upload New
+                    </button>
+                    <button
+                        type="button"
+                        class="unified-tab-button"
+                        :class="{ active: unifiedModalActiveTab === 'paste' }"
+                        @click="unifiedModalActiveTab = 'paste'"
+                    >
+                        Paste Image
+                    </button>
+                </div>
 
-        <div class="image-modal-body">
-          <!-- Browse Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'browse'"
-            class="unified-tab-content"
-          >
-            <MediaLibrary
-              ref="unifiedMediaLibrary"
-              selection-mode="single"
-              @media-selected="handleUnifiedMediaSelected"
-            />
-          </div>
+                <div class="image-modal-body">
+                    <!-- Browse Tab -->
+                    <div
+                        v-show="unifiedModalActiveTab === 'browse'"
+                        class="unified-tab-content"
+                    >
+                        <MediaLibrary
+                            ref="unifiedMediaLibrary"
+                            selection-mode="single"
+                            @media-selected="handleUnifiedMediaSelected"
+                        />
+                    </div>
 
-          <!-- Upload Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'upload'"
-            class="unified-tab-content"
-          >
-            <ImageUploader
-              ref="unifiedImageUploader"
-              :max-size-m-b="5"
-              :show-metadata="true"
-              :auto-upload="false"
-              @upload-success="handleUnifiedImageUpload"
-            />
-          </div>
+                    <!-- Upload Tab -->
+                    <div
+                        v-show="unifiedModalActiveTab === 'upload'"
+                        class="unified-tab-content"
+                    >
+                        <ImageUploader
+                            ref="unifiedImageUploader"
+                            :max-size-m-b="5"
+                            :show-metadata="true"
+                            :auto-upload="false"
+                            @upload-success="handleUnifiedImageUpload"
+                        />
+                    </div>
 
-          <!-- Paste Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'paste'"
-            class="unified-tab-content"
-          >
-            <div class="paste-instructions">
-              <div class="paste-icon">
-                📋
-              </div>
-              <h4>Paste an Image</h4>
-              <p>
-                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on
-                Mac) to paste an image from your clipboard. You
-                can also paste directly into the content area
-                while writing.
-              </p>
-              <div class="paste-tips">
-                <h5>Tips:</h5>
-                <ul>
-                  <li>
-                    Copy an image from another application
-                  </li>
-                  <li>Take a screenshot and copy it</li>
-                  <li>
-                    Right-click an image in your browser and
-                    "Copy image"
-                  </li>
-                </ul>
-              </div>
+                    <!-- Paste Tab -->
+                    <div
+                        v-show="unifiedModalActiveTab === 'paste'"
+                        class="unified-tab-content"
+                    >
+                        <div class="paste-instructions">
+                            <div class="paste-icon">📋</div>
+                            <h4>Paste an Image</h4>
+                            <p>
+                                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on
+                                Mac) to paste an image from your clipboard. You
+                                can also paste directly into the content area
+                                while writing.
+                            </p>
+                            <div class="paste-tips">
+                                <h5>Tips:</h5>
+                                <ul>
+                                    <li>
+                                        Copy an image from another application
+                                    </li>
+                                    <li>Take a screenshot and copy it</li>
+                                    <li>
+                                        Right-click an image in your browser and
+                                        "Copy image"
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -611,12 +527,10 @@ const tagSuggestions = ref([]);
 const availableTags = ref([]);
 const selectedTags = ref([]);
 const showMediaLibraryModal = ref(false);
-const showImageUploadModal = ref(false);
 const showPasteImageModal = ref(false);
 const showUnifiedInsertModal = ref(false);
 const unifiedModalActiveTab = ref("browse");
 const mediaLibrary = ref(null);
-const imageUploader = ref(null);
 const unifiedMediaLibrary = ref(null);
 const unifiedImageUploader = ref(null);
 const contentTextarea = ref(null);
@@ -841,11 +755,6 @@ async function handlePaste(event) {
 function handleMediaSelected(media) {
     form.value.featured_image = media.url;
     showMediaLibraryModal.value = false;
-}
-
-function handleImageUpload(media) {
-    form.value.featured_image = media.url;
-    showImageUploadModal.value = false;
 }
 
 function removeFeaturedImage() {
@@ -1103,7 +1012,7 @@ onMounted(() => {
 }
 
 .editor-container::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -1226,7 +1135,7 @@ onMounted(() => {
 }
 
 .editor-tabs::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 0;
@@ -1253,7 +1162,7 @@ onMounted(() => {
 }
 
 .tab-button::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;

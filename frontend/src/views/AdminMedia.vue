@@ -17,13 +17,6 @@
       >
         Browse Media
       </button>
-      <button
-        class="tab-button"
-        :class="{ active: activeTab === 'upload' }"
-        @click="activeTab = 'upload'"
-      >
-        Upload New
-      </button>
     </div>
 
     <!-- Tab Content -->

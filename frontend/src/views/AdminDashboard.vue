@@ -305,7 +305,7 @@ import { ref, onMounted } from "vue";
 import axios from "axios";
 import ArticleEditor from "../components/ArticleEditor.vue";
 import { useAuth } from "../composables/useAuth";
-const { user, requireAuth } = useAuth();
+const { requireAuth } = useAuth();
 
 // Reactive state
 const articles = ref([]);

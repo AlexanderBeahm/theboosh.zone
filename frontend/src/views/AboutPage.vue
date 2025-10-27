@@ -1,72 +1,74 @@
 <template>
-    <div class="content about-page">
-        <div class="page-header">
-            <h1>TheBoosh.Zone</h1>
-            <p class="subtitle">Welcome to my zone</p>
-        </div>
-
-        <div class="about-content">
-            <section class="info-card">
-                <div class="card-header">
-                    <h2>Alex Beahm</h2>
-                    <div class="card-accent" />
-                </div>
-                <div class="card-content">
-                    <ul class="social-links">
-                        <li>
-                            <a
-                                href="https://github.com/AlexanderBeahm"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="link-github"
-                            >
-                                <span class="link-icon">⚡</span>
-                                GitHub
-                            </a>
-                        </li>
-                        <li>
-                            <a
-                                href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="link-linkedin"
-                            >
-                                <span class="link-icon">💼</span>
-                                LinkedIn
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </section>
-
-            <section class="info-card">
-                <div class="card-header">
-                    <h2>Technology Stack</h2>
-                    <div class="card-accent" />
-                </div>
-                <div class="card-content">
-                    <ul class="tech-list">
-                        <li>
-                            <span class="tech-icon">🐪</span>
-                            Perl with Mojolicious framework
-                        </li>
-                        <li>
-                            <span class="tech-icon">⚡</span>
-                            Vue 3 for frontend interactivity
-                        </li>
-                        <li>
-                            <span class="tech-icon">🐘</span>
-                            PostgreSQL for database
-                        </li>
-                        <li>
-                            <span class="tech-icon">🐳</span>
-                            Docker for containerization
-                        </li>
-                    </ul>
-                </div>
-            </section>
-        </div>
+  <div class="content about-page">
+    <div class="page-header">
+      <h1>TheBoosh.Zone</h1>
+      <p class="subtitle">
+        Welcome to my zone
+      </p>
     </div>
+
+    <div class="about-content">
+      <section class="info-card">
+        <div class="card-header">
+          <h2>Alex Beahm</h2>
+          <div class="card-accent" />
+        </div>
+        <div class="card-content">
+          <ul class="social-links">
+            <li>
+              <a
+                href="https://github.com/AlexanderBeahm"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-github"
+              >
+                <span class="link-icon">⚡</span>
+                GitHub
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.linkedin.com/in/alex-beahm-5bb7a89b/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-linkedin"
+              >
+                <span class="link-icon">💼</span>
+                LinkedIn
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="info-card">
+        <div class="card-header">
+          <h2>Technology Stack</h2>
+          <div class="card-accent" />
+        </div>
+        <div class="card-content">
+          <ul class="tech-list">
+            <li>
+              <span class="tech-icon">🐪</span>
+              Perl with Mojolicious framework
+            </li>
+            <li>
+              <span class="tech-icon">⚡</span>
+              Vue 3 for frontend interactivity
+            </li>
+            <li>
+              <span class="tech-icon">🐘</span>
+              PostgreSQL for database
+            </li>
+            <li>
+              <span class="tech-icon">🐳</span>
+              Docker for containerization
+            </li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </div>
 </template>
 
 <style scoped>
