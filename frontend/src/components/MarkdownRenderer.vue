@@ -256,8 +256,9 @@ function handleLinkClick(event) {
                 try {
                     const router = useRouter();
                     router.push(href);
-                } catch (error) {
+                } catch {
                     // Router not available (likely in test environment)
+                    // eslint-disable-next-line no-console
                     console.log('Router not available for navigation to:', href);
                 }
             }
@@ -285,6 +286,7 @@ function isValidInternalUrl(href) {
     // Check against malicious patterns
     for (const pattern of maliciousPatterns) {
         if (pattern.test(href)) {
+            // eslint-disable-next-line no-console
             console.warn('Blocked potentially malicious URL:', href);
             return false;
         }
@@ -293,9 +295,10 @@ function isValidInternalUrl(href) {
     // Additional validation: ensure it's a valid Vue Router path
     try {
         // Basic path validation - should be alphanumeric, slashes, hyphens, underscores, and common URL characters
-        const validPathPattern = /^\/[a-zA-Z0-9\/_\-\.~!$&'()*+,;=:@%]*$/;
+        const validPathPattern = /^\/[a-zA-Z0-9/_\-.~!$&'()*+,;=:@%]*$/;
         return validPathPattern.test(href);
     } catch (error) {
+        // eslint-disable-next-line no-console
         console.warn('URL validation error:', error);
         return false;
     }

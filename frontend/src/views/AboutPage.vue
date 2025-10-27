@@ -22,7 +22,7 @@
                 rel="noopener noreferrer"
                 class="link-github"
               >
-                <span class="link-icon">⚡</span>
+                <span class="link-icon">🖥️</span>
                 GitHub
               </a>
             </li>
@@ -35,6 +35,17 @@
               >
                 <span class="link-icon">💼</span>
                 LinkedIn
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://x.com/BooshnawBeahm"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-x"
+              >
+                <span class="link-icon">✖️</span>
+                X
               </a>
             </li>
           </ul>
@@ -87,8 +98,8 @@
     left: -50%;
     right: -50%;
     bottom: -50%;
-    background: --var(--bg-color);
-    z-index: 0;
+    background: var(--bg-color);
+    z-index: -10;
 }
 
 .content::after {
@@ -98,10 +109,10 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: --var(--bg-color);
+    background: transparent;
     background-size: 40px 40px;
     animation: slidePattern 35s linear infinite;
-    z-index: 0;
+    z-index: -5;
 }
 
 .about-page {
@@ -176,7 +187,6 @@
     left: -2px;
     right: -2px;
     bottom: -2px;
-    background: var(--gradient-retro-primary);
     border-radius: var(--radius-lg);
     opacity: 0;
     transition: opacity var(--transition-fast);
@@ -284,6 +294,8 @@
     transition: all var(--transition-fast);
     position: relative;
     overflow: hidden;
+    z-index: 10;
+    cursor: pointer;
 }
 
 .social-links a::before {
@@ -300,6 +312,8 @@
         transparent
     );
     transition: left 0.6s;
+    pointer-events: none;
+    z-index: -1;
 }
 
 .social-links a:hover {

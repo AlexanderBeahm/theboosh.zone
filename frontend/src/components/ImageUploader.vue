@@ -274,6 +274,7 @@ async function uploadFile() {
         }
     } catch (err) {
         // Log detailed error information for debugging (but don't expose to user)
+        // eslint-disable-next-line no-console
         console.error('Image upload error details:', {
             message: err.message,
             status: err.response?.status,
