@@ -222,14 +222,6 @@
               >
                 Browse Media Library
               </button>
-              <button
-                type="button"
-                class="upload-image-button"
-                :disabled="isSaving"
-                @click="showImageUploadModal = true"
-              >
-                Upload New Image
-              </button>
             </div>
 
             <input
@@ -357,37 +349,6 @@
             ref="mediaLibrary"
             selection-mode="single"
             @media-selected="handleMediaSelected"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Image Upload Modal -->
-    <div
-      v-if="showImageUploadModal"
-      class="image-modal-overlay"
-      @click="showImageUploadModal = false"
-    >
-      <div
-        class="image-modal-content"
-        @click.stop
-      >
-        <div class="image-modal-header">
-          <h3>Upload Featured Image</h3>
-          <button
-            class="close-button"
-            @click="showImageUploadModal = false"
-          >
-            ✕
-          </button>
-        </div>
-        <div class="image-modal-body">
-          <ImageUploader
-            ref="imageUploader"
-            :max-size-m-b="5"
-            :show-metadata="true"
-            :auto-upload="false"
-            @upload-success="handleImageUpload"
           />
         </div>
       </div>
@@ -611,12 +572,10 @@ const tagSuggestions = ref([]);
 const availableTags = ref([]);
 const selectedTags = ref([]);
 const showMediaLibraryModal = ref(false);
-const showImageUploadModal = ref(false);
 const showPasteImageModal = ref(false);
 const showUnifiedInsertModal = ref(false);
 const unifiedModalActiveTab = ref("browse");
 const mediaLibrary = ref(null);
-const imageUploader = ref(null);
 const unifiedMediaLibrary = ref(null);
 const unifiedImageUploader = ref(null);
 const contentTextarea = ref(null);
@@ -843,11 +802,6 @@ function handleMediaSelected(media) {
     showMediaLibraryModal.value = false;
 }
 
-function handleImageUpload(media) {
-    form.value.featured_image = media.url;
-    showImageUploadModal.value = false;
-}
-
 function removeFeaturedImage() {
     form.value.featured_image = "";
 }
@@ -1054,24 +1008,64 @@ onMounted(() => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
     overflow-y: auto;
     padding: var(--spacing-lg);
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
 }
 
 .editor-container {
-    background-color: var(--card-bg);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
+    box-shadow:
+        var(--shadow-xl),
+        0 0 60px rgba(255, 105, 180, 0.2);
     width: 100%;
     max-width: 1000px;
     max-height: 90vh;
     overflow-y: auto;
-    border: 1px solid var(--border-color);
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-20px) scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+.editor-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient-retro-secondary);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    z-index: 1;
 }
 
 .editor-header {
@@ -1141,7 +1135,7 @@ onMounted(() => {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: 1rem;
-    background-color: var(--bg-color);
+    background: var(--bg-color);
     color: var(--text-primary);
     transition: all var(--transition-fast);
     font-family: inherit;
@@ -1151,13 +1145,22 @@ onMounted(() => {
 .form-textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px var(--primary-color-light);
+    box-shadow:
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
+    background: var(--card-bg);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: var(--text-secondary);
 }
 
 .form-input:disabled,
 .form-textarea:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    background: var(--darker-bg);
 }
 
 .form-textarea {
@@ -1165,35 +1168,76 @@ onMounted(() => {
     min-height: 80px;
 }
 
-/* Editor Tabs */
+/* Editor Tabs - Retro-Futuristic */
 .editor-tabs {
     display: flex;
     margin-bottom: var(--spacing-sm);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
     overflow: hidden;
+    background: var(--darker-bg);
+    position: relative;
+}
+
+.editor-tabs::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--gradient-retro-secondary);
+    opacity: 0.5;
 }
 
 .tab-button {
     flex: 1;
     padding: var(--spacing-sm) var(--spacing-md);
     border: none;
-    background-color: var(--light-bg);
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     transition: all var(--transition-fast);
+    position: relative;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--gradient-retro-primary);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
 }
 
 .tab-button.active {
-    background-color: var(--primary-color);
-    color: white;
+    background: var(--card-bg);
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+}
+
+.tab-button.active::before {
+    opacity: 0.1;
 }
 
 .tab-button:not(.active):hover {
-    background-color: var(--border-color);
-    color: var(--text-primary);
+    background: rgba(255, 105, 180, 0.05);
+    color: var(--primary-color);
+    border-bottom-color: rgba(255, 105, 180, 0.5);
+}
+
+.tab-button:not(.active):hover::before {
+    opacity: 0.05;
 }
 
 .editor-content {
@@ -1283,7 +1327,7 @@ onMounted(() => {
 
 .remove-tag-button:hover {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .tag-input {
@@ -1402,7 +1446,7 @@ onMounted(() => {
 
 .save-button {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .save-button:hover:not(:disabled) {
@@ -1537,7 +1581,7 @@ small {
 
 .remove-image-button:hover:not(:disabled) {
     background-color: var(--error-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .image-selection-buttons {
@@ -1567,7 +1611,7 @@ small {
 
 .select-image-button:hover:not(:disabled) {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .upload-image-button {
@@ -1719,7 +1763,7 @@ small {
 
 .button-primary {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .button-primary:hover:not(:disabled) {
@@ -1793,7 +1837,7 @@ small {
 
 .insert-image-button:hover:not(:disabled) {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .insert-image-button:disabled {

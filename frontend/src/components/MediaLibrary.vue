@@ -581,6 +581,34 @@ function handleFileSelect(event) {
     event.target.value = '';
 }
 
+
+function validateImageFile(file) {
+    const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml'
+    ];
+
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!allowedTypes.includes(file.type)) {
+        throw new Error(`Invalid file type: ${file.type}. Allowed types: ${allowedTypes.join(', ')}`);
+    }
+
+    if (file.size > maxSize) {
+        throw new Error(`File too large: ${Math.round(file.size / 1024 / 1024)}MB. Maximum allowed: 10MB`);
+    }
+
+    if (file.size === 0) {
+        throw new Error('File is empty');
+    }
+
+    return true;
+}
+
+
 async function uploadFiles(files) {
     if (isUploading.value) return;
 
@@ -589,6 +617,11 @@ async function uploadFiles(files) {
     uploadProgress.value = 0;
 
     try {
+        // Validate all files first
+        for (const file of files) {
+            validateImageFile(file);
+        }
+
         const uploadPromises = files.map((file, index) =>
             uploadSingleFile(file, index, files.length)
         );
@@ -601,8 +634,8 @@ async function uploadFiles(files) {
         // Reset upload state
         uploadQueue.value = [];
         uploadProgress.value = 0;
-    } catch {
-        alert('Some uploads failed. Please try again.');
+    } catch (error) {
+        alert(`Upload failed: ${error.message}`);
     } finally {
         isUploading.value = false;
     }
@@ -611,21 +644,28 @@ async function uploadFiles(files) {
 async function uploadSingleFile(file, index, total) {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('alt_text', file.name);
-    formData.append('caption', '');
 
-    const response = await axios.post('/api/admin/media/upload', formData, {
-        headers: {
-            'Content-Type': 'multipart/form-data'
+    // Only add alt_text if it's meaningful (not just the filename)
+    if (file.name && file.name.trim()) {
+        formData.append('alt_text', file.name);
+    }
+
+    try {
+        const response = await axios.post('/api/admin/media/upload', formData);
+
+        if (response.data.success) {
+            // Update progress
+            uploadProgress.value = Math.round(((index + 1) / total) * 100);
+            return response.data.media;
+        } else {
+            throw new Error(response.data.error || 'Upload failed');
         }
-    });
-
-    if (response.data.success) {
-        // Update progress
-        uploadProgress.value = Math.round(((index + 1) / total) * 100);
-        return response.data.media;
-    } else {
-        throw new Error(response.data.error || 'Upload failed');
+    } catch (err) {
+        throw new Error(
+            err.response?.data?.error ||
+            err.message ||
+            `Upload failed (${err.response?.status || 'unknown error'})`
+        );
     }
 }
 
@@ -653,8 +693,34 @@ async function handlePaste(event) {
     // Prevent default paste behavior when images are detected
     event.preventDefault();
 
-    // Process all pasted images
-    const imageFiles = imageItems.map(item => item.getAsFile()).filter(file => file);
+    // Process all pasted images with proper file naming
+    const imageFiles = imageItems.map((item, index) => {
+        const file = item.getAsFile();
+        if (!file) return null;
+
+        // Create a proper filename based on MIME type
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        let extension = 'png'; // default
+
+        if (file.type === 'image/jpeg') extension = 'jpg';
+        else if (file.type === 'image/png') extension = 'png';
+        else if (file.type === 'image/gif') extension = 'gif';
+        else if (file.type === 'image/webp') extension = 'webp';
+
+        // Create a new File with proper name and type
+        // eslint-disable-next-line no-undef
+        const properFile = new File(
+            [file],
+            `pasted-image-${timestamp}-${index + 1}.${extension}`,
+            {
+                type: file.type || 'image/png',
+                lastModified: Date.now()
+            }
+        );
+
+
+        return properFile;
+    }).filter(file => file);
 
     if (imageFiles.length > 0) {
         // Upload the pasted images
@@ -706,11 +772,22 @@ defineExpose({
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: 1rem;
+    background: var(--bg-color);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
 }
 
 .search-input:focus {
     outline: none;
     border-color: var(--primary-color);
+    box-shadow:
+        0 0 0 2px rgba(255, 105, 180, 0.2),
+        0 0 20px rgba(255, 105, 180, 0.3);
+    background: var(--card-bg);
+}
+
+.search-input::placeholder {
+    color: var(--text-secondary);
 }
 
 .filter-controls {
@@ -723,8 +800,16 @@ defineExpose({
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: 1rem;
-    background-color: var(--bg-color);
+    background: var(--bg-color);
+    color: var(--text-primary);
     cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(255, 105, 180, 0.2);
 }
 
 .loading-container,
@@ -747,26 +832,57 @@ defineExpose({
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-bottom: var(--spacing-md);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
 }
 
 @keyframes spin {
     0% {
         transform: rotate(0deg);
+        box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 105, 180, 0.5);
     }
     100% {
         transform: rotate(360deg);
+        box-shadow: 0 0 20px rgba(255, 105, 180, 0.3);
     }
 }
 
 .retry-button {
     margin-top: var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-lg);
-    background-color: var(--primary-color);
-    color: white;
-    border: none;
+    background: var(--gradient-retro-primary);
+    color: var(--light-text);
+    border: 1px solid var(--primary-color);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.retry-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
+}
+
+.retry-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(255, 105, 180, 0.4);
+}
+
+.retry-button:hover::before {
+    left: 100%;
 }
 
 .media-grid {
@@ -782,18 +898,45 @@ defineExpose({
     overflow: hidden;
     cursor: pointer;
     transition: all var(--transition-fast);
-    background-color: var(--bg-color);
+    background: var(--card-bg);
+    position: relative;
+}
+
+.media-item::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--gradient-retro-primary);
+    border-radius: var(--radius-lg);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
 }
 
 .media-item:hover {
     border-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow:
+        var(--shadow-lg),
+        0 0 25px rgba(255, 105, 180, 0.2);
+}
+
+.media-item:hover::before {
+    opacity: 0.1;
 }
 
 .media-item.selected {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px var(--primary-color-light);
+    box-shadow:
+        var(--shadow-lg),
+        0 0 20px rgba(255, 105, 180, 0.4);
+}
+
+.media-item.selected::before {
+    opacity: 0.2;
 }
 
 .media-thumbnail {
@@ -820,7 +963,7 @@ defineExpose({
     width: 32px;
     height: 32px;
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -867,34 +1010,59 @@ defineExpose({
 .action-button {
     flex: 1;
     padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--border-color);
+    border: 1px solid;
     border-radius: var(--radius-md);
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all var(--transition-fast);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
+}
+
+.action-button:hover::before {
+    left: 100%;
 }
 
 .edit-button {
-    background-color: var(--bg-color);
-    color: var(--text-primary);
+    background: rgba(255, 105, 180, 0.1);
+    color: var(--primary-color);
+    border-color: rgba(255, 105, 180, 0.3);
 }
 
 .edit-button:hover {
-    background-color: var(--primary-color);
-    color: white;
+    background: var(--primary-color);
+    color: var(--bg-color);
     border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(255, 105, 180, 0.4);
+    transform: translateY(-1px);
 }
 
 .delete-button {
-    background-color: var(--bg-color);
-    color: var(--error-color);
-    border-color: var(--error-color);
+    background: rgba(255, 69, 0, 0.1);
+    color: var(--accent-orange);
+    border-color: rgba(255, 69, 0, 0.3);
 }
 
 .delete-button:hover {
-    background-color: var(--error-color);
-    color: white;
+    background: var(--accent-orange);
+    color: var(--bg-color);
+    border-color: var(--accent-orange);
+    box-shadow: 0 0 15px rgba(255, 69, 0, 0.4);
+    transform: translateY(-1px);
 }
 
 .pagination {
@@ -917,7 +1085,7 @@ defineExpose({
 
 .pagination-button:hover:not(:disabled) {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
     border-color: var(--primary-color);
 }
 
@@ -1017,7 +1185,7 @@ defineExpose({
 
 .button-primary {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--light-text);
 }
 
 .button-secondary:hover,
@@ -1025,35 +1193,63 @@ defineExpose({
     opacity: 0.9;
 }
 
-/* Upload Zone Styles */
+/* Upload Zone Styles - Retro-Futuristic */
 .upload-zone {
     border: 2px dashed var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
     text-align: center;
-    background-color: var(--light-bg);
+    background: var(--light-bg);
     cursor: pointer;
     transition: all var(--transition-fast);
     position: relative;
+    overflow: hidden;
+}
+
+.upload-zone::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: var(--gradient-retro-primary);
+    border-radius: var(--radius-lg);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
 }
 
 .upload-zone:hover {
     border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
+    background: rgba(255, 105, 180, 0.05);
+    box-shadow: inset 0 0 20px rgba(255, 105, 180, 0.1);
+}
+
+.upload-zone:hover::before {
+    opacity: 0.1;
 }
 
 .upload-zone.drag-over {
     border-color: var(--primary-color);
-    background-color: var(--primary-color-light);
     border-style: solid;
+    background: rgba(255, 105, 180, 0.1);
     transform: scale(1.02);
+    box-shadow:
+        inset 0 0 30px rgba(255, 105, 180, 0.2),
+        0 0 30px rgba(255, 105, 180, 0.3);
+}
+
+.upload-zone.drag-over::before {
+    opacity: 0.2;
 }
 
 .upload-zone.uploading {
     border-color: var(--primary-color);
-    background-color: var(--bg-color);
+    background: var(--card-bg);
     cursor: default;
+    box-shadow: 0 0 25px rgba(255, 105, 180, 0.3);
 }
 
 .hidden-file-input {

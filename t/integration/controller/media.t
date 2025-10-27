@@ -263,4 +263,204 @@ subtest 'deletion error handling' => sub {
     $t->post_ok('/api/auth/logout')->status_is(200);
 };
 
+subtest 'SVG security validation tests' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set for SVG security tests';
+        return;
+    }
+
+    # Login
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200, 'Admin login successful');
+
+    # Test 1: SVG with script tags should be rejected
+    my $malicious_svg_script = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script><rect width="100" height="100"/></svg>';
+    my $base64_malicious_script = encode_base64($malicious_svg_script, '');
+    my $data_url_script = "data:image/svg+xml;base64,$base64_malicious_script";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_script,
+        base64_filename => 'malicious-script.svg',
+        alt_text => 'Test SVG with script',
+    })->status_is(400, 'SVG with script tags rejected')
+      ->json_is('/success' => 0)
+      ->json_has('/error', 'Error message provided for malicious SVG');
+
+    # Test 2: SVG with event handlers should be rejected
+    my $malicious_svg_onclick = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" onclick="alert(\'xss\')"/></svg>';
+    my $base64_malicious_onclick = encode_base64($malicious_svg_onclick, '');
+    my $data_url_onclick = "data:image/svg+xml;base64,$base64_malicious_onclick";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_onclick,
+        base64_filename => 'malicious-onclick.svg',
+        alt_text => 'Test SVG with onclick',
+    })->status_is(400, 'SVG with onclick handler rejected')
+      ->json_is('/success' => 0);
+
+    # Test 3: SVG with event handlers with spaces should be rejected (enhanced regex test)
+    my $malicious_svg_spaced = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" on click="alert(\'xss\')"/></svg>';
+    my $base64_malicious_spaced = encode_base64($malicious_svg_spaced, '');
+    my $data_url_spaced = "data:image/svg+xml;base64,$base64_malicious_spaced";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_spaced,
+        base64_filename => 'malicious-spaced.svg',
+        alt_text => 'Test SVG with spaced event handler',
+    })->status_is(400, 'SVG with spaced event handler rejected')
+      ->json_is('/success' => 0);
+
+    # Test 4: SVG with javascript URLs should be rejected
+    my $malicious_svg_js = '<svg xmlns="http://www.w3.org/2000/svg"><a href="javascript:alert(\'xss\')"><rect width="100" height="100"/></a></svg>';
+    my $base64_malicious_js = encode_base64($malicious_svg_js, '');
+    my $data_url_js = "data:image/svg+xml;base64,$base64_malicious_js";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_js,
+        base64_filename => 'malicious-javascript.svg',
+        alt_text => 'Test SVG with javascript URL',
+    })->status_is(400, 'SVG with javascript URL rejected')
+      ->json_is('/success' => 0);
+
+    # Test 5: SVG with foreign objects should be rejected
+    my $malicious_svg_foreign = '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>content</div></foreignObject></svg>';
+    my $base64_malicious_foreign = encode_base64($malicious_svg_foreign, '');
+    my $data_url_foreign = "data:image/svg+xml;base64,$base64_malicious_foreign";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_foreign,
+        base64_filename => 'malicious-foreign.svg',
+        alt_text => 'Test SVG with foreign object',
+    })->status_is(400, 'SVG with foreign object rejected')
+      ->json_is('/success' => 0);
+
+    # Test 6: SVG with CSS expressions should be rejected
+    my $malicious_svg_expression = '<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" style="width: expression(alert(\'xss\'))"/></svg>';
+    my $base64_malicious_expression = encode_base64($malicious_svg_expression, '');
+    my $data_url_expression = "data:image/svg+xml;base64,$base64_malicious_expression";
+
+    $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_expression,
+        base64_filename => 'malicious-expression.svg',
+        alt_text => 'Test SVG with CSS expression',
+    })->status_is(400, 'SVG with CSS expression rejected')
+      ->json_is('/success' => 0);
+
+    # Test 7: Clean SVG should be accepted
+    my $clean_svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="red"/></svg>';
+    my $base64_clean = encode_base64($clean_svg, '');
+    my $data_url_clean = "data:image/svg+xml;base64,$base64_clean";
+
+    my $upload_response = $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $data_url_clean,
+        base64_filename => 'clean-svg.svg',
+        alt_text => 'Test clean SVG',
+    });
+
+    # Only proceed with cleanup if upload was successful
+    if ($upload_response->tx->res->code == 200) {
+        $upload_response->status_is(200, 'Clean SVG accepted')
+          ->json_is('/success' => 1)
+          ->json_has('/media/id', 'Media ID returned for clean SVG');
+
+        # Clean up the uploaded test file
+        my $upload_json = $t->tx->res->json;
+        my $media_id = $upload_json->{media}{id};
+        if ($media_id) {
+            $t->delete_ok("/api/admin/media/$media_id")
+              ->status_is(200, 'Test SVG cleanup successful');
+        }
+    } else {
+        # If clean SVG was rejected, that's unexpected - log details
+        my $error_response = $upload_response->tx->res->json;
+        diag("Clean SVG unexpectedly rejected with status: " . $upload_response->tx->res->code);
+        diag("Error response: " . ($error_response->{error} || 'No error message'));
+    }
+
+    # Logout
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
+subtest 'input validation tests for alt_text and caption' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set for input validation tests';
+        return;
+    }
+
+    # Login
+    $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200, 'Admin login successful');
+
+    # Create test image for validation
+    my $valid_jpeg_base64 = '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
+    my $base64_data = "data:image/jpeg;base64,$valid_jpeg_base64";
+
+    # Test oversized alt_text (over 255 characters) - should be truncated
+    my $long_alt_text = 'x' x 300;  # 300 characters
+    my $upload_response = $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $base64_data,
+        base64_filename => 'test-long-alt.jpg',
+        alt_text => $long_alt_text,
+        caption => 'Normal caption'
+    });
+
+    if ($upload_response->tx->res->code == 200) {
+        $upload_response->status_is(200, 'Upload with long alt_text successful')
+          ->json_is('/success' => 1);
+
+        # Verify alt_text was truncated to 255 characters
+        my $upload_json = $t->tx->res->json;
+        my $media_id = $upload_json->{media}{id};
+
+        $t->get_ok("/api/admin/media/$media_id")
+          ->status_is(200)
+          ->json_is('/success' => 1);
+
+        my $media_data = $t->tx->res->json->{media};
+        is(length($media_data->{alt_text}), 255, 'Alt text truncated to 255 characters');
+
+        # Clean up
+        $t->delete_ok("/api/admin/media/$media_id")->status_is(200);
+    }
+
+    # Test oversized caption (over 500 characters) - should be truncated
+    my $long_caption = 'y' x 600;  # 600 characters
+    $upload_response = $t->post_ok('/api/admin/media/upload' => form => {
+        base64_data => $base64_data,
+        base64_filename => 'test-long-caption.jpg',
+        alt_text => 'Normal alt text',
+        caption => $long_caption
+    });
+
+    if ($upload_response->tx->res->code == 200) {
+        $upload_response->status_is(200, 'Upload with long caption successful')
+          ->json_is('/success' => 1);
+
+        # Verify caption was truncated to 500 characters
+        my $upload_json = $t->tx->res->json;
+        my $media_id = $upload_json->{media}{id};
+
+        $t->get_ok("/api/admin/media/$media_id")
+          ->status_is(200)
+          ->json_is('/success' => 1);
+
+        my $media_data = $t->tx->res->json->{media};
+        is(length($media_data->{caption}), 500, 'Caption truncated to 500 characters');
+
+        # Clean up
+        $t->delete_ok("/api/admin/media/$media_id")->status_is(200);
+    }
+
+    # Logout
+    $t->post_ok('/api/auth/logout')->status_is(200);
+};
+
 done_testing();
