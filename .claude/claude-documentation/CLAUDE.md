@@ -261,11 +261,57 @@ UPLOAD_MAX_SIZE=5242880  # 5MB in bytes
 UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,image/webp,image/svg+xml
 ```
 
+**CRITICAL**: `UPLOADS_DIR` must **always** be set to `/usr/src/hello-perld/uploads` - the **container path**, not the host path. Docker handles mapping the host storage to this container path via volume mounts.
+
 **Storage Structure**:
 - Files stored in date-based directories: `uploads/YYYY/MM/`
 - Unique filenames generated using SHA-256 hash (16 chars + extension)
-- Physical files stored in Docker volume `uploads_data`
 - Accessible via `/uploads/YYYY/MM/filename.ext` URL path
+
+**Storage Configuration by Environment**:
+
+**Development** - Docker named volume:
+```yaml
+# docker-compose.yml
+volumes:
+  - uploads_data:/usr/src/hello-perld/uploads  # Docker-managed volume
+```
+
+**Staging** - DigitalOcean block storage bind mount:
+```yaml
+# docker-compose.staging.yml
+volumes:
+  - /mnt/volume_sfo3_01/hello-perld-staging/uploads:/usr/share/nginx/html/uploads:ro  # Host bind mount
+```
+
+**Production** - DigitalOcean block storage bind mount:
+```yaml
+# docker-compose.production.yml
+volumes:
+  - /mnt/volume_nyc3_01/hello-perld-prod/uploads:/usr/src/hello-perld/uploads  # Host bind mount
+```
+
+Both staging and production environments use the same DigitalOcean block storage volume mounted on the host at `/mnt/volume_nyc3_01/`, with separate directories for environment isolation.
+
+**Setting up Block Storage on Servers**:
+
+**Staging server**:
+```bash
+# On staging server, create directory with proper permissions
+sudo mkdir -p /mnt/volume_nyc3_01/hello-perld-staging/uploads
+sudo chown -R 1000:1000 /mnt/volume_nyc3_01/hello-perld-staging/uploads
+sudo chmod -R 755 /mnt/volume_nyc3_01/hello-perld-staging/uploads
+```
+
+**Production server**:
+```bash
+# On production server, create directory with proper permissions
+sudo mkdir -p /mnt/volume_nyc3_01/hello-perld-prod/uploads
+sudo chown -R 1000:1000 /mnt/volume_nyc3_01/hello-perld-prod/uploads
+sudo chmod -R 755 /mnt/volume_nyc3_01/hello-perld-prod/uploads
+```
+
+User ID 1000 is the default non-root user in the Docker container (appuser)
 
 **File Validation**:
 - Type checking against allowed MIME types

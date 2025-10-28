@@ -17,7 +17,7 @@ services:
             NODE_ENV: production
             DB_SCHEMA: thebooshzone_staging
         volumes:
-            - uploads_data:/usr/src/hello-perld/uploads
+            - /mnt/volume_sfo3_01/hello-perld-staging/uploads:/usr/src/hello-perld/uploads
         networks:
             - theboosh-staging-network
         restart: unless-stopped
@@ -42,7 +42,7 @@ services:
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
             - ./nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
-            - uploads_data:/usr/share/nginx/html/uploads:ro
+            - /mnt/volume_sfo3_01/hello-perld-staging/uploads:/usr/share/nginx/html/uploads:ro
             - /etc/letsencrypt:/etc/letsencrypt:ro
             - /var/www/certbot:/var/www/certbot:ro
         networks:
@@ -87,6 +87,5 @@ networks:
         name: theboosh-staging-network
 
 volumes:
-    uploads_data:
     prometheus_data:
     grafana_data:
