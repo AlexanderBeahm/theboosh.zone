@@ -129,6 +129,21 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 done
 
+# Verify firewall rules for external access
+echo ""
+echo "Verifying firewall configuration..."
+if ! iptables -L DOCKER-USER -n | grep -q "tcp dpt:443.*ACCEPT"; then
+    echo "WARNING: Firewall rules for port 443 not found!"
+    echo "External HTTPS access may not work."
+    echo "Run: sudo ./deploy/configure-docker-firewall.sh"
+elif ! iptables -L DOCKER-USER -n | grep -q "tcp dpt:80.*ACCEPT"; then
+    echo "WARNING: Firewall rules for port 80 not found!"
+    echo "External HTTP access may not work."
+    echo "Run: sudo ./deploy/configure-docker-firewall.sh"
+else
+    echo "Firewall rules OK - ports 80 and 443 are accessible"
+fi
+
 # Cleanup old images
 echo ""
 echo "Cleaning up old Docker images..."

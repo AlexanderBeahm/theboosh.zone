@@ -1572,6 +1572,89 @@ cd /opt/theboosh-zone
 ./deploy/rollback.sh production
 ```
 
+### UFW and Docker Firewall Configuration
+
+**CRITICAL**: UFW (Uncomplicated Firewall) and Docker do not work well together by default. When UFW is enabled, Docker containers may not be accessible from external networks even when ports are exposed.
+
+**The Problem:**
+- Docker creates iptables rules to route traffic to containers
+- UFW creates its own iptables rules that can block Docker traffic
+- The `DOCKER-USER` chain is where traffic enters before Docker's routing
+- If `DOCKER-USER` has a `RETURN` rule at the beginning, it exits before reaching ACCEPT rules
+- This causes "connection refused" errors from external networks while localhost works fine
+
+**Symptoms:**
+- `docker ps` shows ports mapped (e.g., `0.0.0.0:443->443/tcp`)
+- Containers work internally (curl from localhost succeeds)
+- External access fails with "connection refused"
+- Port 8080 works but 80/443 don't (different iptables rules)
+
+**The Solution:**
+We've created `deploy/configure-docker-firewall.sh` to automatically configure iptables rules for Docker/UFW compatibility.
+
+**What it does:**
+1. Installs `iptables-persistent` for rule persistence across reboots
+2. Waits for Docker to create the `DOCKER-USER` chain
+3. Removes any RETURN rules at the beginning of the chain
+4. Adds ACCEPT rules for ports 80 and 443 at the top
+5. Ensures RETURN rule exists only at the end
+6. Saves rules with `netfilter-persistent save`
+
+**When to run:**
+- **First deployment**: After running `deploy.sh` for the first time
+- **After Docker restart**: If containers become inaccessible after server reboot
+- **After UFW changes**: If you modify UFW rules
+
+**Usage:**
+```bash
+# Run after first deployment or when external access stops working
+sudo ./deploy/configure-docker-firewall.sh
+
+# Verify rules are correct
+sudo iptables -L DOCKER-USER -n -v --line-numbers
+
+# Expected output:
+# 1. ACCEPT tcp -- eth0 * 0.0.0.0/0 0.0.0.0/0 tcp dpt:443
+# 2. ACCEPT tcp -- eth0 * 0.0.0.0/0 0.0.0.0/0 tcp dpt:80
+# 3. RETURN all -- * * 0.0.0.0/0 0.0.0.0/0
+```
+
+**Integration:**
+- `setup-server.sh` reminds you to run this after first deployment
+- `deploy.sh` verifies firewall rules on each deployment and warns if missing
+- Rules persist across reboots via `iptables-persistent`
+
+**Important Notes:**
+- This must be run with `sudo` or as root
+- Docker must be running before executing the script
+- The script is idempotent - safe to run multiple times
+- Rules are saved to `/etc/iptables/rules.v4` for persistence
+
+**Troubleshooting:**
+```bash
+# Check if rules exist
+sudo iptables -L DOCKER-USER -n -v
+
+# If empty or wrong order, run the script
+sudo ./deploy/configure-docker-firewall.sh
+
+# Test external access
+curl -v https://staging.theboosh.zone  # or production
+
+# View Docker network traffic
+sudo iptables -L FORWARD -n -v
+```
+
+**SSL Certificate Volume Mounts:**
+The docker-compose files use **bind mounts** (not Docker named volumes) for SSL certificates:
+```yaml
+volumes:
+  - /etc/letsencrypt:/etc/letsencrypt:ro
+  - /var/www/certbot:/var/www/certbot:ro
+```
+
+This is critical because certbot runs on the **host** and stores certificates in `/etc/letsencrypt/`. Using Docker named volumes would create a separate isolated storage that nginx can't access.
+
 ### References & Documentation
 - **Post-Implementation Checklist**: `.claude/claude-documentation/Post-Implementation-Checklist.md` (Setup Steps)
 - **Mojolicious Documentation**: https://docs.mojolicious.org/
@@ -1581,7 +1664,9 @@ cd /opt/theboosh-zone
 - **GitHub Actions**: https://docs.github.com/en/actions
 - **nginx Documentation**: https://nginx.org/en/docs/
 - **Let's Encrypt**: https://letsencrypt.org/docs/
+- **Docker and iptables**: https://docs.docker.com/network/iptables/
+- **UFW with Docker**: https://github.com/chaifeng/ufw-docker
 
 ---
 
-**Last Updated**: October 20, 2025 - Implemented comprehensive backend testing framework with Test::More, Test::Mojo, and DBD::Mock. Added 60+ test cases covering models and controllers. Deployed multi-environment setup with dev/test/staging/production environments, CI/CD pipeline via GitHub Actions, nginx reverse proxy, hypnotoad production server, and comprehensive deployment automation scripts.
+**Last Updated**: October 28, 2025 - Added UFW/Docker firewall configuration automation. Created `configure-docker-firewall.sh` script to resolve iptables conflicts between UFW and Docker. Fixed SSL certificate volume mounts to use host bind mounts instead of Docker named volumes. Updated deployment scripts to verify firewall rules. Previous: Implemented comprehensive backend testing framework with Test::More, Test::Mojo, and DBD::Mock. Added 60+ test cases covering models and controllers. Deployed multi-environment setup with dev/test/staging/production environments, CI/CD pipeline via GitHub Actions, nginx reverse proxy, hypnotoad production server, and comprehensive deployment automation scripts.
