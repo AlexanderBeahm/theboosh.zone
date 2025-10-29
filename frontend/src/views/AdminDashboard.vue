@@ -468,6 +468,26 @@ async function fetchArticles() {
     }
 }
 
+async function getArticleContent(articleId) {
+    try {
+        const response = await axios.get(`/api/admin/articles/${articleId}`);
+
+        if (response.data.success) {
+            return response.data.article.content || "";
+        } else {
+            throw new Error(
+                response.data.error || "Failed to fetch article content",
+            );
+        }
+    } catch (err) {
+        error.value =
+            err.response?.data?.error ||
+            err.message ||
+            "Failed to load article content";
+        return null; // Return null instead of empty string to distinguish between "no content" and "error"
+    }
+}
+
 async function fetchStats() {
     try {
         // Get basic stats from tags endpoint
@@ -488,8 +508,12 @@ function changePage(page) {
     fetchArticles();
 }
 
-function editArticle(article) {
-    editingArticle.value = article;
+async function editArticle(article) {
+    const content = await getArticleContent(article.id);
+    if (content !== null) {
+        editingArticle.value = { ...article, content };
+    }
+    // If content is null, the error will be displayed via error.value
 }
 
 function viewArticle(article) {
