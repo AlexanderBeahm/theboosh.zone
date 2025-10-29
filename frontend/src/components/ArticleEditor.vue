@@ -1259,10 +1259,12 @@ onMounted(() => {
     font-size: 0.875rem;
     line-height: 1.6;
     background-color: var(--bg-color);
+    color: var(--text-primary);
 }
 
 .content-textarea:focus {
     box-shadow: none;
+    color: var(--text-primary);
 }
 
 .preview-container {

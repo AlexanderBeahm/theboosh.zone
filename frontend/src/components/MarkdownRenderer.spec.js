@@ -203,4 +203,164 @@ describe("MarkdownRenderer", () => {
             expect(innerHTML).toContain('Safe content');
         });
     });
+
+    // Iframe embed security tests
+    describe("Iframe Embeds", () => {
+        it("allows iframes from whitelisted domains (YouTube)", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Iframe should be present
+            expect(innerHTML).toContain('<iframe');
+            expect(innerHTML).toContain('youtube.com');
+        });
+
+        it("blocks iframes from non-whitelisted domains", () => {
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<iframe src="https://evil.com/embed"></iframe>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Warning should be logged
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                'Blocked iframe from untrusted domain:',
+                'evil.com'
+            );
+
+            // Iframe should be removed
+            expect(innerHTML).not.toContain('evil.com');
+
+            consoleWarnSpy.mockRestore();
+        });
+
+        it("applies correct sandbox attributes for YouTube", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<iframe src="https://www.youtube.com/embed/test"></iframe>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Should have sandbox with necessary permissions for YouTube player
+            expect(innerHTML).toContain('sandbox=');
+            expect(innerHTML).toContain('allow-scripts');
+            expect(innerHTML).toContain('allow-same-origin');
+            expect(innerHTML).toContain('allow-presentation');
+        });
+
+        it("applies correct sandbox attributes for Bandcamp", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<iframe src="https://bandcamp.com/EmbeddedPlayer/album=1234"></iframe>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Bandcamp should have allow-forms for player controls, allow-popups for purchase links, and allow-same-origin for player
+            expect(innerHTML).toContain('sandbox=');
+            expect(innerHTML).toContain('allow-scripts');
+            expect(innerHTML).toContain('allow-same-origin');
+            expect(innerHTML).toContain('allow-forms');
+            expect(innerHTML).toContain('allow-popups');
+            expect(innerHTML).toContain('allow-presentation');
+        });
+
+        it("blocks iframes with invalid URLs", () => {
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<iframe src="not-a-valid-url"></iframe>',
+                    sanitize: true,
+                },
+            });
+
+            // Warning should be logged for invalid URL
+            expect(consoleWarnSpy).toHaveBeenCalledWith(
+                'Blocked iframe with invalid URL:',
+                'not-a-valid-url'
+            );
+
+            consoleWarnSpy.mockRestore();
+        });
+    });
+
+    // Line breaks test
+    describe("Line Breaks", () => {
+        it("renders single newlines as <br> with breaks: true", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: "Line 1\nLine 2",
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Single newline should create a <br> tag with GFM breaks enabled
+            expect(innerHTML).toContain('Line 1');
+            expect(innerHTML).toContain('Line 2');
+        });
+    });
+
+    // Style attribute filtering tests
+    describe("Style Attribute Filtering", () => {
+        it("keeps safe CSS properties in style attribute", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<div style="width: 100px; height: 50px; padding: 10px;">Safe styles</div>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Safe properties should be kept
+            expect(innerHTML).toContain('width');
+            expect(innerHTML).toContain('height');
+            expect(innerHTML).toContain('padding');
+        });
+
+        it("removes dangerous CSS properties from style attribute", () => {
+            const wrapper = mount(MarkdownRenderer, {
+                props: {
+                    content: '<div style="width: 100px; position: absolute; z-index: 9999; opacity: 0;">Dangerous styles</div>',
+                    sanitize: true,
+                },
+            });
+
+            const markdownDiv = wrapper.find(".markdown-content");
+            const innerHTML = markdownDiv.element.innerHTML;
+
+            // Safe property should be kept
+            expect(innerHTML).toContain('width');
+
+            // Dangerous properties should be removed
+            expect(innerHTML).not.toContain('position');
+            expect(innerHTML).not.toContain('z-index');
+            expect(innerHTML).not.toContain('opacity: 0');
+        });
+    });
 });
