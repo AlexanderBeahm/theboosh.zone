@@ -118,6 +118,13 @@ jobs:
                       fi
                       cd /opt/theboosh-zone
 
+                      # Pull latest code from repository
+                      echo "Pulling latest code from main branch..."
+                      git fetch origin
+                      git reset --hard origin/main
+                      git clean -fd
+                      echo "Repository updated to latest main branch"
+
                       # Decode and write docker credentials
                       mkdir -p ~/.docker
                       echo "$DOCKER_CONFIG_B64" | base64 -d > ~/.docker/config.json

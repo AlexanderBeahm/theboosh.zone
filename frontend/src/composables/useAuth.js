@@ -7,6 +7,12 @@ const isAuthenticated = ref(false);
 const user = ref(null);
 const isChecking = ref(false);
 
+// Request caching to prevent duplicate auth checks
+const authCache = {
+    timestamp: 0,
+    ttl: 5000, // 5 second cache
+};
+
 export function useAuth() {
     const router = useRouter();
 
@@ -15,6 +21,15 @@ export function useAuth() {
      * @returns {Promise<boolean>} Authentication status
      */
     async function checkAuth() {
+        // Check if cache is still valid
+        const now = Date.now();
+        const cacheAge = now - authCache.timestamp;
+
+        if (cacheAge < authCache.ttl && authCache.timestamp > 0) {
+            // Return cached authentication state
+            return isAuthenticated.value;
+        }
+
         if (isChecking.value) {
             // Prevent multiple simultaneous auth checks
             return isAuthenticated.value;
@@ -33,10 +48,15 @@ export function useAuth() {
                 user.value = null;
             }
 
+            // Update cache timestamp
+            authCache.timestamp = Date.now();
+
             return isAuthenticated.value;
         } catch {
             isAuthenticated.value = false;
             user.value = null;
+            // Update cache timestamp even on error to prevent retry storms
+            authCache.timestamp = Date.now();
             return false;
         } finally {
             isChecking.value = false;
@@ -61,6 +81,9 @@ export function useAuth() {
                 isAuthenticated.value = true;
                 user.value = response.data.user || { username };
 
+                // Invalidate cache to force fresh check
+                authCache.timestamp = Date.now();
+
                 return { success: true, user: user.value };
             } else {
                 throw new Error(response.data.error || "Login failed");
@@ -68,6 +91,9 @@ export function useAuth() {
         } catch (err) {
             isAuthenticated.value = false;
             user.value = null;
+
+            // Invalidate cache
+            authCache.timestamp = 0;
 
             throw {
                 message:
@@ -92,6 +118,9 @@ export function useAuth() {
             // Clear shared state
             isAuthenticated.value = false;
             user.value = null;
+
+            // Invalidate cache
+            authCache.timestamp = 0;
 
             // Redirect to login page
             if (redirectPath) {
