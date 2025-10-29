@@ -10,7 +10,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUpdated } from "vue";
+import { computed, onMounted, onUpdated, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -168,7 +168,53 @@ const TRUSTED_EMBED_DOMAINS = [
     "jsfiddle.net",
 ];
 
+// Per-domain sandbox configurations for iframe security
+//
+// SECURITY NOTE: allow-same-origin is included for trusted embed providers
+// While combining allow-scripts + allow-same-origin reduces sandbox isolation,
+// this is necessary for legitimate embed functionality (cookies, localStorage, cache).
+// Security is maintained through:
+// 1. Strict domain whitelist (only vetted, trusted providers)
+// 2. Content blocklist (untrusted domains are removed entirely)
+// 3. Regular security audits of whitelisted providers
+//
+// Embedded content from trusted providers needs same-origin access to:
+// - Store player preferences and state
+// - Access CDN-cached resources
+// - Maintain playback position
+// - Handle authentication for premium content
+const IFRAME_SANDBOX_RULES = {
+    // Video platforms - need same-origin for player functionality
+    "youtube.com": "allow-scripts allow-same-origin allow-presentation",
+    "youtube-nocookie.com": "allow-scripts allow-same-origin allow-presentation",
+    "youtu.be": "allow-scripts allow-same-origin allow-presentation",
+    "vimeo.com": "allow-scripts allow-same-origin allow-presentation",
+    "player.vimeo.com": "allow-scripts allow-same-origin allow-presentation",
+
+    // Audio/Music platforms - need same-origin for player functionality
+    "bandcamp.com": "allow-scripts allow-same-origin allow-forms allow-popups allow-presentation", // allow-forms for player controls, allow-popups for purchase links
+    "spotify.com": "allow-scripts allow-same-origin allow-presentation",
+    "open.spotify.com": "allow-scripts allow-same-origin allow-presentation",
+    "soundcloud.com": "allow-scripts allow-same-origin allow-presentation",
+    "w.soundcloud.com": "allow-scripts allow-same-origin allow-presentation",
+
+    // Code playgrounds - need same-origin for code execution and state
+    "codepen.io": "allow-scripts allow-same-origin allow-presentation",
+    "codesandbox.io": "allow-scripts allow-same-origin allow-presentation allow-popups", // allow-popups for "open in new window"
+    "jsfiddle.net": "allow-scripts allow-same-origin allow-presentation",
+};
+
 // Safe CSS properties for style attribute filtering
+// This whitelist is intentionally restrictive to prevent security issues:
+//
+// EXCLUDED PROPERTIES (and why):
+// - position: Can be used to create clickjacking overlays that cover legitimate UI elements
+// - z-index: Can interfere with site UI layering, placing malicious content above legitimate elements
+// - opacity: Can create invisible clickjacking elements that users unknowingly interact with
+// - visibility: Can hide malicious content or create deceptive UI patterns
+// - overflow: Can hide content or create UI confusion by manipulating scroll behavior
+//
+// Only allow properties that control sizing, spacing, and basic styling without security implications
 const SAFE_CSS_PROPERTIES = [
     "width",
     "height",
@@ -186,8 +232,12 @@ const SAFE_CSS_PROPERTIES = [
     "min-height",
 ];
 
+// Store hook references for cleanup
+let sanitizeElementHook;
+let sanitizeAttributeHook;
+
 // Configure DOMPurify hooks for iframe security
-DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+sanitizeElementHook = (node, data) => {
     // Validate iframe sources against whitelist
     if (data.tagName === "iframe") {
         const src = node.getAttribute("src");
@@ -216,12 +266,27 @@ DOMPurify.addHook("uponSanitizeElement", (node, data) => {
                 return;
             }
 
-            // Add sandbox attribute for security (allow necessary features)
+            // Remove any child content from iframes
+            // Browsers ignore iframe content anyway (it's only for old browser fallback)
+            // DOMPurify may reject iframes with child content as potentially malicious
+            while (node.firstChild) {
+                node.removeChild(node.firstChild);
+            }
+
+            // Apply domain-specific sandbox rules for enhanced security
             if (!node.hasAttribute("sandbox")) {
-                node.setAttribute(
-                    "sandbox",
-                    "allow-scripts allow-same-origin allow-presentation allow-popups",
+                // Find the base domain (e.g., "youtube.com" from "www.youtube.com")
+                const baseDomain = TRUSTED_EMBED_DOMAINS.find(
+                    (domain) =>
+                        hostname === domain || hostname.endsWith("." + domain),
                 );
+
+                // Use domain-specific sandbox rules, or default restrictive rules
+                const sandboxRules =
+                    IFRAME_SANDBOX_RULES[baseDomain] ||
+                    "allow-scripts allow-same-origin allow-presentation";
+
+                node.setAttribute("sandbox", sandboxRules);
             }
         } catch {
             // Invalid URL - remove iframe
@@ -230,9 +295,9 @@ DOMPurify.addHook("uponSanitizeElement", (node, data) => {
             node.parentNode?.removeChild(node);
         }
     }
-});
+};
 
-DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+sanitizeAttributeHook = (node, data) => {
     // Filter style attribute to only allow safe CSS properties
     if (data.attrName === "style" && data.attrValue) {
         const styles = data.attrValue.split(";").map((s) => s.trim());
@@ -249,7 +314,11 @@ DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
             data.keepAttr = false;
         }
     }
-});
+};
+
+// Add hooks on mount
+DOMPurify.addHook("uponSanitizeElement", sanitizeElementHook);
+DOMPurify.addHook("uponSanitizeAttribute", sanitizeAttributeHook);
 
 // Computed property for rendered content
 const renderedContent = computed(() => {
@@ -438,6 +507,12 @@ onMounted(() => {
 
 onUpdated(() => {
     highlightCode();
+});
+
+// Clean up DOMPurify hooks to prevent memory leaks
+onBeforeUnmount(() => {
+    DOMPurify.removeHook("uponSanitizeElement");
+    DOMPurify.removeHook("uponSanitizeAttribute");
 });
 </script>
 

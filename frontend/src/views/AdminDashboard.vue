@@ -480,12 +480,11 @@ async function getArticleContent(articleId) {
             );
         }
     } catch (err) {
-        alert(
+        error.value =
             err.response?.data?.error ||
-                err.message ||
-                "Failed to load article content",
-        );
-        return "";
+            err.message ||
+            "Failed to load article content";
+        return null; // Return null instead of empty string to distinguish between "no content" and "error"
     }
 }
 
@@ -511,7 +510,10 @@ function changePage(page) {
 
 async function editArticle(article) {
     const content = await getArticleContent(article.id);
-    editingArticle.value = { ...article, content };
+    if (content !== null) {
+        editingArticle.value = { ...article, content };
+    }
+    // If content is null, the error will be displayed via error.value
 }
 
 function viewArticle(article) {
