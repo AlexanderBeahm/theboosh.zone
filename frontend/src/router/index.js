@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import axios from "axios";
+import { useAuth } from "../composables/useAuth";
 
 const routes = [
     {
@@ -56,22 +56,15 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
     // Check if route requires authentication
     if (to.meta.requiresAuth) {
-        try {
-            // Check authentication status
-            const response = await axios.get("/api/auth/status");
+        // Use shared auth state with caching to prevent duplicate requests
+        const { checkAuth } = useAuth();
+        const isAuthenticated = await checkAuth();
 
-            if (response.data.authenticated) {
-                // User is authenticated, proceed to route
-                next();
-            } else {
-                // User is not authenticated, redirect to login
-                next({
-                    name: "AdminLogin",
-                    query: { redirect: to.fullPath },
-                });
-            }
-        } catch {
-            // On auth check failure, redirect to login
+        if (isAuthenticated) {
+            // User is authenticated, proceed to route
+            next();
+        } else {
+            // User is not authenticated, redirect to login
             next({
                 name: "AdminLogin",
                 query: { redirect: to.fullPath },
