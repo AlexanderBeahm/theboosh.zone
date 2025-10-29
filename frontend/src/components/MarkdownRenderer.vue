@@ -144,11 +144,111 @@ marked.setOptions({
     langPrefix: "hljs language-",
     pedantic: false,
     gfm: true, // GitHub Flavored Markdown
-    breaks: false,
+    breaks: true, // Enable GFM line breaks (single newline = <br>)
     sanitize: false, // We'll handle sanitization if needed
     smartLists: true,
     smartypants: true,
     xhtml: false,
+});
+
+// Whitelist of trusted domains for iframe embeds
+const TRUSTED_EMBED_DOMAINS = [
+    "bandcamp.com",
+    "youtube.com",
+    "youtube-nocookie.com",
+    "youtu.be",
+    "vimeo.com",
+    "player.vimeo.com",
+    "spotify.com",
+    "open.spotify.com",
+    "soundcloud.com",
+    "w.soundcloud.com",
+    "codepen.io",
+    "codesandbox.io",
+    "jsfiddle.net",
+];
+
+// Safe CSS properties for style attribute filtering
+const SAFE_CSS_PROPERTIES = [
+    "width",
+    "height",
+    "border",
+    "border-width",
+    "border-style",
+    "border-color",
+    "border-radius",
+    "padding",
+    "margin",
+    "display",
+    "max-width",
+    "max-height",
+    "min-width",
+    "min-height",
+];
+
+// Configure DOMPurify hooks for iframe security
+DOMPurify.addHook("uponSanitizeElement", (node, data) => {
+    // Validate iframe sources against whitelist
+    if (data.tagName === "iframe") {
+        const src = node.getAttribute("src");
+
+        if (!src) {
+            // Remove iframes without src
+            node.parentNode?.removeChild(node);
+            return;
+        }
+
+        try {
+            const url = new URL(src);
+            const hostname = url.hostname.toLowerCase();
+
+            // Check if domain is in whitelist (including subdomains)
+            const isWhitelisted = TRUSTED_EMBED_DOMAINS.some(
+                (domain) =>
+                    hostname === domain || hostname.endsWith("." + domain),
+            );
+
+            if (!isWhitelisted) {
+                // Remove iframe from untrusted domain
+                // eslint-disable-next-line no-console
+                console.warn("Blocked iframe from untrusted domain:", hostname);
+                node.parentNode?.removeChild(node);
+                return;
+            }
+
+            // Add sandbox attribute for security (allow necessary features)
+            if (!node.hasAttribute("sandbox")) {
+                node.setAttribute(
+                    "sandbox",
+                    "allow-scripts allow-same-origin allow-presentation allow-popups",
+                );
+            }
+        } catch {
+            // Invalid URL - remove iframe
+            // eslint-disable-next-line no-console
+            console.warn("Blocked iframe with invalid URL:", src);
+            node.parentNode?.removeChild(node);
+        }
+    }
+});
+
+DOMPurify.addHook("uponSanitizeAttribute", (node, data) => {
+    // Filter style attribute to only allow safe CSS properties
+    if (data.attrName === "style" && data.attrValue) {
+        const styles = data.attrValue.split(";").map((s) => s.trim());
+        const safeStyles = styles.filter((style) => {
+            const property = style.split(":")[0]?.trim().toLowerCase();
+            return SAFE_CSS_PROPERTIES.includes(property);
+        });
+
+        // Update with filtered styles
+        data.attrValue = safeStyles.join("; ");
+
+        // If no safe styles remain, remove the attribute
+        if (!data.attrValue) {
+            data.keepAttr = false;
+        }
+    }
 });
 
 // Computed property for rendered content
@@ -187,6 +287,7 @@ const renderedContent = computed(() => {
                     // Links and media
                     "a",
                     "img",
+                    "iframe", // Allow iframe embeds
                     // Code
                     "code",
                     "pre",
@@ -215,6 +316,15 @@ const renderedContent = computed(() => {
                     "alt",
                     "title",
                     "loading",
+                    // iframe attributes
+                    "width",
+                    "height",
+                    "frameborder",
+                    "allowfullscreen",
+                    "allow",
+                    "seamless",
+                    "sandbox",
+                    "style", // Filtered by hook to safe properties only
                     // Code highlighting classes (critical!)
                     "class",
                     // Table alignment
@@ -252,14 +362,21 @@ function handleLinkClick(event) {
             event.preventDefault();
 
             // Enhanced security validation for internal navigation
-            if (href.startsWith("/") && !href.includes("//") && isValidInternalUrl(href)) {
+            if (
+                href.startsWith("/") &&
+                !href.includes("//") &&
+                isValidInternalUrl(href)
+            ) {
                 try {
                     const router = useRouter();
                     router.push(href);
                 } catch {
                     // Router not available (likely in test environment)
                     // eslint-disable-next-line no-console
-                    console.log('Router not available for navigation to:', href);
+                    console.log(
+                        "Router not available for navigation to:",
+                        href,
+                    );
                 }
             }
         }
@@ -270,16 +387,16 @@ function handleLinkClick(event) {
 function isValidInternalUrl(href) {
     // Check for malicious patterns
     const maliciousPatterns = [
-        /javascript:/i,      // JavaScript URLs
-        /data:/i,           // Data URLs
-        /vbscript:/i,       // VBScript URLs
-        /about:/i,          // About URLs
-        /file:/i,           // File URLs
-        /ftp:/i,            // FTP URLs
-        /%2f%2f/i,          // Double-encoded slashes
-        /%252f%252f/i,      // Triple-encoded slashes
-        /\\/,               // Backslashes (Windows paths)
-        /#.*?javascript:/i,  // Fragment with javascript
+        /javascript:/i, // JavaScript URLs
+        /data:/i, // Data URLs
+        /vbscript:/i, // VBScript URLs
+        /about:/i, // About URLs
+        /file:/i, // File URLs
+        /ftp:/i, // FTP URLs
+        /%2f%2f/i, // Double-encoded slashes
+        /%252f%252f/i, // Triple-encoded slashes
+        /\\/, // Backslashes (Windows paths)
+        /#.*?javascript:/i, // Fragment with javascript
         /\?.*?javascript:/i, // Query with javascript
     ];
 
@@ -287,7 +404,7 @@ function isValidInternalUrl(href) {
     for (const pattern of maliciousPatterns) {
         if (pattern.test(href)) {
             // eslint-disable-next-line no-console
-            console.warn('Blocked potentially malicious URL:', href);
+            console.warn("Blocked potentially malicious URL:", href);
             return false;
         }
     }
@@ -299,7 +416,7 @@ function isValidInternalUrl(href) {
         return validPathPattern.test(href);
     } catch (error) {
         // eslint-disable-next-line no-console
-        console.warn('URL validation error:', error);
+        console.warn("URL validation error:", error);
         return false;
     }
 }
@@ -352,7 +469,8 @@ onUpdated(() => {
 .markdown-content h1 {
     font-size: 2.25rem;
     border-bottom: 3px solid transparent;
-    background-image: var(--gradient-retro-secondary), var(--gradient-retro-primary);
+    background-image:
+        var(--gradient-retro-secondary), var(--gradient-retro-primary);
     background-origin: border-box;
     background-clip: text, border-box;
     padding-bottom: 0.5rem;
@@ -362,7 +480,9 @@ onUpdated(() => {
 .markdown-content h2 {
     font-size: 1.875rem;
     border-bottom: 2px solid transparent;
-    background-image: var(--gradient-retro-secondary), linear-gradient(90deg, var(--primary-color), transparent);
+    background-image:
+        var(--gradient-retro-secondary),
+        linear-gradient(90deg, var(--primary-color), transparent);
     background-origin: border-box;
     background-clip: text, border-box;
     padding-bottom: 0.25rem;
@@ -410,13 +530,18 @@ onUpdated(() => {
 }
 
 .markdown-content a::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 105, 180, 0.1), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.1),
+        transparent
+    );
     border-radius: var(--radius-sm);
     opacity: 0;
     transition: opacity var(--transition-fast);
@@ -490,7 +615,7 @@ onUpdated(() => {
 }
 
 .markdown-content blockquote::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -534,7 +659,7 @@ onUpdated(() => {
 }
 
 .markdown-content table::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -562,13 +687,18 @@ onUpdated(() => {
 }
 
 .markdown-content th::after {
-    content: '';
+    content: "";
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, var(--primary-color), transparent, var(--primary-color));
+    background: linear-gradient(
+        90deg,
+        var(--primary-color),
+        transparent,
+        var(--primary-color)
+    );
 }
 
 .markdown-content tbody tr:nth-child(even) {
@@ -588,6 +718,48 @@ onUpdated(() => {
     box-shadow: var(--shadow-sm);
 }
 
+/* Iframe Embeds - Retro-Futuristic */
+.markdown-content iframe {
+    max-width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    margin: 1.5rem 0;
+    box-shadow: var(--shadow-md);
+    display: block;
+    position: relative;
+    background: var(--light-bg);
+    transition: all var(--transition-fast);
+}
+
+.markdown-content iframe:hover {
+    box-shadow:
+        var(--shadow-lg),
+        0 0 25px rgba(255, 105, 180, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Responsive iframe wrapper for aspect ratio preservation */
+.markdown-content .embed-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    max-width: 100%;
+    margin: 1.5rem 0;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.markdown-content .embed-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: var(--radius-md);
+}
+
 /* Horizontal rules */
 .markdown-content hr {
     border: none;
@@ -600,19 +772,28 @@ onUpdated(() => {
 }
 
 .markdown-content hr::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
     animation: shimmer 3s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
 }
 
 /* Error state */
@@ -629,18 +810,23 @@ onUpdated(() => {
 }
 
 .markdown-content .error::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--accent-orange), #FF8C00, var(--accent-orange));
+    background: linear-gradient(
+        90deg,
+        var(--accent-orange),
+        #ff8c00,
+        var(--accent-orange)
+    );
     animation: errorPulse 2s ease-in-out infinite;
 }
 
 .markdown-content .error::after {
-    content: '⚠';
+    content: "⚠";
     position: absolute;
     top: 1rem;
     right: 1rem;
@@ -650,7 +836,12 @@ onUpdated(() => {
 }
 
 @keyframes errorPulse {
-    0%, 100% { opacity: 0.7; }
-    50% { opacity: 1; }
+    0%,
+    100% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 1;
+    }
 }
 </style>
