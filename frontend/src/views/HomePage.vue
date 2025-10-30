@@ -1,89 +1,69 @@
 <template>
-  <div class="home-page">
-    <!-- Hero Header -->
-    <div class="hero-header">
-      <h1>TheBoosh.Zone</h1>
-    </div>
-
-    <!-- Articles Feed -->
-    <div class="articles-feed">
-      <!-- Loading State (Initial) -->
-      <div
-        v-if="isInitialLoading"
-        class="loading-container"
-      >
-        <div class="loading-spinner" />
-        <p>Loading articles...</p>
-      </div>
-
-      <!-- Error State -->
-      <div
-        v-else-if="error"
-        class="error-container"
-      >
-        <h3>Failed to load articles</h3>
-        <p>{{ error }}</p>
-        <button
-          class="retry-button"
-          @click="fetchInitialArticles"
-        >
-          Try Again
-        </button>
-      </div>
-
-      <!-- Empty State -->
-      <div
-        v-else-if="articles.length === 0"
-        class="empty-container"
-      >
-        <h3>No articles yet</h3>
-        <p>Check back soon for new content!</p>
-      </div>
-
-      <!-- Articles List -->
-      <div
-        v-else
-        class="articles-list"
-      >
-        <ArticleCard
-          v-for="article in articles"
-          :key="article.id"
-          :article="article"
-          @click="navigateToArticle(article.slug)"
-          @tag-click="navigateToTag"
-        />
-
-        <!-- Loading More Indicator -->
-        <div
-          v-if="isLoadingMore"
-          class="loading-more"
-        >
-          <div class="loading-spinner" />
-          <p>Loading more articles...</p>
+    <div class="home-page">
+        <!-- Page Header -->
+        <div class="page-header">
+            <HeroBurst size="medium" />
+            <h1>TheBoosh.Zone</h1>
+            <h3 class="page-description">
+                Welcome to my personal website and blog
+            </h3>
         </div>
 
-        <!-- End of Articles -->
-        <div
-          v-else-if="!hasMore && articles.length > 0"
-          class="end-message"
-        >
-          <p>You've reached the end of the articles</p>
-          <router-link
-            to="/articles"
-            class="view-all-link"
-          >
-            View all articles →
-          </router-link>
-        </div>
+        <!-- Articles Feed -->
+        <div class="articles-feed">
+            <!-- Loading State (Initial) -->
+            <div v-if="isInitialLoading" class="loading-container">
+                <div class="loading-spinner" />
+                <p>Loading articles...</p>
+            </div>
 
-        <!-- Intersection Observer Sentinel -->
-        <div
-          ref="sentinel"
-          class="sentinel"
-        />
-      </div>
+            <!-- Error State -->
+            <div v-else-if="error" class="error-container">
+                <h3>Failed to load articles</h3>
+                <p>{{ error }}</p>
+                <button class="retry-button" @click="fetchInitialArticles">
+                    Try Again
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="articles.length === 0" class="empty-container">
+                <h3>No articles yet</h3>
+                <p>Check back soon for new content!</p>
+            </div>
+
+            <!-- Articles List -->
+            <div v-else class="articles-list">
+                <ArticleCard
+                    v-for="article in articles"
+                    :key="article.id"
+                    :article="article"
+                    @click="navigateToArticle(article.slug)"
+                    @tag-click="navigateToTag"
+                />
+
+                <!-- Loading More Indicator -->
+                <div v-if="isLoadingMore" class="loading-more">
+                    <div class="loading-spinner" />
+                    <p>Loading more articles...</p>
+                </div>
+
+                <!-- End of Articles -->
+                <div
+                    v-else-if="!hasMore && articles.length > 0"
+                    class="end-message"
+                >
+                    <p>You've reached the end of the articles</p>
+                    <router-link to="/articles" class="view-all-link">
+                        View all articles →
+                    </router-link>
+                </div>
+
+                <!-- Intersection Observer Sentinel -->
+                <div ref="sentinel" class="sentinel" />
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -91,6 +71,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import ArticleCard from "../components/ArticleCard.vue";
+import HeroBurst from "../components/HeroBurst.vue";
 
 const router = useRouter();
 
@@ -220,138 +201,97 @@ onUnmounted(() => {
 
 <style scoped>
 .home-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+    background-color: var(--bg-color);
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
-/* Hero Header - Retro-Futuristic Design */
-.hero-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 60vh;
-    padding: var(--spacing-xl);
-    background: var(--bg-color);
-    background-size:
-        40px 40px,
-        40px 40px,
-        100% 100%;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Animated background elements */
-.hero-header::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    right: -50%;
-    bottom: -50%;
-    background: var(--bg-color);
-    z-index: 0;
-}
-
-.hero-header::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-color);
-    background-size: 60px 60px;
-    animation: slidePattern 30s linear infinite;
-    z-index: 0;
-}
-
-.hero-header h1 {
-    color: var(--light-text);
-    font-size: 5rem;
-    font-weight: 700;
-    margin: 0;
+/* Page Header - Standardized Design */
+.page-header {
     text-align: center;
+    margin-bottom: var(--spacing-xl);
     position: relative;
-    z-index: 2;
+    padding: var(--spacing-xl) 0;
+}
 
-    /* Retro-futuristic gradient text effect */
+.page-header::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 105, 180, 0.1) 0%,
+        transparent 70%
+    );
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
+}
+
+.page-header h1 {
+    font-size: 3.5rem;
     background: var(--gradient-retro-secondary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-
-    /* Glowing text shadow */
-    text-shadow:
-        0 0 20px rgba(184, 188, 200, 0.3),
-        0 0 40px rgba(255, 105, 180, 0.2),
-        0 0 60px rgba(255, 105, 180, 0.1);
-
-    /* Text animation */
-    animation: textGlow 4s ease-in-out infinite alternate;
-
-    /* Letter spacing for retro effect */
-    letter-spacing: 0.1em;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 700;
     text-transform: uppercase;
-
-    /* Ensure fallback for browsers without clip support */
-    background-size: 200% 200%;
-    animation:
-        textGlow 4s ease-in-out infinite alternate,
-        gradientShift 8s ease infinite;
+    letter-spacing: 0.05em;
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
+    -webkit-text-stroke: 2px black; /* width and color */
 }
 
-/* Animations */
+.page-description {
+    font-size: 1.125rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+    line-height: 1.6;
+    text-shadow:
+        1px 1px 0 #000,
+        -1px 1px 0 #000,
+        1px -1px 0 #000,
+        -1px -1px 0 #000,
+        0px 1px 0 #000,
+        0px -1px 0 #000,
+        -1px 0px 0 #000,
+        1px 0px 0 #000,
+        2px 2px 0 #000,
+        -2px 2px 0 #000,
+        2px -2px 0 #000,
+        -2px -2px 0 #000,
+        0px 2px 0 #000,
+        0px -2px 0 #000,
+        -2px 0px 0 #000,
+        2px 0px 0 #000,
+        1px 2px 0 #000,
+        -1px 2px 0 #000,
+        1px -2px 0 #000,
+        -1px -2px 0 #000,
+        2px 1px 0 #000,
+        -2px 1px 0 #000,
+        2px -1px 0 #000,
+        -2px -1px 0 #000;
+}
+
+/* Animation for floating background */
 @keyframes float {
     0%,
     100% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    25% {
-        transform: translate(10px, -10px) rotate(1deg);
+        transform: translate(-50%, -50%) translateY(0px);
     }
     50% {
-        transform: translate(-5px, 5px) rotate(-1deg);
-    }
-    75% {
-        transform: translate(-10px, -5px) rotate(1deg);
-    }
-}
-
-@keyframes slidePattern {
-    0% {
-        transform: translate(0, 0);
-    }
-    100% {
-        transform: translate(60px, 60px);
-    }
-}
-
-@keyframes textGlow {
-    0% {
-        text-shadow:
-            0 0 20px rgba(184, 188, 200, 0.3),
-            0 0 40px rgba(255, 105, 180, 0.2),
-            0 0 60px rgba(255, 105, 180, 0.1);
-    }
-    100% {
-        text-shadow:
-            0 0 30px rgba(184, 188, 200, 0.5),
-            0 0 60px rgba(255, 105, 180, 0.3),
-            0 0 80px rgba(255, 105, 180, 0.2);
-    }
-}
-
-@keyframes gradientShift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
+        transform: translate(-50%, -50%) translateY(-10px);
     }
 }
 
