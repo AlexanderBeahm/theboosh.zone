@@ -345,7 +345,6 @@ function wrapIframesInContainers(html) {
 
     try {
         // Create a temporary DOM to parse and manipulate the HTML
-        // eslint-disable-next-line no-undef
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, "text/html");
 
