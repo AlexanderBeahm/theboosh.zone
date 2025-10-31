@@ -320,6 +320,95 @@ sanitizeAttributeHook = (node, data) => {
 DOMPurify.addHook("uponSanitizeElement", sanitizeElementHook);
 DOMPurify.addHook("uponSanitizeAttribute", sanitizeAttributeHook);
 
+// Cache for processed content to avoid re-processing unchanged content
+let lastProcessedContent = null;
+let lastProcessedResult = null;
+
+// Function to automatically wrap iframes in responsive containers
+function wrapIframesInContainers(html) {
+    if (!html || typeof html !== "string") return html;
+
+    // Early exit if no iframes present
+    if (!html.includes('<iframe')) return html;
+
+    // Cache check - avoid re-processing the same content
+    if (html === lastProcessedContent && lastProcessedResult) {
+        return lastProcessedResult;
+    }
+
+    // Feature detection for DOMParser
+    if (typeof DOMParser === 'undefined') {
+        // eslint-disable-next-line no-console
+        console.warn("DOMParser not available, skipping iframe wrapping");
+        return html;
+    }
+
+    try {
+        // Create a temporary DOM to parse and manipulate the HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // Check if parsing was successful
+        if (!doc || !doc.body) {
+            // eslint-disable-next-line no-console
+            console.warn("DOM parsing failed for iframe wrapping");
+            return html;
+        }
+
+        // Find all iframe elements that aren't already wrapped
+        const iframes = doc.querySelectorAll("iframe");
+
+        // Early exit if no iframes found (shouldn't happen due to earlier check, but defensive)
+        if (iframes.length === 0) return html;
+
+        let hasChanges = false;
+
+        iframes.forEach((iframe) => {
+            // Check if iframe is already wrapped in embed-container
+            const parent = iframe.parentElement;
+            if (parent && parent.classList.contains("embed-container")) {
+                return; // Already wrapped, skip
+            }
+
+            // Remove hardcoded width and height attributes to allow responsive CSS to work
+            if (iframe.hasAttribute("width")) {
+                iframe.removeAttribute("width");
+                hasChanges = true;
+            }
+            if (iframe.hasAttribute("height")) {
+                iframe.removeAttribute("height");
+                hasChanges = true;
+            }
+
+            // Create wrapper div with embed-container class
+            const wrapper = doc.createElement("div");
+            wrapper.className = "embed-container";
+
+            // Insert wrapper before iframe and move iframe into wrapper
+            iframe.parentNode.insertBefore(wrapper, iframe);
+            wrapper.appendChild(iframe);
+            hasChanges = true;
+        });
+
+        // Return original HTML if no changes were made
+        if (!hasChanges) return html;
+
+        // Get the modified HTML (body content only)
+        const result = doc.body.innerHTML;
+
+        // Cache the result
+        lastProcessedContent = html;
+        lastProcessedResult = result;
+
+        return result;
+    } catch (error) {
+        // If DOM parsing fails, return original HTML
+        // eslint-disable-next-line no-console
+        console.warn("Failed to wrap iframes in containers:", error);
+        return html;
+    }
+}
+
 // Computed property for rendered content
 const renderedContent = computed(() => {
     if (!props.content) return "";
@@ -407,6 +496,9 @@ const renderedContent = computed(() => {
                 RETURN_TRUSTED_TYPE: false,
             });
         }
+
+        // Post-process to automatically wrap iframes in responsive containers
+        html = wrapIframesInContainers(html);
 
         return html;
     } catch {
@@ -509,10 +601,14 @@ onUpdated(() => {
     highlightCode();
 });
 
-// Clean up DOMPurify hooks to prevent memory leaks
+// Clean up DOMPurify hooks and cache to prevent memory leaks
 onBeforeUnmount(() => {
     DOMPurify.removeHook("uponSanitizeElement");
     DOMPurify.removeHook("uponSanitizeAttribute");
+
+    // Clear iframe wrapping cache
+    lastProcessedContent = null;
+    lastProcessedResult = null;
 });
 </script>
 
@@ -793,17 +889,27 @@ onBeforeUnmount(() => {
     box-shadow: var(--shadow-sm);
 }
 
-/* Iframe Embeds - Retro-Futuristic */
+/* Iframe Embeds - Retro-Futuristic (fallback for unwrapped iframes) */
 .markdown-content iframe {
-    max-width: 100%;
+    width: 100%;
+    max-width: 700px; /* Match embed container width */
+    aspect-ratio: 16 / 9; /* Modern CSS aspect ratio */
+    height: 394px; /* Fallback for older browsers (16:9 ratio for 700px width) */
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    margin: 1.5rem 0;
+    margin: 2rem auto; /* Center standalone iframes */
     box-shadow: var(--shadow-md);
-    display: block;
+    display: block; /* Ensure block display for centering */
     position: relative;
     background: var(--light-bg);
     transition: all var(--transition-fast);
+}
+
+/* Modern browsers that support aspect-ratio don't need hardcoded height */
+@supports (aspect-ratio: 16 / 9) {
+    .markdown-content iframe {
+        height: auto;
+    }
 }
 
 .markdown-content iframe:hover {
@@ -813,27 +919,7 @@ onBeforeUnmount(() => {
     transform: translateY(-2px);
 }
 
-/* Responsive iframe wrapper for aspect ratio preservation */
-.markdown-content .embed-container {
-    position: relative;
-    padding-bottom: 56.25%; /* 16:9 aspect ratio */
-    height: 0;
-    overflow: hidden;
-    max-width: 100%;
-    margin: 1.5rem 0;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-}
-
-.markdown-content .embed-container iframe {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    border-radius: var(--radius-md);
-}
+/* Removed duplicate embed container styles - now handled in global styles below */
 
 /* Horizontal rules */
 .markdown-content hr {
@@ -917,6 +1003,57 @@ onBeforeUnmount(() => {
     }
     50% {
         opacity: 1;
+    }
+}
+
+</style>
+
+<!-- Global CSS for dynamically created embed containers (not scoped) -->
+<style>
+/* Global embed container styles - must not be scoped for dynamic content */
+.embed-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 700px; /* Optimal viewing width for YouTube videos */
+    margin: 2rem auto; /* Center the container with more vertical spacing */
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+    display: block;
+}
+
+.embed-container:hover {
+    box-shadow: var(--shadow-lg), 0 0 25px rgba(255, 105, 180, 0.2);
+    transform: translateY(-2px);
+}
+
+.embed-container iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: var(--radius-md);
+    border: none; /* Remove default iframe border */
+}
+
+/* Responsive adjustments for global embed containers */
+@media (max-width: 768px) {
+    .embed-container {
+        max-width: 100%;
+        margin: 1.5rem auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .embed-container {
+        margin: 1rem auto;
     }
 }
 </style>
