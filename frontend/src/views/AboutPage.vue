@@ -3,7 +3,7 @@
         <div class="page-header">
             <HeroBurst size="medium" />
             <h1>About</h1>
-            <h3 class="page-description">About my zone.</h3>
+            <h2 class="page-description">About my zone.</h2>
         </div>
 
         <div class="about-content">
@@ -119,7 +119,7 @@ import HeroBurst from "../components/HeroBurst.vue";
 }
 
 .page-header h1 {
-    font-size: 3.5rem;
+    font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
     margin-bottom: var(--spacing-md);
     background: var(--gradient-retro-secondary);
     -webkit-background-clip: text;
@@ -127,24 +127,24 @@ import HeroBurst from "../components/HeroBurst.vue";
     background-clip: text;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
+    letter-spacing: clamp(0.02em, 0.05em, 0.08em);
+    text-shadow: 0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.3);
     animation: textGlow 4s ease-in-out infinite alternate;
     position: relative;
     z-index: 2;
-    -webkit-text-stroke: 2px black; /* width and color */
+    -webkit-text-stroke: clamp(1px, 0.15vw, 2px) black; /* width and color */
 }
 
 @keyframes textGlow {
     from {
         text-shadow:
-            0 0 20px rgba(184, 188, 200, 0.3),
-            0 0 40px rgba(255, 105, 180, 0.2);
+            0 0 clamp(15px, 1.5vw, 20px) rgba(184, 188, 200, 0.3),
+            0 0 clamp(30px, 3vw, 40px) rgba(255, 105, 180, 0.2);
     }
     to {
         text-shadow:
-            0 0 30px rgba(184, 188, 200, 0.5),
-            0 0 60px rgba(255, 105, 180, 0.4);
+            0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.5),
+            0 0 clamp(45px, 4.5vw, 60px) rgba(255, 105, 180, 0.4);
     }
 }
 
@@ -159,7 +159,7 @@ import HeroBurst from "../components/HeroBurst.vue";
 }
 
 .page-description {
-    font-size: 1.125rem;
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.125rem);
     color: var(--text-secondary);
     max-width: 600px;
     margin: 0 auto;
@@ -417,10 +417,6 @@ import HeroBurst from "../components/HeroBurst.vue";
         padding: var(--spacing-lg) var(--spacing-md);
     }
 
-    .page-header h1 {
-        font-size: 2.5rem;
-    }
-
     .about-content {
         grid-template-columns: 1fr;
         gap: var(--spacing-lg);
@@ -432,16 +428,6 @@ import HeroBurst from "../components/HeroBurst.vue";
 
     .social-links a,
     .tech-list li {
-        font-size: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .page-header h1 {
-        font-size: 2rem;
-    }
-
-    .page-description {
         font-size: 1rem;
     }
 }
