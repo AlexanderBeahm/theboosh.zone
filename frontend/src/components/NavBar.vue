@@ -111,7 +111,7 @@ onMounted(() => {
     display: flex;
     gap: var(--spacing-md);
     position: relative;
-    z-index: 1;
+    z-index: 10;
 }
 
 .nav-links a {
@@ -152,7 +152,7 @@ onMounted(() => {
     align-items: center;
     gap: var(--spacing-md);
     position: relative;
-    z-index: 1;
+    z-index: 10;
 }
 
 .logout-button {

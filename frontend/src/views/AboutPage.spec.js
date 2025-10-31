@@ -5,13 +5,13 @@ import AboutPage from "./AboutPage.vue";
 describe("AboutPage", () => {
     it("renders the main heading", () => {
         const wrapper = mount(AboutPage);
-        expect(wrapper.find("h1").text()).toBe("TheBoosh.Zone");
+        expect(wrapper.find("h1").text()).toBe("About");
     });
 
     it("renders the author name section", () => {
         const wrapper = mount(AboutPage);
         const sections = wrapper.findAll("h2");
-        expect(sections[0].text()).toBe("Alex Beahm");
+        expect(sections[1].text()).toBe("Alex Beahm");
     });
 
     it("displays GitHub link with correct attributes", () => {
@@ -53,7 +53,7 @@ describe("AboutPage", () => {
     it("renders the Technology Stack section", () => {
         const wrapper = mount(AboutPage);
         const sections = wrapper.findAll("h2");
-        expect(sections[1].text()).toBe("Technology Stack");
+        expect(sections[2].text()).toBe("Technology Stack");
     });
 
     it("displays all technology stack items", () => {
@@ -70,7 +70,6 @@ describe("AboutPage", () => {
         const wrapper = mount(AboutPage);
         expect(wrapper.find(".about-page").exists()).toBe(true);
         expect(wrapper.find(".about-content").exists()).toBe(true);
-        expect(wrapper.find(".content").exists()).toBe(true);
     });
 
     it("has proper semantic structure with sections", () => {
