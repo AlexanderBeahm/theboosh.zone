@@ -35,6 +35,7 @@ export default [
                 prompt: "readonly",
                 URL: "readonly",
                 URLSearchParams: "readonly",
+                DOMParser: "readonly",
                 IntersectionObserver: "readonly",
                 // Node/Test globals
                 process: "readonly",
