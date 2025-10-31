@@ -99,7 +99,7 @@ describe("HomePage", () => {
             await flushPromises();
 
             expect(wrapper.find(".home-page").exists()).toBe(true);
-            expect(wrapper.find(".hero-header").exists()).toBe(true);
+            expect(wrapper.find(".page-header").exists()).toBe(true);
             expect(wrapper.find(".articles-feed").exists()).toBe(true);
         });
     });

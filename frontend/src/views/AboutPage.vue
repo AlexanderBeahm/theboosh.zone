@@ -1,10 +1,11 @@
 <template>
-  <div class="content about-page">
+  <div class="about-page">
     <div class="page-header">
-      <h1>TheBoosh.Zone</h1>
-      <p class="subtitle">
-        Welcome to my zone
-      </p>
+      <HeroBurst size="medium" />
+      <h1>About</h1>
+      <h2 class="page-description">
+        About my zone.
+      </h2>
     </div>
 
     <div class="about-content">
@@ -82,55 +83,45 @@
   </div>
 </template>
 
+<script setup>
+import HeroBurst from "../components/HeroBurst.vue";
+</script>
+
 <style scoped>
-.content {
-    min-height: 100vh;
-    background: var(--bg-color);
-    position: relative;
-    overflow: hidden;
-}
-
-/* Animated retro-futuristic background */
-.content::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    right: -50%;
-    bottom: -50%;
-    background: var(--bg-color);
-    z-index: -10;
-}
-
-.content::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: transparent;
-    background-size: 40px 40px;
-    animation: slidePattern 35s linear infinite;
-    z-index: -5;
-}
-
 .about-page {
-    position: relative;
-    z-index: 1;
-    padding: var(--spacing-xl) var(--spacing-lg);
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: var(--spacing-lg);
+    background-color: var(--bg-color);
+    min-height: 100vh;
 }
 
 .page-header {
     text-align: center;
-    margin-bottom: var(--spacing-xxl);
+    margin-bottom: var(--spacing-xl);
     position: relative;
+    padding: var(--spacing-xl) 0;
+}
+
+.page-header::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 105, 180, 0.1) 0%,
+        transparent 70%
+    );
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
 }
 
 .page-header h1 {
-    font-size: 3.5rem;
+    font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
     margin-bottom: var(--spacing-md);
     background: var(--gradient-retro-secondary);
     -webkit-background-clip: text;
@@ -138,30 +129,70 @@
     background-clip: text;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    text-shadow: 0 0 30px rgba(184, 188, 200, 0.3);
+    letter-spacing: clamp(0.02em, 0.05em, 0.08em);
+    text-shadow: 0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.3);
     animation: textGlow 4s ease-in-out infinite alternate;
+    position: relative;
+    z-index: 2;
+    -webkit-text-stroke: clamp(1px, 0.15vw, 2px) black; /* width and color */
 }
 
 @keyframes textGlow {
     from {
         text-shadow:
-            0 0 20px rgba(184, 188, 200, 0.3),
-            0 0 40px rgba(255, 105, 180, 0.2);
+            0 0 clamp(15px, 1.5vw, 20px) rgba(184, 188, 200, 0.3),
+            0 0 clamp(30px, 3vw, 40px) rgba(255, 105, 180, 0.2);
     }
     to {
         text-shadow:
-            0 0 30px rgba(184, 188, 200, 0.5),
-            0 0 60px rgba(255, 105, 180, 0.4);
+            0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.5),
+            0 0 clamp(45px, 4.5vw, 60px) rgba(255, 105, 180, 0.4);
     }
 }
 
-.subtitle {
-    font-size: 1.25rem;
+@keyframes float {
+    0%,
+    100% {
+        transform: translate(-50%, -50%) translateY(0px);
+    }
+    50% {
+        transform: translate(-50%, -50%) translateY(-10px);
+    }
+}
+
+.page-description {
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.125rem);
     color: var(--text-secondary);
-    font-weight: 500;
-    font-style: italic;
-    letter-spacing: 0.05em;
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+    line-height: 1.6;
+    text-shadow:
+        1px 1px 0 #000,
+        -1px 1px 0 #000,
+        1px -1px 0 #000,
+        -1px -1px 0 #000,
+        0px 1px 0 #000,
+        0px -1px 0 #000,
+        -1px 0px 0 #000,
+        1px 0px 0 #000,
+        2px 2px 0 #000,
+        -2px 2px 0 #000,
+        2px -2px 0 #000,
+        -2px -2px 0 #000,
+        0px 2px 0 #000,
+        0px -2px 0 #000,
+        -2px 0px 0 #000,
+        2px 0px 0 #000,
+        1px 2px 0 #000,
+        -1px 2px 0 #000,
+        1px -2px 0 #000,
+        -1px -2px 0 #000,
+        2px 1px 0 #000,
+        -2px 1px 0 #000,
+        2px -1px 0 #000,
+        -2px -1px 0 #000;
 }
 
 .about-content {
@@ -273,6 +304,12 @@
 .tech-list li {
     margin-bottom: var(--spacing-md);
     transition: transform var(--transition-fast);
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.1),
+        transparent
+    );
 }
 
 .social-links li:hover,
@@ -382,10 +419,6 @@
         padding: var(--spacing-lg) var(--spacing-md);
     }
 
-    .page-header h1 {
-        font-size: 2.5rem;
-    }
-
     .about-content {
         grid-template-columns: 1fr;
         gap: var(--spacing-lg);
@@ -397,16 +430,6 @@
 
     .social-links a,
     .tech-list li {
-        font-size: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .page-header h1 {
-        font-size: 2rem;
-    }
-
-    .subtitle {
         font-size: 1rem;
     }
 }

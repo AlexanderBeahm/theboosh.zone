@@ -1,8 +1,12 @@
 <template>
   <div class="home-page">
-    <!-- Hero Header -->
-    <div class="hero-header">
+    <!-- Page Header -->
+    <div class="page-header">
+      <HeroBurst size="medium" />
       <h1>TheBoosh.Zone</h1>
+      <h2 class="page-description">
+        Welcome to my zone.
+      </h2>
     </div>
 
     <!-- Articles Feed -->
@@ -91,6 +95,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import ArticleCard from "../components/ArticleCard.vue";
+import HeroBurst from "../components/HeroBurst.vue";
 
 const router = useRouter();
 
@@ -220,138 +225,97 @@ onUnmounted(() => {
 
 <style scoped>
 .home-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-lg);
+    background-color: var(--bg-color);
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
-/* Hero Header - Retro-Futuristic Design */
-.hero-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 60vh;
-    padding: var(--spacing-xl);
-    background: var(--bg-color);
-    background-size:
-        40px 40px,
-        40px 40px,
-        100% 100%;
-    position: relative;
-    overflow: hidden;
-}
-
-/* Animated background elements */
-.hero-header::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    right: -50%;
-    bottom: -50%;
-    background: var(--bg-color);
-    z-index: 0;
-}
-
-.hero-header::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--bg-color);
-    background-size: 60px 60px;
-    animation: slidePattern 30s linear infinite;
-    z-index: 0;
-}
-
-.hero-header h1 {
-    color: var(--light-text);
-    font-size: 5rem;
-    font-weight: 700;
-    margin: 0;
+/* Page Header - Standardized Design */
+.page-header {
     text-align: center;
+    margin-bottom: var(--spacing-xl);
     position: relative;
-    z-index: 2;
+    padding: var(--spacing-xl) 0;
+}
 
-    /* Retro-futuristic gradient text effect */
+.page-header::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(
+        circle,
+        rgba(255, 105, 180, 0.1) 0%,
+        transparent 70%
+    );
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    animation: float 8s ease-in-out infinite;
+}
+
+.page-header h1 {
+    font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
     background: var(--gradient-retro-secondary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-
-    /* Glowing text shadow */
-    text-shadow:
-        0 0 20px rgba(184, 188, 200, 0.3),
-        0 0 40px rgba(255, 105, 180, 0.2),
-        0 0 60px rgba(255, 105, 180, 0.1);
-
-    /* Text animation */
-    animation: textGlow 4s ease-in-out infinite alternate;
-
-    /* Letter spacing for retro effect */
-    letter-spacing: 0.1em;
+    margin-bottom: var(--spacing-sm);
+    font-weight: 700;
     text-transform: uppercase;
-
-    /* Ensure fallback for browsers without clip support */
-    background-size: 200% 200%;
-    animation:
-        textGlow 4s ease-in-out infinite alternate,
-        gradientShift 8s ease infinite;
+    letter-spacing: clamp(0.02em, 0.05em, 0.08em);
+    position: relative;
+    z-index: 2;
+    text-shadow: 0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.3);
+    -webkit-text-stroke: clamp(1px, 0.15vw, 2px) black; /* width and color */
 }
 
-/* Animations */
+.page-description {
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.125rem);
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+    line-height: 1.6;
+    text-shadow:
+        1px 1px 0 #000,
+        -1px 1px 0 #000,
+        1px -1px 0 #000,
+        -1px -1px 0 #000,
+        0px 1px 0 #000,
+        0px -1px 0 #000,
+        -1px 0px 0 #000,
+        1px 0px 0 #000,
+        2px 2px 0 #000,
+        -2px 2px 0 #000,
+        2px -2px 0 #000,
+        -2px -2px 0 #000,
+        0px 2px 0 #000,
+        0px -2px 0 #000,
+        -2px 0px 0 #000,
+        2px 0px 0 #000,
+        1px 2px 0 #000,
+        -1px 2px 0 #000,
+        1px -2px 0 #000,
+        -1px -2px 0 #000,
+        2px 1px 0 #000,
+        -2px 1px 0 #000,
+        2px -1px 0 #000,
+        -2px -1px 0 #000;
+}
+
+/* Animation for floating background */
 @keyframes float {
     0%,
     100% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    25% {
-        transform: translate(10px, -10px) rotate(1deg);
+        transform: translate(-50%, -50%) translateY(0px);
     }
     50% {
-        transform: translate(-5px, 5px) rotate(-1deg);
-    }
-    75% {
-        transform: translate(-10px, -5px) rotate(1deg);
-    }
-}
-
-@keyframes slidePattern {
-    0% {
-        transform: translate(0, 0);
-    }
-    100% {
-        transform: translate(60px, 60px);
-    }
-}
-
-@keyframes textGlow {
-    0% {
-        text-shadow:
-            0 0 20px rgba(184, 188, 200, 0.3),
-            0 0 40px rgba(255, 105, 180, 0.2),
-            0 0 60px rgba(255, 105, 180, 0.1);
-    }
-    100% {
-        text-shadow:
-            0 0 30px rgba(184, 188, 200, 0.5),
-            0 0 60px rgba(255, 105, 180, 0.3),
-            0 0 80px rgba(255, 105, 180, 0.2);
-    }
-}
-
-@keyframes gradientShift {
-    0% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-    100% {
-        background-position: 0% 50%;
+        transform: translate(-50%, -50%) translateY(-10px);
     }
 }
 
@@ -513,7 +477,6 @@ onUnmounted(() => {
     }
 
     .hero-header h1 {
-        font-size: 3.5rem;
         letter-spacing: 0.05em;
     }
 
@@ -536,7 +499,6 @@ onUnmounted(() => {
     }
 
     .hero-header h1 {
-        font-size: 2.5rem;
         letter-spacing: 0.05em;
         line-height: 1.2;
     }
