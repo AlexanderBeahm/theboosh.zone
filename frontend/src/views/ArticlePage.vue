@@ -701,7 +701,25 @@ onUnmounted(() => {
     background: var(--card-bg);
 }
 
-.article-body * {
+/* Specific selectors to set background transparent without affecting embed containers */
+.article-body p,
+.article-body h1,
+.article-body h2,
+.article-body h3,
+.article-body h4,
+.article-body h5,
+.article-body h6,
+.article-body ul,
+.article-body ol,
+.article-body li,
+.article-body blockquote,
+.article-body pre,
+.article-body code,
+.article-body strong,
+.article-body em,
+.article-body a,
+.article-body span:not(.embed-container *),
+.article-body div:not(.embed-container):not(.embed-container *) {
     background: transparent;
 }
 
