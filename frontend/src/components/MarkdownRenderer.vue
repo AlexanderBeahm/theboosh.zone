@@ -320,6 +320,47 @@ sanitizeAttributeHook = (node, data) => {
 DOMPurify.addHook("uponSanitizeElement", sanitizeElementHook);
 DOMPurify.addHook("uponSanitizeAttribute", sanitizeAttributeHook);
 
+// Function to automatically wrap iframes in responsive containers
+function wrapIframesInContainers(html) {
+    if (!html || typeof html !== "string") return html;
+
+    try {
+        // Create a temporary DOM to parse and manipulate the HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+
+        // Find all iframe elements that aren't already wrapped
+        const iframes = doc.querySelectorAll("iframe");
+
+        iframes.forEach((iframe) => {
+            // Check if iframe is already wrapped in embed-container
+            const parent = iframe.parentElement;
+            if (parent && parent.classList.contains("embed-container")) {
+                return; // Already wrapped, skip
+            }
+
+            // Remove hardcoded width and height attributes to allow responsive CSS to work
+            iframe.removeAttribute("width");
+            iframe.removeAttribute("height");
+
+            // Create wrapper div with embed-container class
+            const wrapper = doc.createElement("div");
+            wrapper.className = "embed-container";
+
+            // Insert wrapper before iframe and move iframe into wrapper
+            iframe.parentNode.insertBefore(wrapper, iframe);
+            wrapper.appendChild(iframe);
+        });
+
+        // Return the modified HTML (body content only)
+        return doc.body.innerHTML;
+    } catch (error) {
+        // If DOM parsing fails, return original HTML
+        console.warn("Failed to wrap iframes in containers:", error);
+        return html;
+    }
+}
+
 // Computed property for rendered content
 const renderedContent = computed(() => {
     if (!props.content) return "";
@@ -407,6 +448,9 @@ const renderedContent = computed(() => {
                 RETURN_TRUSTED_TYPE: false,
             });
         }
+
+        // Post-process to automatically wrap iframes in responsive containers
+        html = wrapIframesInContainers(html);
 
         return html;
     } catch {
@@ -793,16 +837,18 @@ onBeforeUnmount(() => {
     box-shadow: var(--shadow-sm);
 }
 
-/* Iframe Embeds - Retro-Futuristic */
+/* Iframe Embeds - Retro-Futuristic (fallback for unwrapped iframes) */
 .markdown-content iframe {
-    max-width: 100%;
+    width: 100%;
+    max-width: 700px; /* Match embed container width */
+    height: 394px; /* 16:9 ratio for 700px width */
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    margin: 1.5rem 0;
+    margin: 2rem auto !important; /* Force center with higher specificity */
     box-shadow: var(--shadow-md);
-    display: block;
+    display: block !important; /* Ensure block display for centering */
     position: relative;
-    background: var(--light-bg);
+    background: var(--light-bg) !important; /* Override article-body * rule */
     transition: all var(--transition-fast);
 }
 
@@ -819,10 +865,22 @@ onBeforeUnmount(() => {
     padding-bottom: 56.25%; /* 16:9 aspect ratio */
     height: 0;
     overflow: hidden;
-    max-width: 100%;
-    margin: 1.5rem 0;
+    width: 100%;
+    max-width: 700px; /* Optimal viewing width for YouTube videos */
+    margin: 2rem auto !important; /* Force center with higher specificity */
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-md);
+    background: var(--light-bg) !important; /* Override article-body * rule */
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+    display: block; /* Ensure block-level centering works */
+}
+
+.markdown-content .embed-container:hover {
+    box-shadow:
+        var(--shadow-lg),
+        0 0 25px rgba(255, 105, 180, 0.2);
+    transform: translateY(-2px);
 }
 
 .markdown-content .embed-container iframe {
@@ -833,6 +891,7 @@ onBeforeUnmount(() => {
     height: 100%;
     margin: 0;
     border-radius: var(--radius-md);
+    border: none; /* Remove default iframe border */
 }
 
 /* Horizontal rules */
@@ -917,6 +976,86 @@ onBeforeUnmount(() => {
     }
     50% {
         opacity: 1;
+    }
+}
+
+
+/* Responsive adjustments for embed containers */
+@media (max-width: 768px) {
+    .markdown-content .embed-container,
+    .article-body .markdown-content .embed-container {
+        max-width: 100% !important;
+        margin: 1.5rem auto !important;
+    }
+
+    .markdown-content iframe,
+    .article-body .markdown-content iframe {
+        max-width: 100% !important;
+        height: auto;
+        aspect-ratio: 16 / 9; /* Modern CSS aspect ratio for mobile */
+        min-height: 200px; /* Ensure minimum readable size */
+    }
+}
+
+@media (max-width: 480px) {
+    .markdown-content .embed-container,
+    .article-body .markdown-content .embed-container {
+        margin: 1rem auto !important;
+    }
+
+    .markdown-content iframe,
+    .article-body .markdown-content iframe {
+        min-height: 180px;
+    }
+}
+</style>
+
+<!-- Global CSS for dynamically created embed containers (not scoped) -->
+<style>
+/* Global embed container styles - must not be scoped for dynamic content */
+.embed-container {
+    position: relative !important;
+    padding-bottom: 56.25% !important; /* 16:9 aspect ratio */
+    height: 0 !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    max-width: 700px !important; /* Optimal viewing width for YouTube videos */
+    margin: 2rem auto !important; /* Center the container with more vertical spacing */
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-md) !important;
+    background: var(--light-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    transition: all var(--transition-fast) !important;
+    display: block !important;
+}
+
+.embed-container:hover {
+    box-shadow: var(--shadow-lg), 0 0 25px rgba(255, 105, 180, 0.2) !important;
+    transform: translateY(-2px) !important;
+}
+
+.embed-container iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    border-radius: var(--radius-md) !important;
+    border: none !important; /* Remove default iframe border */
+}
+
+/* Responsive adjustments for global embed containers */
+@media (max-width: 768px) {
+    .embed-container {
+        max-width: 100% !important;
+        margin: 1.5rem auto !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .embed-container {
+        margin: 1rem auto !important;
     }
 }
 </style>
