@@ -4,9 +4,7 @@
         <div class="page-header">
             <HeroBurst size="medium" />
             <h1>TheBoosh.Zone</h1>
-            <h3 class="page-description">
-                Welcome to my personal website and blog
-            </h3>
+            <h3 class="page-description">Welcome to my zone.</h3>
         </div>
 
         <!-- Articles Feed -->

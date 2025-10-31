@@ -4,8 +4,9 @@
             <HeroBurst size="medium" />
             <h1>Articles</h1>
             <h3 class="page-description">
-                The articles below are written with my own personal opinions and
-                offer no reflection on any other associations I have.
+                The articles in my zone are written with my own personal
+                opinions and offer no reflection on any other associations I
+                have.
             </h3>
         </div>
 

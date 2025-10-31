@@ -3,7 +3,7 @@
         <div class="page-header">
             <HeroBurst size="medium" />
             <h1>About</h1>
-            <h3 class="page-description">Welcome to my zone</h3>
+            <h3 class="page-description">About my zone.</h3>
         </div>
 
         <div class="about-content">
