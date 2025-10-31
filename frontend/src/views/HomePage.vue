@@ -1,67 +1,93 @@
 <template>
-    <div class="home-page">
-        <!-- Page Header -->
-        <div class="page-header">
-            <HeroBurst size="medium" />
-            <h1>TheBoosh.Zone</h1>
-            <h2 class="page-description">Welcome to my zone.</h2>
-        </div>
-
-        <!-- Articles Feed -->
-        <div class="articles-feed">
-            <!-- Loading State (Initial) -->
-            <div v-if="isInitialLoading" class="loading-container">
-                <div class="loading-spinner" />
-                <p>Loading articles...</p>
-            </div>
-
-            <!-- Error State -->
-            <div v-else-if="error" class="error-container">
-                <h3>Failed to load articles</h3>
-                <p>{{ error }}</p>
-                <button class="retry-button" @click="fetchInitialArticles">
-                    Try Again
-                </button>
-            </div>
-
-            <!-- Empty State -->
-            <div v-else-if="articles.length === 0" class="empty-container">
-                <h3>No articles yet</h3>
-                <p>Check back soon for new content!</p>
-            </div>
-
-            <!-- Articles List -->
-            <div v-else class="articles-list">
-                <ArticleCard
-                    v-for="article in articles"
-                    :key="article.id"
-                    :article="article"
-                    @click="navigateToArticle(article.slug)"
-                    @tag-click="navigateToTag"
-                />
-
-                <!-- Loading More Indicator -->
-                <div v-if="isLoadingMore" class="loading-more">
-                    <div class="loading-spinner" />
-                    <p>Loading more articles...</p>
-                </div>
-
-                <!-- End of Articles -->
-                <div
-                    v-else-if="!hasMore && articles.length > 0"
-                    class="end-message"
-                >
-                    <p>You've reached the end of the articles</p>
-                    <router-link to="/articles" class="view-all-link">
-                        View all articles →
-                    </router-link>
-                </div>
-
-                <!-- Intersection Observer Sentinel -->
-                <div ref="sentinel" class="sentinel" />
-            </div>
-        </div>
+  <div class="home-page">
+    <!-- Page Header -->
+    <div class="page-header">
+      <HeroBurst size="medium" />
+      <h1>TheBoosh.Zone</h1>
+      <h2 class="page-description">
+        Welcome to my zone.
+      </h2>
     </div>
+
+    <!-- Articles Feed -->
+    <div class="articles-feed">
+      <!-- Loading State (Initial) -->
+      <div
+        v-if="isInitialLoading"
+        class="loading-container"
+      >
+        <div class="loading-spinner" />
+        <p>Loading articles...</p>
+      </div>
+
+      <!-- Error State -->
+      <div
+        v-else-if="error"
+        class="error-container"
+      >
+        <h3>Failed to load articles</h3>
+        <p>{{ error }}</p>
+        <button
+          class="retry-button"
+          @click="fetchInitialArticles"
+        >
+          Try Again
+        </button>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else-if="articles.length === 0"
+        class="empty-container"
+      >
+        <h3>No articles yet</h3>
+        <p>Check back soon for new content!</p>
+      </div>
+
+      <!-- Articles List -->
+      <div
+        v-else
+        class="articles-list"
+      >
+        <ArticleCard
+          v-for="article in articles"
+          :key="article.id"
+          :article="article"
+          @click="navigateToArticle(article.slug)"
+          @tag-click="navigateToTag"
+        />
+
+        <!-- Loading More Indicator -->
+        <div
+          v-if="isLoadingMore"
+          class="loading-more"
+        >
+          <div class="loading-spinner" />
+          <p>Loading more articles...</p>
+        </div>
+
+        <!-- End of Articles -->
+        <div
+          v-else-if="!hasMore && articles.length > 0"
+          class="end-message"
+        >
+          <p>You've reached the end of the articles</p>
+          <router-link
+            to="/articles"
+            class="view-all-link"
+          >
+            View all articles →
+          </router-link>
+        </div>
+
+        <!-- Intersection Observer Sentinel -->
+        <div
+          ref="sentinel"
+          class="sentinel"
+        />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>

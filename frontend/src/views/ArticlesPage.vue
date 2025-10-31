@@ -1,116 +1,145 @@
 <template>
-    <div class="articles-page">
-        <div class="page-header">
-            <HeroBurst size="medium" />
-            <h1>Articles</h1>
-            <h2 class="page-description">
-                The articles in my zone are written with my own personal
-                opinions and offer no reflection on any other associations I
-                have.
-            </h2>
-        </div>
-
-        <!-- Tag Filter Section -->
-        <div v-if="popularTags.length > 0" class="filter-section">
-            <h3>Filter by Tag</h3>
-            <div class="tag-filters">
-                <button
-                    class="tag-filter"
-                    :class="{ active: !selectedTag }"
-                    @click="clearTagFilter"
-                >
-                    All Articles ({{ totalCount }})
-                </button>
-                <button
-                    v-for="tag in popularTags"
-                    :key="tag.id"
-                    class="tag-filter"
-                    :class="{ active: selectedTag === tag.slug }"
-                    @click="filterByTag(tag.slug)"
-                >
-                    {{ tag.name }} ({{ tag.usage_count }})
-                </button>
-            </div>
-        </div>
-
-        <!-- Loading State -->
-        <div v-if="isLoading" class="loading-container">
-            <div class="loading-spinner" />
-            <p>Loading articles...</p>
-        </div>
-
-        <!-- Error State -->
-        <div v-else-if="error" class="error-container">
-            <h3>Failed to load articles</h3>
-            <p>{{ error }}</p>
-            <button class="retry-button" @click="fetchArticles">
-                Try Again
-            </button>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else-if="articles.length === 0" class="empty-container">
-            <h3>No articles found</h3>
-            <p v-if="selectedTag">
-                No articles found with the tag "{{ selectedTag }}".
-                <button class="link-button" @click="clearTagFilter">
-                    View all articles
-                </button>
-            </p>
-            <p v-else>Check back soon for new content!</p>
-        </div>
-
-        <!-- Articles List -->
-        <div v-else class="articles-container">
-            <div class="articles-grid">
-                <ArticleCard
-                    v-for="article in articles"
-                    :key="article.id"
-                    :article="article"
-                    @click="navigateToArticle(article.slug)"
-                    @tag-click="filterByTag"
-                />
-            </div>
-
-            <!-- Pagination -->
-            <div v-if="pagination.total_pages > 1" class="pagination">
-                <button
-                    class="pagination-button"
-                    :disabled="!pagination.has_prev"
-                    @click="changePage(pagination.current_page - 1)"
-                >
-                    ← Previous
-                </button>
-
-                <div class="pagination-info">
-                    <span class="pagination-current">{{
-                        pagination.current_page
-                    }}</span>
-                    <span class="pagination-separator">of</span>
-                    <span class="pagination-total">{{
-                        pagination.total_pages
-                    }}</span>
-                </div>
-
-                <button
-                    class="pagination-button"
-                    :disabled="!pagination.has_next"
-                    @click="changePage(pagination.current_page + 1)"
-                >
-                    Next →
-                </button>
-            </div>
-
-            <!-- Results Info -->
-            <div v-if="pagination.total_count > 0" class="results-info">
-                <p>
-                    Showing {{ articles.length }} of
-                    {{ pagination.total_count }} articles
-                    <span v-if="selectedTag">with tag "{{ selectedTag }}"</span>
-                </p>
-            </div>
-        </div>
+  <div class="articles-page">
+    <div class="page-header">
+      <HeroBurst size="medium" />
+      <h1>Articles</h1>
+      <h2 class="page-description">
+        The articles in my zone are written with my own personal
+        opinions and offer no reflection on any other associations I
+        have.
+      </h2>
     </div>
+
+    <!-- Tag Filter Section -->
+    <div
+      v-if="popularTags.length > 0"
+      class="filter-section"
+    >
+      <h3>Filter by Tag</h3>
+      <div class="tag-filters">
+        <button
+          class="tag-filter"
+          :class="{ active: !selectedTag }"
+          @click="clearTagFilter"
+        >
+          All Articles ({{ totalCount }})
+        </button>
+        <button
+          v-for="tag in popularTags"
+          :key="tag.id"
+          class="tag-filter"
+          :class="{ active: selectedTag === tag.slug }"
+          @click="filterByTag(tag.slug)"
+        >
+          {{ tag.name }} ({{ tag.usage_count }})
+        </button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div
+      v-if="isLoading"
+      class="loading-container"
+    >
+      <div class="loading-spinner" />
+      <p>Loading articles...</p>
+    </div>
+
+    <!-- Error State -->
+    <div
+      v-else-if="error"
+      class="error-container"
+    >
+      <h3>Failed to load articles</h3>
+      <p>{{ error }}</p>
+      <button
+        class="retry-button"
+        @click="fetchArticles"
+      >
+        Try Again
+      </button>
+    </div>
+
+    <!-- Empty State -->
+    <div
+      v-else-if="articles.length === 0"
+      class="empty-container"
+    >
+      <h3>No articles found</h3>
+      <p v-if="selectedTag">
+        No articles found with the tag "{{ selectedTag }}".
+        <button
+          class="link-button"
+          @click="clearTagFilter"
+        >
+          View all articles
+        </button>
+      </p>
+      <p v-else>
+        Check back soon for new content!
+      </p>
+    </div>
+
+    <!-- Articles List -->
+    <div
+      v-else
+      class="articles-container"
+    >
+      <div class="articles-grid">
+        <ArticleCard
+          v-for="article in articles"
+          :key="article.id"
+          :article="article"
+          @click="navigateToArticle(article.slug)"
+          @tag-click="filterByTag"
+        />
+      </div>
+
+      <!-- Pagination -->
+      <div
+        v-if="pagination.total_pages > 1"
+        class="pagination"
+      >
+        <button
+          class="pagination-button"
+          :disabled="!pagination.has_prev"
+          @click="changePage(pagination.current_page - 1)"
+        >
+          ← Previous
+        </button>
+
+        <div class="pagination-info">
+          <span class="pagination-current">{{
+            pagination.current_page
+          }}</span>
+          <span class="pagination-separator">of</span>
+          <span class="pagination-total">{{
+            pagination.total_pages
+          }}</span>
+        </div>
+
+        <button
+          class="pagination-button"
+          :disabled="!pagination.has_next"
+          @click="changePage(pagination.current_page + 1)"
+        >
+          Next →
+        </button>
+      </div>
+
+      <!-- Results Info -->
+      <div
+        v-if="pagination.total_count > 0"
+        class="results-info"
+      >
+        <p>
+          Showing {{ articles.length }} of
+          {{ pagination.total_count }} articles
+          <span v-if="selectedTag">with tag "{{ selectedTag }}"</span>
+        </p>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>

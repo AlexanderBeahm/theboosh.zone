@@ -1,10 +1,13 @@
 <template>
-    <div class="hero-burst" :class="sizeClass">
-        <div class="burst-container">
-            <div class="burst-image" />
-            <div class="burst-glow" />
-        </div>
+  <div
+    class="hero-burst"
+    :class="sizeClass"
+  >
+    <div class="burst-container">
+      <div class="burst-image" />
+      <div class="burst-glow" />
     </div>
+  </div>
 </template>
 
 <script setup>
