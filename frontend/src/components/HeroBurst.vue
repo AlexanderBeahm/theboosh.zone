@@ -5,7 +5,6 @@
   >
     <div class="burst-container">
       <div class="burst-image" />
-      <div class="burst-glow" />
     </div>
   </div>
 </template>
@@ -57,6 +56,7 @@ const backgroundImageUrl = computed(() => `url(${spaceartImage})`);
     width: 100%;
     height: 100%;
     overflow: hidden;
+    isolation: isolate;
 }
 
 /* Partial arc/dome shape using clip-path */
@@ -70,29 +70,12 @@ const backgroundImageUrl = computed(() => `url(${spaceartImage})`);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    clip-path: ellipse(100% 80% at 50% 100%);
+    clip-path: ellipse(99.5% 80% at 50% 100%);
     animation: burstFloat var(--animation-speed, 4s) ease-in-out infinite
         alternate;
     transition: all var(--transition-fast);
-}
-
-/* Pink glow effect layers */
-.burst-glow {
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    clip-path: ellipse(100% 80% at 50% 100%);
-    background: transparent;
-    box-shadow:
-        0 0 20px rgba(255, 105, 180, calc(0.3 * var(--glow-intensity, 1))),
-        0 0 40px rgba(255, 105, 180, calc(0.2 * var(--glow-intensity, 1))),
-        0 0 60px rgba(255, 105, 180, calc(0.1 * var(--glow-intensity, 1))),
-        inset 0 0 30px rgba(255, 105, 180, calc(0.1 * var(--glow-intensity, 1)));
-    animation: burstGlow calc(var(--animation-speed, 4s) * 1.2) ease-in-out
-        infinite alternate;
-    opacity: var(--glow-intensity, 1);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
 }
 
 /* Size variants */
@@ -120,7 +103,7 @@ const backgroundImageUrl = computed(() => `url(${spaceartImage})`);
         transform: scale(0.98) translateY(0px) translate3d(0, 0, 0);
     }
     100% {
-        transform: scale(1.02) translateY(-5px) translate3d(0, 0, 0);
+        transform: scale(1.01) translateY(-5px) translate3d(0, 0, 0);
     }
 }
 
@@ -193,15 +176,6 @@ const backgroundImageUrl = computed(() => `url(${spaceartImage})`);
     .burst-image {
         height: 160%;
     }
-
-    /* Reduce glow intensity on mobile for performance */
-    .burst-glow {
-        box-shadow:
-            0 0 15px rgba(255, 105, 180, calc(0.2 * var(--glow-intensity, 1))),
-            0 0 30px rgba(255, 105, 180, calc(0.1 * var(--glow-intensity, 1))),
-            inset 0 0 20px
-                rgba(255, 105, 180, calc(0.08 * var(--glow-intensity, 1)));
-    }
 }
 
 /* Performance optimizations */
@@ -214,15 +188,9 @@ const backgroundImageUrl = computed(() => `url(${spaceartImage})`);
     backface-visibility: hidden;
 }
 
-.burst-glow {
-    will-change: opacity, box-shadow;
-    backface-visibility: hidden;
-}
-
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .burst-image,
-    .burst-glow {
+    .burst-image {
         animation: none;
     }
 }
