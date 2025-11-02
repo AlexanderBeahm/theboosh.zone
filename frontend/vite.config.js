@@ -13,7 +13,9 @@ export default defineConfig(({ mode }) => {
     console.log(`API URL: ${env.VITE_API_URL}`);
 
     return {
-        plugins: [vue()],
+        plugins: [
+            vue()
+        ],
 
         // Set base to /dist/ so assets are referenced correctly when served by Mojolicious
         base: "/dist/",

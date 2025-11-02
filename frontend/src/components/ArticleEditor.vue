@@ -439,11 +439,11 @@
       @click="closeUnifiedInsertModal"
     >
       <div
-        class="image-modal-content unified-modal"
+        class="image-modal-content"
         @click.stop
       >
         <div class="image-modal-header">
-          <h3>Insert Image</h3>
+          <h3>Browse Media Library</h3>
           <button
             class="close-button"
             @click="closeUnifiedInsertModal"
@@ -452,91 +452,13 @@
           </button>
         </div>
 
-        <div class="unified-modal-tabs">
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'browse' }"
-            @click="unifiedModalActiveTab = 'browse'"
-          >
-            Browse Library
-          </button>
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'upload' }"
-            @click="unifiedModalActiveTab = 'upload'"
-          >
-            Upload New
-          </button>
-          <button
-            type="button"
-            class="unified-tab-button"
-            :class="{ active: unifiedModalActiveTab === 'paste' }"
-            @click="unifiedModalActiveTab = 'paste'"
-          >
-            Paste Image
-          </button>
-        </div>
 
         <div class="image-modal-body">
-          <!-- Browse Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'browse'"
-            class="unified-tab-content"
-          >
-            <MediaLibrary
-              ref="unifiedMediaLibrary"
-              selection-mode="single"
-              @media-selected="handleUnifiedMediaSelected"
-            />
-          </div>
-
-          <!-- Upload Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'upload'"
-            class="unified-tab-content"
-          >
-            <ImageUploader
-              ref="unifiedImageUploader"
-              :max-size-m-b="5"
-              :show-metadata="true"
-              :auto-upload="false"
-              @upload-success="handleUnifiedImageUpload"
-            />
-          </div>
-
-          <!-- Paste Tab -->
-          <div
-            v-show="unifiedModalActiveTab === 'paste'"
-            class="unified-tab-content"
-          >
-            <div class="paste-instructions">
-              <div class="paste-icon">
-                📋
-              </div>
-              <h4>Paste an Image</h4>
-              <p>
-                Use <kbd>Ctrl+V</kbd> (or <kbd>Cmd+V</kbd> on
-                Mac) to paste an image from your clipboard. You
-                can also paste directly into the content area
-                while writing.
-              </p>
-              <div class="paste-tips">
-                <h5>Tips:</h5>
-                <ul>
-                  <li>
-                    Copy an image from another application
-                  </li>
-                  <li>Take a screenshot and copy it</li>
-                  <li>
-                    Right-click an image in your browser and
-                    "Copy image"
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          <MediaLibrary
+            ref="unifiedMediaLibrary"
+            selection-mode="single"
+            @media-selected="handleUnifiedMediaSelected"
+          />
         </div>
       </div>
     </div>
@@ -548,7 +470,6 @@ import { ref, computed, watch, onMounted } from "vue";
 import axios from "axios";
 import MarkdownRenderer from "./MarkdownRenderer.vue";
 import MediaLibrary from "./MediaLibrary.vue";
-import ImageUploader from "./ImageUploader.vue";
 
 const props = defineProps({
     article: {
@@ -574,10 +495,8 @@ const selectedTags = ref([]);
 const showMediaLibraryModal = ref(false);
 const showPasteImageModal = ref(false);
 const showUnifiedInsertModal = ref(false);
-const unifiedModalActiveTab = ref("browse");
 const mediaLibrary = ref(null);
 const unifiedMediaLibrary = ref(null);
-const unifiedImageUploader = ref(null);
 const contentTextarea = ref(null);
 const savedCaretPosition = ref(0);
 const pastedImageData = ref(null);
@@ -811,13 +730,11 @@ function openUnifiedInsertModal() {
     if (contentTextarea.value) {
         savedCaretPosition.value = contentTextarea.value.selectionStart;
     }
-    unifiedModalActiveTab.value = "browse";
     showUnifiedInsertModal.value = true;
 }
 
 function closeUnifiedInsertModal() {
     showUnifiedInsertModal.value = false;
-    unifiedModalActiveTab.value = "browse";
 }
 
 function handleUnifiedMediaSelected(media) {
@@ -825,10 +742,6 @@ function handleUnifiedMediaSelected(media) {
     closeUnifiedInsertModal();
 }
 
-function handleUnifiedImageUpload(media) {
-    insertImageMarkdown(media);
-    closeUnifiedInsertModal();
-}
 
 function insertImageMarkdown(media) {
     // Generate markdown syntax for the image
@@ -1651,8 +1564,8 @@ small {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-xl);
     width: 100%;
-    max-width: 1200px;
-    max-height: 90vh;
+    max-width: 1400px;
+    max-height: 95vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1789,131 +1702,7 @@ small {
     }
 }
 
-/* Unified Insert Modal Styles */
-.unified-modal {
-    max-width: 1400px;
-    max-height: 95vh;
-}
 
-.unified-modal-tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border-color);
-    background-color: var(--light-bg);
-}
-
-.unified-tab-button {
-    flex: 1;
-    padding: var(--spacing-md) var(--spacing-lg);
-    border: none;
-    background-color: transparent;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all var(--transition-fast);
-    border-bottom: 3px solid transparent;
-}
-
-.unified-tab-button.active {
-    background-color: var(--bg-color);
-    color: var(--primary-color);
-    border-bottom-color: var(--primary-color);
-}
-
-.unified-tab-button:not(.active):hover {
-    background-color: var(--border-color);
-    color: var(--text-primary);
-}
-
-.unified-tab-content {
-    min-height: 500px;
-    padding: var(--spacing-lg);
-}
-
-.insert-image-button {
-    margin-left: auto;
-    background-color: var(--primary-color-light);
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-}
-
-.insert-image-button:hover:not(:disabled) {
-    background-color: var(--primary-color);
-    color: var(--light-text);
-}
-
-.insert-image-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* Paste Instructions Styles */
-.paste-instructions {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: var(--spacing-xxl);
-    color: var(--text-primary);
-}
-
-.paste-icon {
-    font-size: 4rem;
-    margin-bottom: var(--spacing-lg);
-}
-
-.paste-instructions h4 {
-    margin: 0 0 var(--spacing-md) 0;
-    color: var(--text-primary);
-    font-size: 1.5rem;
-    font-weight: 600;
-}
-
-.paste-instructions p {
-    margin: 0 0 var(--spacing-lg) 0;
-    color: var(--text-secondary);
-    font-size: 1rem;
-    line-height: 1.6;
-    max-width: 500px;
-}
-
-.paste-instructions kbd {
-    background-color: var(--light-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: 0.875rem;
-    font-family: monospace;
-    color: var(--text-primary);
-}
-
-.paste-tips {
-    background-color: var(--light-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-lg);
-    max-width: 400px;
-    text-align: left;
-}
-
-.paste-tips h5 {
-    margin: 0 0 var(--spacing-sm) 0;
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 600;
-}
-
-.paste-tips ul {
-    margin: 0;
-    padding-left: var(--spacing-lg);
-    color: var(--text-secondary);
-}
-
-.paste-tips li {
-    margin-bottom: var(--spacing-xs);
-    font-size: 0.875rem;
-}
 
 @media (max-width: 768px) {
     .image-selection-buttons {

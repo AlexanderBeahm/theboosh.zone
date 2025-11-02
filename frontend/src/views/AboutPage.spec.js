@@ -11,7 +11,7 @@ describe("AboutPage", () => {
     it("renders the author name section", () => {
         const wrapper = mount(AboutPage);
         const sections = wrapper.findAll("h2");
-        expect(sections[1].text()).toBe("Alex Beahm");
+        expect(sections[1].text()).toBe("Contact");
     });
 
     it("displays GitHub link with correct attributes", () => {
@@ -21,7 +21,7 @@ describe("AboutPage", () => {
         );
 
         expect(githubLink.exists()).toBe(true);
-        expect(githubLink.text()).toBe("🖥️ GitHub");
+        expect(githubLink.text()).toBe("GitHub");
         expect(githubLink.attributes("target")).toBe("_blank");
         expect(githubLink.attributes("rel")).toBe("noopener noreferrer");
     });
@@ -33,19 +33,17 @@ describe("AboutPage", () => {
         );
 
         expect(linkedinLink.exists()).toBe(true);
-        expect(linkedinLink.text()).toBe("💼 LinkedIn");
+        expect(linkedinLink.text()).toBe("LinkedIn");
         expect(linkedinLink.attributes("target")).toBe("_blank");
         expect(linkedinLink.attributes("rel")).toBe("noopener noreferrer");
     });
 
     it("displays X link with correct attributes", () => {
         const wrapper = mount(AboutPage);
-        const xLink = wrapper.find(
-            'a[href="https://x.com/BooshnawBeahm"]',
-        );
+        const xLink = wrapper.find('a[href="https://x.com/BooshnawBeahm"]');
 
         expect(xLink.exists()).toBe(true);
-        expect(xLink.text()).toBe("✖️ X");
+        expect(xLink.text()).toBe("X");
         expect(xLink.attributes("target")).toBe("_blank");
         expect(xLink.attributes("rel")).toBe("noopener noreferrer");
     });
@@ -77,7 +75,7 @@ describe("AboutPage", () => {
         const sections = wrapper.findAll("section");
 
         expect(sections.length).toBe(2);
-        expect(sections[0].find("h2").text()).toBe("Alex Beahm");
+        expect(sections[0].find("h2").text()).toBe("Contact");
         expect(sections[1].find("h2").text()).toBe("Technology Stack");
     });
 
@@ -86,7 +84,7 @@ describe("AboutPage", () => {
         const lists = wrapper.findAll("ul");
 
         expect(lists.length).toBe(2);
-        expect(lists[0].findAll("li").length).toBe(3); // GitHub, LinkedIn, and X
-        expect(lists[1].findAll("li").length).toBe(4); // 4 technology items
+        expect(lists[0].findAll("li").length).toBe(9); // All social media links (GitHub, LinkedIn, X, RYM, Letterboxd, Backloggd, Dropkickd, Goodreads, Discord)
+        expect(lists[1].findAll("li").length).toBe(8); // 4 technology items
     });
 });

@@ -11,7 +11,7 @@
     <div class="about-content">
       <section class="info-card">
         <div class="card-header">
-          <h2>Alex Beahm</h2>
+          <h2>Contact</h2>
           <div class="card-accent" />
         </div>
         <div class="card-content">
@@ -23,7 +23,7 @@
                 rel="noopener noreferrer"
                 class="link-github"
               >
-                <span class="link-icon">🖥️</span>
+                <IconGithub class="link-icon" />
                 GitHub
               </a>
             </li>
@@ -34,7 +34,7 @@
                 rel="noopener noreferrer"
                 class="link-linkedin"
               >
-                <span class="link-icon">💼</span>
+                <IconLinkedin class="link-icon" />
                 LinkedIn
               </a>
             </li>
@@ -45,8 +45,74 @@
                 rel="noopener noreferrer"
                 class="link-x"
               >
-                <span class="link-icon">✖️</span>
+                <IconX class="link-icon" />
                 X
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://discord.com/users/232161007366176769"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-discord"
+              >
+                <IconDiscord class="link-icon" />
+                Discord
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://rateyourmusic.com/~The_Booshnaw"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-rym"
+              >
+                <IconRYM class="link-icon" />
+                RateYourMusic
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://letterboxd.com/Booshnaw/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-letterboxd"
+              >
+                <IconLetterboxd class="link-icon" />
+                Letterboxd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://backloggd.com/u/Booshnaw/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-backloggd"
+              >
+                <IconBackloggd class="link-icon" />
+                Backloggd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://dropkickd.com/user/Booshnaw"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-dropkickd"
+              >
+                <IconDropkickd class="link-icon" />
+                Dropkickd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.goodreads.com/user/show/189992282-alex-beahm"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-goodreads"
+              >
+                <IconGoodreads class="link-icon" />
+                Goodreads
               </a>
             </li>
           </ul>
@@ -61,20 +127,52 @@
         <div class="card-content">
           <ul class="tech-list">
             <li>
-              <span class="tech-icon">🐪</span>
+              <span class="tech-icon-wrapper">
+                <IconPerl class="tech-icon" />
+              </span>
               Perl with Mojolicious framework
             </li>
             <li>
-              <span class="tech-icon">⚡</span>
+              <span class="tech-icon-wrapper">
+                <IconVue class="tech-icon" />
+              </span>
               Vue 3 for frontend interactivity
             </li>
             <li>
-              <span class="tech-icon">🐘</span>
+              <span class="tech-icon-wrapper">
+                <IconPostgresql class="tech-icon" />
+              </span>
               PostgreSQL for database
             </li>
             <li>
-              <span class="tech-icon">🐳</span>
+              <span class="tech-icon-wrapper">
+                <IconNginx class="tech-icon" />
+              </span>
+              Nginx for reverse-proxy
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconDocker class="tech-icon" />
+              </span>
               Docker for containerization
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconDigitalOcean class="tech-icon" />
+              </span>
+              DigitalOcean for hosting
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconGithub class="tech-icon" />
+              </span>
+              Github for version control and CI/CD
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconClaude class="tech-icon" />
+              </span>
+              Claude Code for AI agent assitance
             </li>
           </ul>
         </div>
@@ -85,6 +183,24 @@
 
 <script setup>
 import HeroBurst from "../components/HeroBurst.vue";
+
+// Import local icon components
+import IconGithub from "../components/icons/IconGithub.vue";
+import IconLinkedin from "../components/icons/IconLinkedin.vue";
+import IconX from "../components/icons/IconX.vue";
+import IconLetterboxd from "../components/icons/IconLetterboxd.vue";
+import IconDropkickd from "../components/icons/IconDropkickd.vue";
+import IconGoodreads from "../components/icons/IconGoodreads.vue";
+import IconDiscord from "../components/icons/IconDiscord.vue";
+import IconRYM from "../components/icons/IconRYM.vue";
+import IconBackloggd from "../components/icons/IconBackloggd.vue";
+import IconPerl from "../components/icons/IconPerl.vue";
+import IconVue from "../components/icons/IconVue.vue";
+import IconPostgresql from "../components/icons/IconPostgresql.vue";
+import IconDocker from "../components/icons/IconDocker.vue";
+import IconNginx from "../components/icons/IconNginx.vue";
+import IconDigitalOcean from "../components/icons/IconDigitalOcean.vue";
+import IconClaude from "../components/icons/IconClaude.vue";
 </script>
 
 <style scoped>
@@ -376,8 +492,16 @@ import HeroBurst from "../components/HeroBurst.vue";
 }
 
 .link-icon {
-    font-size: 1.25rem;
-    filter: grayscale(0);
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast);
+}
+
+.social-links a:hover .link-icon {
+    transform: scale(1.1);
 }
 
 .tech-list li {
@@ -400,9 +524,7 @@ import HeroBurst from "../components/HeroBurst.vue";
     box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
 }
 
-.tech-icon {
-    font-size: 1.5rem;
-    filter: grayscale(0);
+.tech-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -411,6 +533,26 @@ import HeroBurst from "../components/HeroBurst.vue";
     background: var(--darker-bg);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.tech-list li:hover .tech-icon-wrapper {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+}
+
+.tech-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: block;
+    color: var(--text-primary);
+    transition: color var(--transition-fast);
+}
+
+.tech-list li:hover .tech-icon {
+    color: var(--primary-color);
 }
 
 /* Responsive Design */
