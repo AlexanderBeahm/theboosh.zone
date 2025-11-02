@@ -96,3 +96,91 @@ body {
 *::after {
     box-sizing: border-box;
 }
+
+/* Icon System Utilities */
+.icon {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* Icon color utilities matching theme */
+.icon-primary {
+    color: var(--primary-color);
+}
+
+.icon-secondary {
+    color: var(--text-secondary);
+}
+
+.icon-accent {
+    color: var(--chrome-silver);
+}
+
+.icon-steel {
+    color: var(--steel-gray);
+}
+
+/* Icon animations */
+.icon-hover-rotate {
+    transition: transform var(--transition-fast);
+}
+
+.icon-hover-rotate:hover {
+    transform: rotate(15deg);
+}
+
+.icon-hover-bounce {
+    transition: transform var(--transition-fast);
+}
+
+.icon-hover-bounce:hover {
+    animation: iconBounce 0.6s ease;
+}
+
+@keyframes iconBounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+.icon-hover-scale {
+    transition: transform var(--transition-fast);
+}
+
+.icon-hover-scale:hover {
+    transform: scale(1.1);
+}
+
+/* Icon glow effect matching retro theme */
+.icon-glow {
+    filter: drop-shadow(0 0 8px rgba(255, 105, 180, 0.4));
+    transition: filter var(--transition-fast);
+}
+
+.icon-glow:hover {
+    filter: drop-shadow(0 0 12px rgba(255, 105, 180, 0.6));
+}
+
+/* Icon background utilities */
+.icon-bg-dark {
+    background: var(--darker-bg);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs);
+}
+
+.icon-bg-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs);
+    transition: all var(--transition-fast);
+}
+
+.icon-bg-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+}

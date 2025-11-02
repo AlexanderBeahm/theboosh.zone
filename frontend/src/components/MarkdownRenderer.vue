@@ -186,13 +186,15 @@ const TRUSTED_EMBED_DOMAINS = [
 const IFRAME_SANDBOX_RULES = {
     // Video platforms - need same-origin for player functionality
     "youtube.com": "allow-scripts allow-same-origin allow-presentation",
-    "youtube-nocookie.com": "allow-scripts allow-same-origin allow-presentation",
+    "youtube-nocookie.com":
+        "allow-scripts allow-same-origin allow-presentation",
     "youtu.be": "allow-scripts allow-same-origin allow-presentation",
     "vimeo.com": "allow-scripts allow-same-origin allow-presentation",
     "player.vimeo.com": "allow-scripts allow-same-origin allow-presentation",
 
     // Audio/Music platforms - need same-origin for player functionality
-    "bandcamp.com": "allow-scripts allow-same-origin allow-forms allow-popups allow-presentation", // allow-forms for player controls, allow-popups for purchase links
+    "bandcamp.com":
+        "allow-scripts allow-same-origin allow-forms allow-popups allow-presentation", // allow-forms for player controls, allow-popups for purchase links
     "spotify.com": "allow-scripts allow-same-origin allow-presentation",
     "open.spotify.com": "allow-scripts allow-same-origin allow-presentation",
     "soundcloud.com": "allow-scripts allow-same-origin allow-presentation",
@@ -200,7 +202,8 @@ const IFRAME_SANDBOX_RULES = {
 
     // Code playgrounds - need same-origin for code execution and state
     "codepen.io": "allow-scripts allow-same-origin allow-presentation",
-    "codesandbox.io": "allow-scripts allow-same-origin allow-presentation allow-popups", // allow-popups for "open in new window"
+    "codesandbox.io":
+        "allow-scripts allow-same-origin allow-presentation allow-popups", // allow-popups for "open in new window"
     "jsfiddle.net": "allow-scripts allow-same-origin allow-presentation",
 };
 
@@ -329,7 +332,7 @@ function wrapIframesInContainers(html) {
     if (!html || typeof html !== "string") return html;
 
     // Early exit if no iframes present
-    if (!html.includes('<iframe')) return html;
+    if (!html.includes("<iframe")) return html;
 
     // Cache check - avoid re-processing the same content
     if (html === lastProcessedContent && lastProcessedResult) {
@@ -337,7 +340,7 @@ function wrapIframesInContainers(html) {
     }
 
     // Feature detection for DOMParser
-    if (typeof DOMParser === 'undefined') {
+    if (typeof DOMParser === "undefined") {
         // eslint-disable-next-line no-console
         console.warn("DOMParser not available, skipping iframe wrapping");
         return html;
@@ -881,6 +884,11 @@ onBeforeUnmount(() => {
 }
 
 /* Images */
+.markdown-content :deep(p:has(> img.article-image:only-child)) {
+    display: flex;
+    justify-content: center;
+}
+
 .markdown-content .article-image {
     max-width: 100%;
     height: auto;
@@ -1005,7 +1013,6 @@ onBeforeUnmount(() => {
         opacity: 1;
     }
 }
-
 </style>
 
 <!-- Global CSS for dynamically created embed containers (not scoped) -->
@@ -1028,7 +1035,9 @@ onBeforeUnmount(() => {
 }
 
 .embed-container:hover {
-    box-shadow: var(--shadow-lg), 0 0 25px rgba(255, 105, 180, 0.2);
+    box-shadow:
+        var(--shadow-lg),
+        0 0 25px rgba(255, 105, 180, 0.2);
     transform: translateY(-2px);
 }
 
