@@ -23,7 +23,7 @@
                 rel="noopener noreferrer"
                 class="link-github"
               >
-                <span class="link-icon">🖥️</span>
+                <IconGithub class="link-icon" />
                 GitHub
               </a>
             </li>
@@ -34,7 +34,7 @@
                 rel="noopener noreferrer"
                 class="link-linkedin"
               >
-                <span class="link-icon">💼</span>
+                <IconLinkedin class="link-icon" />
                 LinkedIn
               </a>
             </li>
@@ -45,7 +45,7 @@
                 rel="noopener noreferrer"
                 class="link-x"
               >
-                <span class="link-icon">✖️</span>
+                <IconX class="link-icon" />
                 X
               </a>
             </li>
@@ -61,19 +61,27 @@
         <div class="card-content">
           <ul class="tech-list">
             <li>
-              <span class="tech-icon">🐪</span>
+              <span class="tech-icon-wrapper">
+                <IconPerl class="tech-icon" />
+              </span>
               Perl with Mojolicious framework
             </li>
             <li>
-              <span class="tech-icon">⚡</span>
+              <span class="tech-icon-wrapper">
+                <IconVue class="tech-icon" />
+              </span>
               Vue 3 for frontend interactivity
             </li>
             <li>
-              <span class="tech-icon">🐘</span>
+              <span class="tech-icon-wrapper">
+                <IconPostgresql class="tech-icon" />
+              </span>
               PostgreSQL for database
             </li>
             <li>
-              <span class="tech-icon">🐳</span>
+              <span class="tech-icon-wrapper">
+                <IconDocker class="tech-icon" />
+              </span>
               Docker for containerization
             </li>
           </ul>
@@ -85,6 +93,14 @@
 
 <script setup>
 import HeroBurst from "../components/HeroBurst.vue";
+// Import icons from unplugin-icons
+import IconGithub from '~icons/simple-icons/github';
+import IconLinkedin from '~icons/simple-icons/linkedin';
+import IconX from '~icons/simple-icons/x';
+import IconPerl from '~icons/simple-icons/perl';
+import IconVue from '~icons/simple-icons/vuedotjs';
+import IconPostgresql from '~icons/simple-icons/postgresql';
+import IconDocker from '~icons/simple-icons/docker';
 </script>
 
 <style scoped>
@@ -376,8 +392,16 @@ import HeroBurst from "../components/HeroBurst.vue";
 }
 
 .link-icon {
-    font-size: 1.25rem;
-    filter: grayscale(0);
+    width: 1.25rem;
+    height: 1.25rem;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    transition: transform var(--transition-fast);
+}
+
+.social-links a:hover .link-icon {
+    transform: scale(1.1);
 }
 
 .tech-list li {
@@ -400,9 +424,7 @@ import HeroBurst from "../components/HeroBurst.vue";
     box-shadow: 0 0 15px rgba(255, 105, 180, 0.2);
 }
 
-.tech-icon {
-    font-size: 1.5rem;
-    filter: grayscale(0);
+.tech-icon-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -411,6 +433,26 @@ import HeroBurst from "../components/HeroBurst.vue";
     background: var(--darker-bg);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.tech-list li:hover .tech-icon-wrapper {
+    background: var(--card-bg);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 10px rgba(255, 105, 180, 0.3);
+}
+
+.tech-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: block;
+    color: var(--text-primary);
+    transition: color var(--transition-fast);
+}
+
+.tech-list li:hover .tech-icon {
+    color: var(--primary-color);
 }
 
 /* Responsive Design */
