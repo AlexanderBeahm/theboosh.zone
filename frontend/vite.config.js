@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import path from "path";
-import Icons from 'unplugin-icons/vite';
 
 export default defineConfig(({ mode }) => {
     // Load env file based on `mode` in the current working directory.
@@ -15,13 +14,7 @@ export default defineConfig(({ mode }) => {
 
     return {
         plugins: [
-            vue(),
-            Icons({
-                compiler: 'vue3',
-                autoInstall: true,
-                defaultClass: 'icon',
-                defaultStyle: '',
-            })
+            vue()
         ],
 
         // Set base to /dist/ so assets are referenced correctly when served by Mojolicious

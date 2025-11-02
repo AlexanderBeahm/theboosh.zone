@@ -11,7 +11,7 @@
     <div class="about-content">
       <section class="info-card">
         <div class="card-header">
-          <h2>Alex Beahm</h2>
+          <h2>Contact</h2>
           <div class="card-accent" />
         </div>
         <div class="card-content">
@@ -49,6 +49,72 @@
                 X
               </a>
             </li>
+            <li>
+              <a
+                href="https://discord.com/users/232161007366176769"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-discord"
+              >
+                <IconDiscord class="link-icon" />
+                Discord
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://rateyourmusic.com/~The_Booshnaw"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-rym"
+              >
+                <IconRYM class="link-icon" />
+                RateYourMusic
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://letterboxd.com/Booshnaw/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-letterboxd"
+              >
+                <IconLetterboxd class="link-icon" />
+                Letterboxd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://backloggd.com/u/Booshnaw/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-backloggd"
+              >
+                <IconBackloggd class="link-icon" />
+                Backloggd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://dropkickd.com/user/Booshnaw"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-dropkickd"
+              >
+                <IconDropkickd class="link-icon" />
+                Dropkickd
+              </a>
+            </li>
+            <li>
+              <a
+                href="https://www.goodreads.com/user/show/189992282-alex-beahm"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link-goodreads"
+              >
+                <IconGoodreads class="link-icon" />
+                Goodreads
+              </a>
+            </li>
           </ul>
         </div>
       </section>
@@ -80,9 +146,33 @@
             </li>
             <li>
               <span class="tech-icon-wrapper">
+                <IconNginx class="tech-icon" />
+              </span>
+              Nginx for reverse-proxy
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
                 <IconDocker class="tech-icon" />
               </span>
               Docker for containerization
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconDigitalOcean class="tech-icon" />
+              </span>
+              DigitalOcean for hosting
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconGithub class="tech-icon" />
+              </span>
+              Github for version control and CI/CD
+            </li>
+            <li>
+              <span class="tech-icon-wrapper">
+                <IconClaude class="tech-icon" />
+              </span>
+              Claude Code for AI agent assitance
             </li>
           </ul>
         </div>
@@ -93,14 +183,24 @@
 
 <script setup>
 import HeroBurst from "../components/HeroBurst.vue";
-// Import icons from unplugin-icons
-import IconGithub from '~icons/simple-icons/github';
-import IconLinkedin from '~icons/simple-icons/linkedin';
-import IconX from '~icons/simple-icons/x';
-import IconPerl from '~icons/simple-icons/perl';
-import IconVue from '~icons/simple-icons/vuedotjs';
-import IconPostgresql from '~icons/simple-icons/postgresql';
-import IconDocker from '~icons/simple-icons/docker';
+
+// Import local icon components
+import IconGithub from "../components/icons/IconGithub.vue";
+import IconLinkedin from "../components/icons/IconLinkedin.vue";
+import IconX from "../components/icons/IconX.vue";
+import IconLetterboxd from "../components/icons/IconLetterboxd.vue";
+import IconDropkickd from "../components/icons/IconDropkickd.vue";
+import IconGoodreads from "../components/icons/IconGoodreads.vue";
+import IconDiscord from "../components/icons/IconDiscord.vue";
+import IconRYM from "../components/icons/IconRYM.vue";
+import IconBackloggd from "../components/icons/IconBackloggd.vue";
+import IconPerl from "../components/icons/IconPerl.vue";
+import IconVue from "../components/icons/IconVue.vue";
+import IconPostgresql from "../components/icons/IconPostgresql.vue";
+import IconDocker from "../components/icons/IconDocker.vue";
+import IconNginx from "../components/icons/IconNginx.vue";
+import IconDigitalOcean from "../components/icons/IconDigitalOcean.vue";
+import IconClaude from "../components/icons/IconClaude.vue";
 </script>
 
 <style scoped>
