@@ -4,7 +4,6 @@ import { mount, flushPromises } from "@vue/test-utils";
 import axios from "axios";
 import ArticleEditor from "./ArticleEditor.vue";
 import MarkdownRenderer from "./MarkdownRenderer.vue";
-import ImageUploader from "./ImageUploader.vue";
 
 vi.mock("axios");
 
@@ -65,7 +64,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -98,7 +96,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -120,7 +117,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -137,7 +133,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -163,7 +158,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -190,7 +184,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -213,7 +206,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -238,7 +230,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -255,7 +246,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -275,7 +265,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -305,7 +294,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -335,7 +323,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -380,7 +367,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -410,7 +396,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -438,7 +423,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -458,7 +442,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -476,7 +459,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -514,7 +496,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -576,7 +557,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -625,7 +605,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -679,7 +658,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -716,7 +694,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -726,45 +703,10 @@ describe("ArticleEditor", () => {
             // Click Insert Image button
             await wrapper.find('.insert-image-button').trigger('click');
 
-            // Should open unified modal
-            expect(wrapper.find('.unified-modal').exists()).toBe(true);
-            expect(wrapper.text()).toContain('Insert Image');
-            expect(wrapper.text()).toContain('Browse Library');
-            expect(wrapper.text()).toContain('Upload New');
-            expect(wrapper.text()).toContain('Paste Image');
-        });
-
-        it("switches between unified modal tabs", async () => {
-            const wrapper = mount(ArticleEditor, {
-                props: { isVisible: true },
-                global: {
-                    components: {
-                        MarkdownRenderer,
-                        MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
-                    },
-                },
-            });
-
-            await flushPromises();
-
-            // Open unified modal
-            await wrapper.find('.insert-image-button').trigger('click');
-
-            const tabButtons = wrapper.findAll('.unified-tab-button');
-
-            // Should start with Browse tab active
-            expect(tabButtons[0].classes()).toContain('active');
-
-            // Switch to Upload tab
-            await tabButtons[1].trigger('click');
-            expect(tabButtons[1].classes()).toContain('active');
-            expect(tabButtons[0].classes()).not.toContain('active');
-
-            // Switch to Paste tab
-            await tabButtons[2].trigger('click');
-            expect(tabButtons[2].classes()).toContain('active');
-            expect(wrapper.text()).toContain('Paste an Image');
+            // Should open unified modal with MediaLibrary
+            expect(wrapper.find('.image-modal-overlay').exists()).toBe(true);
+            expect(wrapper.text()).toContain('Browse Media Library');
+            expect(wrapper.find('.mock-media-library').exists()).toBe(true);
         });
 
         it("handles media selection from unified modal", async () => {
@@ -774,7 +716,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -805,7 +746,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
@@ -814,12 +754,12 @@ describe("ArticleEditor", () => {
 
             // Open unified modal
             await wrapper.find('.insert-image-button').trigger('click');
-            expect(wrapper.find('.unified-modal').exists()).toBe(true);
+            expect(wrapper.find('.image-modal-overlay').exists()).toBe(true);
 
             // Close modal
             await wrapper.findAll('.close-button')[1].trigger('click'); // Second close button is for unified modal
 
-            expect(wrapper.find('.unified-modal').exists()).toBe(false);
+            expect(wrapper.find('.image-modal-overlay').exists()).toBe(false);
         });
     });
 
@@ -831,7 +771,6 @@ describe("ArticleEditor", () => {
                     components: {
                         MarkdownRenderer,
                         MediaLibrary: MockMediaLibrary,
-                        ImageUploader,
                     },
                 },
             });
