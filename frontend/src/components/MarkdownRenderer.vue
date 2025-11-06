@@ -1,12 +1,12 @@
 <template>
-  <!-- v-html is safe here: content is sanitized with DOMPurify -->
-  <!-- eslint-disable vue/no-v-html -->
-  <div
-    class="markdown-content"
-    @click="handleLinkClick"
-    v-html="renderedContent"
-  />
-  <!-- eslint-enable vue/no-v-html -->
+    <!-- v-html is safe here: content is sanitized with DOMPurify -->
+    <!-- eslint-disable vue/no-v-html -->
+    <div
+        class="markdown-content"
+        @click="handleLinkClick"
+        v-html="renderedContent"
+    />
+    <!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup>
@@ -692,45 +692,7 @@ onBeforeUnmount(() => {
     font-style: italic;
 }
 
-/* Links */
-.markdown-content a {
-    color: var(--primary-color);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: all var(--transition-fast);
-    position: relative;
-    padding: 0.125rem 0.25rem;
-    border-radius: var(--radius-sm);
-}
-
-.markdown-content a::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        90deg,
-        transparent,
-        rgba(255, 105, 180, 0.1),
-        transparent
-    );
-    border-radius: var(--radius-sm);
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-    z-index: -1;
-}
-
-.markdown-content a:hover {
-    border-bottom-color: var(--primary-color);
-    color: var(--primary-color);
-    text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
-}
-
-.markdown-content a:hover::before {
-    opacity: 1;
-}
+/* Links - Moved to global styles below due to v-html dynamic content */
 
 /* Lists */
 .markdown-content ul,
@@ -1015,8 +977,57 @@ onBeforeUnmount(() => {
 }
 </style>
 
-<!-- Global CSS for dynamically created embed containers (not scoped) -->
+<!-- Global CSS for dynamically created content (not scoped) -->
 <style>
+/* Global link styles - must not be scoped for v-html dynamic content */
+/* Override WebKit defaults with high specificity and !important */
+.markdown-content a,
+.markdown-content a:link,
+.markdown-content a:visited,
+.markdown-content a:any-link,
+.markdown-content a:-webkit-any-link {
+    color: var(--primary-color) !important;
+    text-decoration: none !important;
+    border-bottom: 1px solid transparent;
+    transition: all var(--transition-fast);
+    position: relative;
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+}
+
+.markdown-content a::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 105, 180, 0.1),
+        transparent
+    );
+    border-radius: var(--radius-sm);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: -1;
+}
+
+.markdown-content a:hover,
+.markdown-content a:hover:link,
+.markdown-content a:hover:visited,
+.markdown-content a:hover:any-link,
+.markdown-content a:hover:-webkit-any-link {
+    border-bottom-color: var(--primary-color) !important;
+    color: var(--primary-color) !important;
+    text-shadow: 0 0 10px rgba(255, 105, 180, 0.5);
+}
+
+.markdown-content a:hover::before {
+    opacity: 1;
+}
+
 /* Global embed container styles - must not be scoped for dynamic content */
 .embed-container {
     position: relative;
