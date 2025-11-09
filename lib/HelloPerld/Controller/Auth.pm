@@ -9,6 +9,7 @@ our $VERSION = '1.0.0';
 use HelloPerld::Database::Postgres;
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
+use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 
 sub login {
     my $self = shift;
@@ -265,21 +266,34 @@ sub _get_user_by_id {
 sub _hash_password {
     my ($self, $password) = @_;
 
-    # Generate a random salt
-    my $salt = unpack('H*', makerandom_octet(Length => 16));
-
-    # Create hash with salt
-    my $hash = sha256_hex($password . $salt);
-
-    # Return salt + hash combined
-    return $salt . $hash;
+    # Use bcrypt with cost factor 12 (recommended security level)
+    # bcrypt automatically handles salt generation when salt parameter is omitted
+    use Crypt::Bcrypt qw(bcrypt);
+    return bcrypt($password, '2b', 12, makerandom_octet(Length => 16));
 }
 
 sub _verify_password {
     my ($self, $password, $stored_hash) = @_;
 
-    return 0 unless $stored_hash && length($stored_hash) == 96; # 32 hex chars salt + 64 hex chars hash
+    return 0 unless $stored_hash;
 
+    # Detect hash format: bcrypt starts with $2b$, SHA-256 is exactly 96 hex chars
+    if ($stored_hash =~ /^\$2[abxy]\$/) {
+        # New bcrypt hash - use bcrypt_check for verification
+        return bcrypt_check($password, $stored_hash) ? 1 : 0;
+    } elsif (length($stored_hash) == 96 && $stored_hash =~ /^[0-9a-fA-F]{96}$/) {
+        # Legacy SHA-256 hash - maintain backward compatibility
+        return $self->_verify_sha256_password($password, $stored_hash);
+    } else {
+        # Unknown hash format
+        return 0;
+    }
+}
+
+sub _verify_sha256_password {
+    my ($self, $password, $stored_hash) = @_;
+
+    # Legacy verification for existing SHA-256 passwords
     # Extract salt (first 32 characters)
     my $salt = substr($stored_hash, 0, 32);
 
