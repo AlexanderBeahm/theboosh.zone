@@ -166,6 +166,30 @@ sub startup {
     $self->secrets([$session_config->{secret}]);
     $self->sessions->default_expiration($session_config->{expiration});
 
+    # Configure session security based on environment
+    if (defined $session_config->{secure}) {
+        $self->sessions->secure($session_config->{secure});
+    }
+    if (defined $session_config->{samesite}) {
+        $self->sessions->samesite($session_config->{samesite});
+    }
+
+    # Configure HttpOnly via hook since it's not directly supported by sessions
+    if (defined $session_config->{httponly} && $session_config->{httponly}) {
+        $self->hook(after_dispatch => sub {
+            my $c = shift;
+
+            # Apply HttpOnly to session cookies in response
+            my $cookie_name = $c->app->sessions->cookie_name || 'mojolicious';
+
+            # Check if a session cookie is being set in the response
+            my @cookies = grep { $_->name eq $cookie_name } @{$c->res->cookies};
+            for my $cookie (@cookies) {
+                $cookie->httponly(1) if $cookie->can('httponly');
+            }
+        });
+    }
+
     # Configure OpenAPI plugin - limit to /api routes only
     # TEMPORARILY DISABLED to test uploads route
     # $self->plugin('OpenAPI' => {

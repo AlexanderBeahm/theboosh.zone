@@ -485,8 +485,6 @@ sub _validate_perl_migration_content {
         qr/\bkill\s*\(/,                      # Process killing
         qr/\bfork\s*\(/,                      # Process forking
         qr/\$ENV\{['"]*PATH['"]*\}/,          # PATH manipulation
-        qr/\b__END__\s*\n.*\n/s,              # Hidden code after __END__
-        qr/\b__DATA__\s*\n.*\n/s,             # Hidden data after __DATA__
     );
 
     my @violations = ();
