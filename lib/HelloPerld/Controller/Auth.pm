@@ -10,6 +10,7 @@ use HelloPerld::Database::Postgres;
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
+use JSON qw(encode_json decode_json);
 
 sub login {
     my $self = shift;
@@ -396,17 +397,63 @@ sub _update_password {
     return 1;
 }
 
-# Simple in-memory rate limiting (in production, use Redis or database)
+# Enhanced in-memory rate limiting with file persistence
 my %login_attempts = ();
+my $rate_limit_file = $ENV{RATE_LIMIT_FILE} || '/tmp/hello-perld-rate-limits.json';
+
+# Load rate limit data from file on first use
+sub _load_rate_limits {
+    return if %login_attempts; # Already loaded
+
+    return unless -f $rate_limit_file;
+
+    eval {
+        open my $fh, '<', $rate_limit_file or return;
+        my $content = do { local $/; <$fh> };
+        close $fh;
+
+        return unless $content;
+
+        my $data = decode_json($content);
+        %login_attempts = %{$data} if $data && ref($data) eq 'HASH';
+    };
+
+    # Clean up expired entries on load
+    my $now = time();
+    for my $username (keys %login_attempts) {
+        my $attempts = $login_attempts{$username} || [];
+        @$attempts = grep { $now - $_ < 900 } @$attempts; # 15 minutes
+        delete $login_attempts{$username} unless @$attempts;
+    }
+}
+
+# Save rate limit data to file
+sub _save_rate_limits {
+    eval {
+        # Ensure directory exists for the file path
+        require File::Path;
+        require File::Basename;
+        my $dir = File::Basename::dirname($rate_limit_file);
+        File::Path::make_path($dir) unless -d $dir;
+
+        open my $fh, '>', $rate_limit_file or return;
+        print $fh encode_json(\%login_attempts);
+        close $fh;
+    };
+}
 
 sub _is_rate_limited {
     my ($self, $username) = @_;
+
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
 
     my $now = time();
     my $attempts = $login_attempts{$username} || [];
 
     # Remove attempts older than 15 minutes
     @$attempts = grep { $now - $_ < 900 } @$attempts;
+    $login_attempts{$username} = $attempts;
 
     # Check if more than 5 attempts in the last 15 minutes
     return scalar(@$attempts) >= 5;
@@ -415,15 +462,27 @@ sub _is_rate_limited {
 sub _track_failed_login {
     my ($self, $username) = @_;
 
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
+
     my $now = time();
     $login_attempts{$username} ||= [];
     push @{$login_attempts{$username}}, $now;
+
+    # Save to file after tracking failed login
+    _save_rate_limits();
 }
 
 sub _clear_rate_limit {
     my ($self, $username) = @_;
 
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
+
     delete $login_attempts{$username};
+
+    # Save to file after clearing rate limit
+    _save_rate_limits();
 }
 
 # Middleware for protecting admin routes
