@@ -46,6 +46,70 @@ sub validate_connection {
     return $success;
 }
 
+sub _validate_schema_name {
+    my ($schema, $logger) = @_;
+
+    # Allow empty/undefined (will default to 'public')
+    return 1 unless defined $schema && $schema ne '';
+
+    # Schema name must be a valid PostgreSQL identifier
+    # Allow letters, digits, underscores, must start with letter or underscore
+    # Max length 63 characters (PostgreSQL limit)
+    unless ($schema =~ /^[a-zA-Z_][a-zA-Z0-9_]*$/ && length($schema) <= 63) {
+        if ($logger) {
+            $logger->error("Schema name contains invalid characters or is too long: $schema");
+        }
+        return 0;
+    }
+
+    # Additional security: Whitelist known schema patterns for this application
+    # This prevents unexpected schema names even if they're syntactically valid
+    my @allowed_patterns = (
+        'public',                    # Default schema
+        'thebooshzone_\w+',         # Environment-specific schemas (staging, prod, etc.)
+        'test_\w*',                 # Test schemas
+    );
+
+    my $schema_allowed = 0;
+    for my $pattern (@allowed_patterns) {
+        if ($schema =~ /^$pattern$/) {
+            $schema_allowed = 1;
+            last;
+        }
+    }
+
+    unless ($schema_allowed) {
+        if ($logger) {
+            $logger->error("Schema name not in allowed whitelist: $schema");
+        }
+        return 0;
+    }
+
+    # Check for SQL injection attempts in schema names
+    my @dangerous_patterns = (
+        qr/;/,                      # Statement separator
+        qr/--/,                     # SQL comment
+        qr/\/\*/,                   # Block comment start
+        qr/\*\//,                   # Block comment end
+        qr/'/,                      # Single quote
+        qr/"/,                      # Double quote
+        qr/\\/,                     # Backslash escape
+        qr/\x00/,                   # Null byte
+        qr/\s+(or|and|union|select|insert|update|delete|drop|create|alter|exec|execute)\s+/i,
+    );
+
+    for my $pattern (@dangerous_patterns) {
+        if ($schema =~ $pattern) {
+            if ($logger) {
+                $logger->error("Schema name contains dangerous SQL pattern: $schema");
+            }
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 sub get_connection {
     my ($logger, %options) = @_;
 
@@ -75,16 +139,27 @@ sub get_connection {
 
     # Set schema search path if not public
     if ($schema ne 'public') {
+        # Security: Validate schema name to prevent SQL injection
+        unless (_validate_schema_name($schema, $logger)) {
+            if ($logger) {
+                $logger->error("Invalid schema name provided: $schema");
+            }
+            return undef;
+        }
+
         eval {
-            $dbh->do("SET search_path TO $schema, public");
+            # Use proper identifier quoting to prevent SQL injection
+            my $quoted_schema = $dbh->quote_identifier($schema);
+            $dbh->do("SET search_path TO $quoted_schema, public");
             if ($logger) {
                 $logger->debug("Set database schema to: $schema");
             }
         };
         if ($@) {
             if ($logger) {
-                $logger->warn("Could not set schema $schema: $@");
+                $logger->error("Could not set schema $schema: $@");
             }
+            return undef;
         }
     }
 
