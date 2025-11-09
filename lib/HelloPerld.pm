@@ -4,6 +4,7 @@ use Mojo::Base 'Mojolicious';
 our $VERSION = '1.0.0';
 
 use HelloPerld::Logger::LoggerFactory;
+use HelloPerld::Security::CSRF;
 
 sub startup {
     my $self = shift;
@@ -42,6 +43,45 @@ sub startup {
     $self->helper(db_config => sub {
         my $c = shift;
         return $c->app->config->{database};
+    });
+
+    # Add CSRF protection helpers
+    $self->helper(csrf_token => sub {
+        my $c = shift;
+        my $session_id = $c->session('admin_user_id') || 'anonymous';
+        my $secret_key = $c->app->secrets->[0];
+
+        return HelloPerld::Security::CSRF::generate_token($session_id, $secret_key);
+    });
+
+    $self->helper(csrf_protect => sub {
+        my $c = shift;
+
+        # Skip CSRF protection for GET requests (safe methods)
+        return 1 if $c->req->method eq 'GET';
+
+        # Get CSRF token from header or form parameter
+        my $token = $c->req->headers->header('X-CSRF-Token') ||
+                   $c->req->headers->header('X-Requested-With-Token') ||
+                   $c->param('_csrf_token');
+
+        return 0 unless $token; # No token provided
+
+        # Get session ID and secret
+        my $session_id = $c->session('admin_user_id') || 'anonymous';
+        my $secret_key = $c->app->secrets->[0];
+
+        # Validate token (1 hour max age)
+        return HelloPerld::Security::CSRF::validate_token($token, $session_id, $secret_key, 3600);
+    });
+
+    # Helper to get CSRF token for responses
+    $self->helper(csrf_token_response => sub {
+        my $c = shift;
+        return {
+            csrf_token => $c->csrf_token,
+            expires_in => 3600 # 1 hour
+        };
     });
 
     # Configure template path
@@ -170,6 +210,15 @@ sub startup {
     $api->post('/auth/login')->to('Auth#login');
     $api->post('/auth/logout')->to('Auth#logout');
     $api->get('/auth/status')->to('Auth#status');
+
+    # CSRF token endpoint
+    $api->get('/csrf-token')->to(cb => sub {
+        my $c = shift;
+        $c->render(json => {
+            success => 1,
+            data => $c->csrf_token_response
+        });
+    });
 
     # Public article routes
     $api->get('/articles')->to('Articles#get_all');

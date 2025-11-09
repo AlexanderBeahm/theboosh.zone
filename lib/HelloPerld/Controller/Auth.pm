@@ -58,7 +58,8 @@ sub login {
                 id => $user->{id},
                 username => $user->{username},
                 email => $user->{email}
-            }
+            },
+            %{$self->csrf_token_response}
         });
     } else {
         # Track failed login attempt
@@ -75,6 +76,14 @@ sub login {
 
 sub logout {
     my $self = shift;
+
+    # CSRF protection for logout
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
 
     my $username = $self->session('admin_username') || 'unknown';
 
@@ -99,7 +108,8 @@ sub status {
                 id => $self->session('admin_user_id'),
                 username => $self->session('admin_username'),
                 email => $self->session('admin_email')
-            }
+            },
+            %{$self->csrf_token_response}
         });
     } else {
         return $self->render(json => {
@@ -116,6 +126,14 @@ sub change_password {
             success => 0,
             error => 'Authentication required'
         }, status => 401);
+    }
+
+    # CSRF protection for password change
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
     }
 
     my $current_password = $self->param('current_password');

@@ -18,6 +18,13 @@ use Time::Local;
 
 # Upload media file
 sub upload ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
     my $upload = $self->req->upload('file');
 
     # Support both form parameters and JSON body (like other endpoints)
@@ -380,6 +387,13 @@ sub get_by_id ($self) {
 
 # Update media metadata (alt_text, caption)
 sub update ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
     my $id = $self->param('id');
 
     unless ($id) {
@@ -433,6 +447,13 @@ sub update ($self) {
 
 # Delete media
 sub delete ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
     my $id = $self->param('id');
 
     unless ($id) {

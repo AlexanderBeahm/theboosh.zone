@@ -123,37 +123,39 @@ $dbh->do("SET search_path TO $quoted_schema, public");
 - Created `.env.example` with comprehensive documentation and security guidance
 - **Security Impact**: Future credential exposure prevented, best practices established
 
-### 4. **Missing CSRF Protection**
+### 4. **✅ FIXED: Missing CSRF Protection**
 **Files**: All API endpoints accepting POST/PUT/DELETE
 **Severity**: HIGH | **Complexity**: Medium
-**Risk**: Admin account takeover via malicious websites
+**Status**: **COMPLETED** - November 9, 2025
 
 **Issue**: No CSRF token validation for state-changing operations. Vulnerable to Cross-Site Request Forgery attacks.
 
-**Solution**:
-1. **Backend**: Implement CSRF token generation and validation:
+**Solution Implemented**:
+1. **Backend CSRF Module** (`lib/HelloPerld/Security/CSRF.pm`):
 ```perl
-# In HelloPerld.pm startup
-$self->plugin('CSRFProtect');
+# Industry-standard HMAC-SHA256 token generation with session binding
+use HelloPerld::Security::CSRF;
 
-# In controllers
-sub create {
-    my $self = shift;
-    unless ($self->csrf_protect) {
-        return $self->render(json => {
-            success => 0,
-            error => 'CSRF validation failed'
-        }, status => 403);
-    }
-    # ... rest of code
-}
+# Added helpers to HelloPerld.pm
+$self->helper(csrf_token => sub { ... });
+$self->helper(csrf_protect => sub { ... });
+$self->helper(csrf_token_response => sub { ... });
 ```
 
-2. **Frontend**: Include CSRF token in requests:
+2. **Frontend Automatic Integration** (`composables/useCSRF.js`):
 ```javascript
-const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-axios.defaults.headers.common['X-CSRF-Token'] = csrfToken;
+// Automatic token management with axios interceptors
+import { setupCSRFInterceptor } from "./composables/useCSRF";
+setupCSRFInterceptor(); // Auto-adds X-CSRF-Token header to requests
 ```
+
+**Implementation Details**:
+- Created comprehensive CSRF token management system with secure token generation
+- Protected all state-changing endpoints: Auth (logout, change_password), Articles (create/update/delete), Media (upload/update/delete), Tags (create/update/delete)
+- Frontend axios interceptors automatically inject tokens and handle failures
+- Login and auth status responses include fresh CSRF tokens
+- Added `/api/csrf-token` endpoint for token refresh
+- **Security Impact**: Complete protection against CSRF attacks with automatic retry on token failures
 
 ### 5. **Missing Content Security Policy**
 **File**: `lib/HelloPerld.pm:244-250`

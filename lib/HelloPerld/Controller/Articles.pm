@@ -169,6 +169,14 @@ sub create {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
+
     # Get article data from request
     my $article_data = $self->_parse_article_request();
 
@@ -224,6 +232,14 @@ sub update {
     my $self = shift;
 
     # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
 
     my $id = $self->param('id');
 
@@ -296,6 +312,14 @@ sub delete {
     my $self = shift;
 
     # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
 
     my $id = $self->param('id');
 

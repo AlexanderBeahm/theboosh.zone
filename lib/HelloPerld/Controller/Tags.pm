@@ -212,6 +212,14 @@ sub create {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
+
     # Get tag data from request
     my $tag_data = $self->_parse_tag_request();
 
@@ -263,6 +271,14 @@ sub update {
     my $self = shift;
 
     # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
 
     my $id = $self->param('id');
 
@@ -339,6 +355,14 @@ sub delete {
     my $self = shift;
 
     # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return $self->render(json => {
+            success => 0,
+            error => 'CSRF validation failed'
+        }, status => 403);
+    }
 
     my $id = $self->param('id');
 
