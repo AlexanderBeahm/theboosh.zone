@@ -22,10 +22,10 @@ Your application demonstrates **solid architectural foundations** with good sepa
 
 ## 🔴 CRITICAL SECURITY VULNERABILITIES (Fix Immediately)
 
-### 1. **Weak Password Hashing Algorithm**
+### 1. **✅ FIXED: Weak Password Hashing Algorithm**
 **File**: `lib/HelloPerld/Controller/Auth.pm:265-275`
 **Severity**: CRITICAL | **Complexity**: Low
-**Risk**: Password database compromise → easy brute force attacks
+**Status**: **COMPLETED** - November 8, 2025
 
 **Issue**: Your current implementation uses SHA-256, which modern GPUs can crack at billions of hashes/second:
 ```perl
@@ -34,65 +34,94 @@ my $hash = sha256_hex($password . $salt);  # ❌ VULNERABLE
 
 **Impact**: If your database is breached, admin passwords can be cracked in hours.
 
-**Solution**: Replace with bcrypt (industry standard):
+**Solution Implemented**: Replaced with bcrypt (industry standard):
 ```perl
+# New implementation with bcrypt + backward compatibility
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 
 sub _hash_password {
-    my ($self, $password) = @_;
-    return bcrypt($password, '2b', 12); # cost factor 12
+    return bcrypt($password, '2b', 12, makerandom_octet(Length => 16));
 }
 
 sub _verify_password {
-    my ($self, $password, $stored_hash) = @_;
-    return bcrypt_check($password, $stored_hash);
+    # Auto-detects bcrypt vs legacy SHA-256 formats
+    if ($stored_hash =~ /^\$2[abxy]\$/) {
+        return bcrypt_check($password, $stored_hash) ? 1 : 0;
+    } elsif (length($stored_hash) == 96 && $stored_hash =~ /^[0-9a-fA-F]{96}$/) {
+        return $self->_verify_sha256_password($password, $stored_hash);
+    }
 }
 ```
+**Implementation Details**:
+- Added `Crypt::Bcrypt` to Makefile.PL and cpanfile
+- Implemented backward compatibility for existing SHA-256 passwords
+- Updated admin scripts: `script/update_admin_password` and `script/create_admin_user`
+- Created migration script: `migrations/007_upgrade_admin_passwords_to_bcrypt.pl`
+- Fixed DBI statement handle warnings with proper `$sth->finish()` calls
+- **Security Impact**: Password cracking difficulty increased from ~hours to ~centuries
 
-### 2. **SQL Injection in Schema Setting**
+### 2. **✅ FIXED: SQL Injection in Schema Setting**
 **File**: `lib/HelloPerld/Database/Postgres.pm:79`
 **Severity**: CRITICAL | **Complexity**: Low
-**Risk**: Potential database compromise
+**Status**: **COMPLETED** - November 8, 2025
 
 **Issue**: Direct string interpolation without validation:
 ```perl
 $dbh->do("SET search_path TO $schema, public");  # ❌ INJECTABLE
 ```
 
-**Solution**:
+**Solution Implemented**: Schema validation + identifier quoting:
 ```perl
-# Validate schema name against whitelist
-unless ($schema =~ /^[a-zA-Z_][a-zA-Z0-9_]*$/) {
-    if ($logger) {
-        $logger->error("Invalid schema name: $schema");
-    }
-    die "Invalid schema name";
-}
-# Use identifier quoting
-$dbh->do("SET search_path TO " . $dbh->quote_identifier($schema) . ", public");
-```
+# Comprehensive validation function
+sub _validate_schema_name {
+    my ($schema, $logger) = @_;
 
-### 3. **Secrets in Version Control**
+    # PostgreSQL identifier validation
+    unless ($schema =~ /^[a-zA-Z_][a-zA-Z0-9_]*$/ && length($schema) <= 63) {
+        $logger->error("Schema name contains invalid characters: $schema") if $logger;
+        return 0;
+    }
+
+    # Whitelist known schema patterns
+    my @allowed_patterns = ('public', 'thebooshzone_\w+', 'test_\w*');
+    # ... SQL injection pattern detection
+
+    return 1;
+}
+
+# Secure schema setting with validation + quoting
+unless (_validate_schema_name($schema, $logger)) {
+    $logger->error("Invalid schema name provided: $schema") if $logger;
+    return undef;
+}
+my $quoted_schema = $dbh->quote_identifier($schema);
+$dbh->do("SET search_path TO $quoted_schema, public");
+```
+**Implementation Details**:
+- Created comprehensive `_validate_schema_name()` function with multiple security layers
+- Added whitelist validation for known schema patterns (public, thebooshzone_*, test_*)
+- Implemented SQL injection pattern detection (semicolons, comments, SQL keywords)
+- Used proper `$dbh->quote_identifier()` for safe SQL construction
+- **Security Impact**: SQL injection via schema names completely eliminated
+
+### 3. **✅ FIXED: Secrets in Version Control**
 **File**: `.env` (committed to repository)
 **Severity**: CRITICAL | **Complexity**: Low
-**Risk**: Credential exposure
+**Status**: **COMPLETED** - November 8, 2025
 
 **Issue**: The `.env` file is committed to the repository. Even with placeholder values, this violates security best practices and may have exposed real credentials historically.
 
-**Solution**:
-1. **Immediately** add `.env` to `.gitignore` and remove from git history
-2. Create `.env.example` with placeholder values
-3. Rotate all production credentials
-4. Clean git history:
-```bash
-git rm --cached .env
-echo ".env" >> .gitignore
-git commit -m "Remove .env from version control"
-# Clean git history:
-git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch .env" \
-  --prune-empty --tag-name-filter cat -- --all
-```
+**Solution Implemented**:
+1. ✅ **Verified `.env` was never committed** - git history clean, no real credentials exposed
+2. ✅ **Confirmed `.gitignore` properly configured** - excludes all environment files
+3. ✅ **Created comprehensive `.env.example`** - template with all required variables
+4. ✅ **No credential rotation needed** - production credentials were never in source control
+
+**Implementation Details**:
+- Verified `.env` file contains only placeholder values (`your_secure_database_password`, etc.)
+- Confirmed `.gitignore` excludes: `.env`, `.env.*`, `frontend/.env*` (with exceptions for `.example`)
+- Created `.env.example` with comprehensive documentation and security guidance
+- **Security Impact**: Future credential exposure prevented, best practices established
 
 ### 4. **Missing CSRF Protection**
 **Files**: All API endpoints accepting POST/PUT/DELETE
