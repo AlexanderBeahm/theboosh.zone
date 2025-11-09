@@ -315,10 +315,19 @@ sub run_migrations {
         # Apply migration based on type
         my $success = 0;
         if ($type eq 'sql') {
-            # Read SQL migration file
-            open my $fh, '<', $file or do {
+            # Security: Validate SQL migration file before reading
+            my $validated_file = _validate_migration_file($file, $migration_dir, $logger, 'sql');
+            unless ($validated_file) {
                 if ($logger) {
-                    $logger->error("Could not read migration file $file: $!");
+                    $logger->error("SQL migration file failed security validation: $file");
+                }
+                next;
+            }
+
+            # Read SQL migration file
+            open my $fh, '<', $validated_file or do {
+                if ($logger) {
+                    $logger->error("Could not read migration file $validated_file: $!");
                 }
                 next;
             };
@@ -367,7 +376,7 @@ sub extract_migration_info {
 }
 
 sub _validate_migration_file {
-    my ($file, $migration_dir, $logger) = @_;
+    my ($file, $migration_dir, $logger, $expected_type) = @_;
 
     # Use File::Spec for secure path operations
     use Cwd qw(abs_path);
@@ -376,6 +385,9 @@ sub _validate_migration_file {
 
     # Determine migration directory - default to 'migrations' if not provided
     $migration_dir ||= 'migrations';
+
+    # Default to 'perl' for backwards compatibility
+    $expected_type ||= 'perl';
 
     # Get absolute paths for comparison
     my $abs_file = abs_path($file);
@@ -397,14 +409,34 @@ sub _validate_migration_file {
         return undef;
     }
 
-    # Validate migration filename format (must be NNN_name.pl)
+    # Validate migration filename format based on type
     my $filename = basename($file);
-    unless ($filename =~ /^\d{3}_[a-z0-9_]+\.pl$/) {
+    my $valid_format = 0;
+
+    if ($expected_type eq 'sql') {
+        # SQL files: NNN_name.sql
+        $valid_format = ($filename =~ /^\d{3}_[a-z0-9_]+\.sql$/);
+        unless ($valid_format) {
+            if ($logger) {
+                $logger->error("Invalid SQL migration filename format: $filename (must be NNN_name.sql)");
+            }
+        }
+    } elsif ($expected_type eq 'perl') {
+        # Perl files: NNN_name.pl
+        $valid_format = ($filename =~ /^\d{3}_[a-z0-9_]+\.pl$/);
+        unless ($valid_format) {
+            if ($logger) {
+                $logger->error("Invalid Perl migration filename format: $filename (must be NNN_name.pl)");
+            }
+        }
+    } else {
         if ($logger) {
-            $logger->error("Invalid migration filename format: $filename (must be NNN_name.pl)");
+            $logger->error("Invalid migration type specified: $expected_type");
         }
         return undef;
     }
+
+    return undef unless $valid_format;
 
     # Check that file exists and is readable
     unless (-f $abs_file && -r $abs_file) {
@@ -414,7 +446,94 @@ sub _validate_migration_file {
         return undef;
     }
 
+    # Additional security checks for Perl files
+    if ($expected_type eq 'perl') {
+        return _validate_perl_migration_content($abs_file, $logger);
+    }
+
     # All validations passed - return the absolute path
+    return $abs_file;
+}
+
+sub _validate_perl_migration_content {
+    my ($abs_file, $logger) = @_;
+
+    # Read the Perl file content for security analysis
+    open my $fh, '<', $abs_file or do {
+        if ($logger) {
+            $logger->error("Could not read Perl migration file for validation: $abs_file");
+        }
+        return undef;
+    };
+
+    my $content = do { local $/; <$fh> };
+    close $fh;
+
+    # Security checks for dangerous Perl constructs
+    my @dangerous_patterns = (
+        qr/\bsystem\s*\(/,                    # system() calls
+        qr/\bexec\s*\(/,                      # exec() calls
+        qr/`[^`]*`/,                          # Backticks (removed \b word boundary)
+        qr/\bopen\s*\([^,]*,\s*["'][|>]/,     # Pipe opens for writing/commands
+        qr/\beval\s*\(/,                      # eval() calls
+        qr/\brequire\s+[^;]*\$/,              # Dynamic require with variables
+        qr/\bdo\s+[^;]*\$/,                   # Dynamic do with variables
+        qr/\bunlink\s*\(/,                    # File deletion
+        qr/\brmdir\s*\(/,                     # Directory deletion
+        qr/\bchmod\s*\(/,                     # Permission changes
+        qr/\bchown\s*\(/,                     # Ownership changes
+        qr/\bkill\s*\(/,                      # Process killing
+        qr/\bfork\s*\(/,                      # Process forking
+        qr/\$ENV\{['"]*PATH['"]*\}/,          # PATH manipulation
+        qr/\b__END__\s*\n.*\n/s,              # Hidden code after __END__
+        qr/\b__DATA__\s*\n.*\n/s,             # Hidden data after __DATA__
+    );
+
+    my @violations = ();
+    for my $pattern (@dangerous_patterns) {
+        if ($content =~ /$pattern/) {
+            my $match = $&;
+            $match =~ s/\n.*//s; # Only show first line if multiline
+            push @violations, $match;
+        }
+    }
+
+    # Check for network operations (should not be in migrations)
+    my @network_patterns = (
+        qr/use\s+LWP::/,
+        qr/use\s+HTTP::/,
+        qr/use\s+Net::/,
+        qr/use\s+Socket/,
+        qr/\bconnect\s*\(/,
+        qr/\bgethostby/,
+    );
+
+    for my $pattern (@network_patterns) {
+        if ($content =~ /$pattern/) {
+            push @violations, "Network operation detected: $&";
+        }
+    }
+
+    # If violations found, reject the file
+    if (@violations) {
+        if ($logger) {
+            $logger->error("Perl migration file contains dangerous constructs: $abs_file");
+            for my $violation (@violations) {
+                $logger->error("  - Dangerous pattern: $violation");
+            }
+        }
+        return undef;
+    }
+
+    # Additional check: Must contain database-related operations
+    unless ($content =~ /\$dbh|DBI|database/i) {
+        if ($logger) {
+            $logger->warn("Perl migration file does not appear to contain database operations: $abs_file");
+        }
+        # Warning only - don't reject, as some migrations might be edge cases
+    }
+
+    # All validations passed
     return $abs_file;
 }
 
