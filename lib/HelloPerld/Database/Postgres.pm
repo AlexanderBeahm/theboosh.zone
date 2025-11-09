@@ -255,7 +255,7 @@ sub run_migrations {
             $success = apply_migration($dbh, $version, $description, $sql, $logger);
         } elsif ($type eq 'perl') {
             # Execute Perl migration script
-            $success = execute_perl_migration($dbh, $file, $version, $description, $logger);
+            $success = execute_perl_migration($dbh, $file, $version, $description, $logger, $migration_dir);
         }
 
         if ($success) {
@@ -291,11 +291,69 @@ sub extract_migration_info {
     return (undef, undef, undef);
 }
 
+sub _validate_migration_file {
+    my ($file, $migration_dir, $logger) = @_;
+
+    # Use File::Spec for secure path operations
+    use Cwd qw(abs_path);
+    use File::Spec::Functions qw(canonpath);
+    use File::Basename qw(basename);
+
+    # Determine migration directory - default to 'migrations' if not provided
+    $migration_dir ||= 'migrations';
+
+    # Get absolute paths for comparison
+    my $abs_file = abs_path($file);
+    my $abs_migration_dir = abs_path($migration_dir);
+
+    # Check that both paths resolved successfully
+    unless ($abs_file && $abs_migration_dir) {
+        if ($logger) {
+            $logger->error("Could not resolve paths - file: $file, migration_dir: $migration_dir");
+        }
+        return undef;
+    }
+
+    # Ensure file is within migration directory (prevent path traversal)
+    unless ($abs_file =~ /^\Q$abs_migration_dir\E/) {
+        if ($logger) {
+            $logger->error("Migration file outside of migration directory: $file");
+        }
+        return undef;
+    }
+
+    # Validate migration filename format (must be NNN_name.pl)
+    my $filename = basename($file);
+    unless ($filename =~ /^\d{3}_[a-z0-9_]+\.pl$/) {
+        if ($logger) {
+            $logger->error("Invalid migration filename format: $filename (must be NNN_name.pl)");
+        }
+        return undef;
+    }
+
+    # Check that file exists and is readable
+    unless (-f $abs_file && -r $abs_file) {
+        if ($logger) {
+            $logger->error("Migration file not found or not readable: $abs_file");
+        }
+        return undef;
+    }
+
+    # All validations passed - return the absolute path
+    return $abs_file;
+}
+
 sub execute_perl_migration {
-    my ($dbh, $file, $version, $description, $logger) = @_;
+    my ($dbh, $file, $version, $description, $logger, $migration_dir) = @_;
 
     my $success = 0;
     eval {
+        # Security: Validate migration file before execution
+        my $validated_file = _validate_migration_file($file, $migration_dir, $logger);
+        unless ($validated_file) {
+            die "Migration file failed security validation: $file";
+        }
+
         if ($logger) {
             $logger->info("Executing Perl migration $version: $description");
         }
@@ -305,8 +363,8 @@ sub execute_perl_migration {
         local $ENV{MIGRATION_VERSION} = $version;
         local $ENV{MIGRATION_DESCRIPTION} = $description;
 
-        # Execute the Perl script and capture the result
-        my $result = system("perl", $file);
+        # Execute the Perl script with taint mode for extra security
+        my $result = system("perl", "-T", $validated_file);
 
         if ($result != 0) {
             die "Perl migration script failed with exit code: $result";
