@@ -316,30 +316,34 @@ sub startup {
     # Add security headers
     $self->hook(after_dispatch => sub {
         my $c = shift;
+        my $path = $c->req->url->path->to_string;
 
-        # Basic security headers
+        # Basic security headers (apply to all routes)
         $c->res->headers->header('X-Frame-Options' => 'DENY');
         $c->res->headers->header('X-Content-Type-Options' => 'nosniff');
         $c->res->headers->header('X-XSS-Protection' => '1; mode=block');
         $c->res->headers->header('Referrer-Policy' => 'strict-origin-when-cross-origin');
 
-        # Content Security Policy - Modern XSS protection
-        my $csp = join('; ',
-            "default-src 'self'",                           # Only allow resources from same origin by default
-            "script-src 'self'",                            # Only scripts from same origin (no inline, no eval)
-            "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
-            "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
-            "font-src 'self'",                              # Web fonts from same origin only
-            "connect-src 'self'",                           # AJAX/fetch only to same origin (API calls)
-            "media-src 'self'",                             # Audio/video from same origin only
-            "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
-            "base-uri 'self'",                              # Restrict <base> tag to same origin
-            "form-action 'self'",                           # Forms can only submit to same origin
-            "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
-            "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
-        );
+        # Skip CSP for Swagger UI (needs inline scripts) but apply to all other routes
+        unless ($path =~ m{^/swagger}) {
+            # Content Security Policy - Modern XSS protection
+            my $csp = join('; ',
+                "default-src 'self'",                           # Only allow resources from same origin by default
+                "script-src 'self'",                            # Only scripts from same origin (no inline, no eval)
+                "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
+                "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
+                "font-src 'self'",                              # Web fonts from same origin only
+                "connect-src 'self'",                           # AJAX/fetch only to same origin (API calls)
+                "media-src 'self'",                             # Audio/video from same origin only
+                "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
+                "base-uri 'self'",                              # Restrict <base> tag to same origin
+                "form-action 'self'",                           # Forms can only submit to same origin
+                "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
+                "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
+            );
 
-        $c->res->headers->header('Content-Security-Policy' => $csp);
+            $c->res->headers->header('Content-Security-Policy' => $csp);
+        }
     });
 
     # Log startup

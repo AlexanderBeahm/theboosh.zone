@@ -109,10 +109,11 @@
     "/api/auth/logout": {
       "post": {
         "summary": "Admin Logout",
-        "description": "End admin session",
+        "description": "End admin session. Requires valid CSRF token in request body or X-CSRF-Token header.",
         "operationId": "adminLogout",
         "x-mojo-to": "Auth#logout",
         "tags": ["Authentication"],
+        "security": [{ "sessionAuth": [] }],
         "responses": {
           "200": {
             "description": "Logout successful",
@@ -121,7 +122,8 @@
                 "schema": { "$ref": "#/components/schemas/SuccessResponse" }
               }
             }
-          }
+          },
+          "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
         }
       }
     },
@@ -141,6 +143,58 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/csrf-token": {
+      "get": {
+        "summary": "Get CSRF Token",
+        "description": "Get a fresh CSRF token for authenticated users to use with state-changing operations",
+        "operationId": "getCsrfToken",
+        "x-mojo-to": "Auth#csrf_token",
+        "tags": ["Authentication"],
+        "security": [{ "sessionAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "CSRF token retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CsrfTokenResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "summary": "Change Admin Password",
+        "description": "Change the password for the authenticated admin user (requires CSRF token)",
+        "operationId": "changePassword",
+        "x-mojo-to": "Auth#change_password",
+        "tags": ["Authentication"],
+        "security": [{ "sessionAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
         }
       }
     },
@@ -352,7 +406,7 @@
       },
       "post": {
         "summary": "Create Article",
-        "description": "Create a new article (admin only)",
+        "description": "Create a new article (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
         "operationId": "createArticle",
         "x-mojo-to": "Articles#create",
         "tags": ["Admin - Articles"],
@@ -480,7 +534,7 @@
     "/api/admin/media/upload": {
       "post": {
         "summary": "Upload Media File",
-        "description": "Upload an image or media file (admin only)",
+        "description": "Upload an image or media file (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
         "operationId": "uploadMedia",
         "x-mojo-to": "Media#upload",
         "tags": ["Admin - Media"],
@@ -735,6 +789,10 @@
               "username": { "type": "string" },
               "email": { "type": "string" }
             }
+          },
+          "csrf_token": {
+            "type": "string",
+            "description": "CSRF token for use with subsequent authenticated requests"
           }
         }
       },
@@ -749,6 +807,38 @@
               "username": { "type": "string" },
               "email": { "type": "string" }
             }
+          },
+          "csrf_token": {
+            "type": "string",
+            "description": "CSRF token for authenticated users (only present when authenticated=true)"
+          }
+        }
+      },
+      "CsrfTokenResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "csrf_token": {
+            "type": "string",
+            "description": "Fresh CSRF token for use with state-changing operations"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "required": ["current_password", "new_password", "csrf_token"],
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "description": "Current password for verification"
+          },
+          "new_password": {
+            "type": "string",
+            "description": "New password to set"
+          },
+          "csrf_token": {
+            "type": "string",
+            "description": "Valid CSRF token for request authentication"
           }
         }
       },
@@ -947,6 +1037,14 @@
       },
       "RateLimited": {
         "description": "Too many requests",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "CsrfTokenInvalid": {
+        "description": "CSRF token is missing, invalid, or expired",
         "content": {
           "application/json": {
             "schema": { "$ref": "#/components/schemas/ErrorResponse" }
