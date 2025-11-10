@@ -5,28 +5,12 @@ use warnings;
 
 our $VERSION = '1.0.0';
 
-use HelloPerld::Database::Postgres;
-
-sub new {
-    my ($class, %args) = @_;
-
-    my $self = {
-        logger => $args{logger},
-        db_config => $args{db_config} || {},
-    };
-
-    return bless $self, $class;
-}
+use parent 'HelloPerld::Model::Base';
 
 sub get_all {
     my ($self, %params) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $limit = $params{limit} || 100;
@@ -84,12 +68,7 @@ sub get_all {
 sub get_by_id {
     my ($self, $id) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $sql = q{
@@ -153,12 +132,7 @@ sub get_by_id {
 sub get_by_slug {
     my ($self, $slug) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $sql = q{
@@ -201,12 +175,7 @@ sub get_by_slug {
 sub get_by_name {
     my ($self, $name) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $sql = q{
@@ -256,12 +225,7 @@ sub create {
         $tag_data = { @args };
     }
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     # Generate slug from name if not provided
@@ -309,12 +273,7 @@ sub update {
         $tag_data = { @args };
     }
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $rows_affected;
@@ -345,12 +304,7 @@ sub update {
 sub delete {
     my ($self, $id) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $rows_affected;
@@ -376,12 +330,7 @@ sub delete {
 sub get_tag_usage_count {
     my ($self, $tag_id) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return 0 unless $dbh;
 
     my $sql = q{
@@ -417,12 +366,7 @@ sub get_popular_tags {
 
     $limit ||= 10;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return [] unless $dbh;
 
     my $sql = q{
@@ -468,12 +412,7 @@ sub search {
 
     $limit ||= 20;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return [] unless $dbh;
 
     # Security: Escape SQL wildcards to prevent wildcard injection
@@ -571,12 +510,7 @@ sub generate_slug {
 sub get_count {
     my ($self) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return 0 unless $dbh;
 
     my $sql = "SELECT COUNT(*) FROM tags";
@@ -605,12 +539,7 @@ sub get_count {
 sub delete_orphaned_tags {
     my ($self) = @_;
 
-    my $dbh;
-    if ($self->{db_config} && %{$self->{db_config}}) {
-        $dbh = HelloPerld::Database::Postgres::get_connection_from_config($self->{logger}, $self->{db_config});
-    } else {
-        $dbh = HelloPerld::Database::Postgres::get_connection($self->{logger});
-    }
+    my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $deleted_count = 0;

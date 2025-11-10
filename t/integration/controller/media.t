@@ -31,11 +31,13 @@ subtest 'admin media operations - with authentication' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $admin_user,
         password => $admin_pass
-    })->status_is(200, 'Login successful');
+    })->status_is(200, 'Login successful')->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # List media (should work even if empty)
     $t->get_ok('/api/admin/media')
@@ -46,8 +48,8 @@ subtest 'admin media operations - with authentication' => sub {
     my $json = $t->tx->res->json;
     is(ref $json->{media}, 'ARRAY', 'Media is an array');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'media pagination and filtering' => sub {
@@ -58,11 +60,13 @@ subtest 'media pagination and filtering' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Test pagination parameters
     $t->get_ok('/api/admin/media?page=1&limit=10')
@@ -80,8 +84,8 @@ subtest 'media pagination and filtering' => sub {
       ->status_is(200)
       ->json_has('/media', 'Type filter accepted');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'get media by id - not found' => sub {
@@ -92,19 +96,21 @@ subtest 'get media by id - not found' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Try to get nonexistent media
     $t->get_ok('/api/admin/media/999999')
       ->status_is(404, 'Nonexistent media returns 404')
       ->json_has('/error', 'Error message included');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 # Note: Full file upload testing requires multipart form data with actual files
@@ -117,19 +123,21 @@ subtest 'media upload endpoint structure' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Try to upload without file (should fail validation)
-    $t->post_ok('/api/admin/media/upload')
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token})
       ->status_is(400, 'Upload without file returns 400')
       ->json_has('/error', 'Error message included');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'complete media upload and deletion workflow' => sub {
@@ -140,11 +148,13 @@ subtest 'complete media upload and deletion workflow' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200, 'Admin login successful');
+    })->status_is(200, 'Admin login successful')->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create a small but valid test JPEG (more reliably detected by File::Type)
     # This is a minimal 1x1 JPEG that should be properly recognized
@@ -152,7 +162,7 @@ subtest 'complete media upload and deletion workflow' => sub {
     my $base64_data = "data:image/jpeg;base64,$valid_jpeg_base64";
 
     # Upload test image via base64
-    my $upload_response = $t->post_ok('/api/admin/media/upload' => form => {
+    my $upload_response = $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $base64_data,
         base64_filename => 'test-image.jpg',
         alt_text => 'Test image for deletion',
@@ -211,7 +221,7 @@ subtest 'complete media upload and deletion workflow' => sub {
     }
 
     # Now test deletion
-    $t->delete_ok("/api/admin/media/$media_id")
+    $t->delete_ok("/api/admin/media/$media_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Media deletion returns 200')
       ->json_is('/success' => 1, 'Deletion marked as successful');
 
@@ -231,8 +241,8 @@ subtest 'complete media upload and deletion workflow' => sub {
         pass("Physical file successfully deleted");
     }
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'deletion error handling' => sub {
@@ -243,14 +253,16 @@ subtest 'deletion error handling' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Test deletion of non-existent media
-    $t->delete_ok('/api/admin/media/999999')
+    $t->delete_ok('/api/admin/media/999999' => {'X-CSRF-Token' => $csrf_token})
       ->status_is(404, 'Deleting non-existent media returns 404')
       ->json_is('/success' => 0)
       ->json_has('/error', 'Error message provided');
@@ -259,8 +271,8 @@ subtest 'deletion error handling' => sub {
     $t->delete_ok('/api/admin/media/')
       ->status_is(404, 'Deleting without ID returns 404');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'SVG security validation tests' => sub {
@@ -271,18 +283,20 @@ subtest 'SVG security validation tests' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200, 'Admin login successful');
+    })->status_is(200, 'Admin login successful')->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Test 1: SVG with script tags should be rejected
     my $malicious_svg_script = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert("xss")</script><rect width="100" height="100"/></svg>';
     my $base64_malicious_script = encode_base64($malicious_svg_script, '');
     my $data_url_script = "data:image/svg+xml;base64,$base64_malicious_script";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_script,
         base64_filename => 'malicious-script.svg',
         alt_text => 'Test SVG with script',
@@ -295,7 +309,7 @@ subtest 'SVG security validation tests' => sub {
     my $base64_malicious_onclick = encode_base64($malicious_svg_onclick, '');
     my $data_url_onclick = "data:image/svg+xml;base64,$base64_malicious_onclick";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_onclick,
         base64_filename => 'malicious-onclick.svg',
         alt_text => 'Test SVG with onclick',
@@ -307,7 +321,7 @@ subtest 'SVG security validation tests' => sub {
     my $base64_malicious_spaced = encode_base64($malicious_svg_spaced, '');
     my $data_url_spaced = "data:image/svg+xml;base64,$base64_malicious_spaced";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_spaced,
         base64_filename => 'malicious-spaced.svg',
         alt_text => 'Test SVG with spaced event handler',
@@ -319,7 +333,7 @@ subtest 'SVG security validation tests' => sub {
     my $base64_malicious_js = encode_base64($malicious_svg_js, '');
     my $data_url_js = "data:image/svg+xml;base64,$base64_malicious_js";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_js,
         base64_filename => 'malicious-javascript.svg',
         alt_text => 'Test SVG with javascript URL',
@@ -331,7 +345,7 @@ subtest 'SVG security validation tests' => sub {
     my $base64_malicious_foreign = encode_base64($malicious_svg_foreign, '');
     my $data_url_foreign = "data:image/svg+xml;base64,$base64_malicious_foreign";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_foreign,
         base64_filename => 'malicious-foreign.svg',
         alt_text => 'Test SVG with foreign object',
@@ -343,7 +357,7 @@ subtest 'SVG security validation tests' => sub {
     my $base64_malicious_expression = encode_base64($malicious_svg_expression, '');
     my $data_url_expression = "data:image/svg+xml;base64,$base64_malicious_expression";
 
-    $t->post_ok('/api/admin/media/upload' => form => {
+    $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token} => form => {
         base64_data => $data_url_expression,
         base64_filename => 'malicious-expression.svg',
         alt_text => 'Test SVG with CSS expression',
@@ -371,7 +385,7 @@ subtest 'SVG security validation tests' => sub {
         my $upload_json = $t->tx->res->json;
         my $media_id = $upload_json->{media}{id};
         if ($media_id) {
-            $t->delete_ok("/api/admin/media/$media_id")
+            $t->delete_ok("/api/admin/media/$media_id" => {'X-CSRF-Token' => $csrf_token})
               ->status_is(200, 'Test SVG cleanup successful');
         }
     } else {
@@ -381,8 +395,8 @@ subtest 'SVG security validation tests' => sub {
         diag("Error response: " . ($error_response->{error} || 'No error message'));
     }
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'input validation tests for alt_text and caption' => sub {
@@ -393,11 +407,13 @@ subtest 'input validation tests for alt_text and caption' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200, 'Admin login successful');
+    })->status_is(200, 'Admin login successful')->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create test image for validation
     my $valid_jpeg_base64 = '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==';
@@ -459,8 +475,8 @@ subtest 'input validation tests for alt_text and caption' => sub {
         $t->delete_ok("/api/admin/media/$media_id")->status_is(200);
     }
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 done_testing();
