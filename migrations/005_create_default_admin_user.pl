@@ -4,7 +4,13 @@ use strict;
 use warnings;
 
 use FindBin;
-BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
+BEGIN {
+    # Clean environment for taint mode compliance
+    $ENV{PATH} = '/usr/local/bin:/usr/bin:/bin';
+    delete @ENV{qw(IFS CDPATH ENV BASH_ENV)};
+
+    unshift @INC, "$FindBin::Bin/../lib";
+}
 
 use File::Spec;
 
@@ -33,7 +39,12 @@ unless (-x $script_path) {
 # Execute the admin user creation script
 print "Executing admin user creation script...\n";
 
-my $result = system("perl", $script_path);
+# Untaint script path for taint mode compliance
+my $untainted_script_path = $script_path;
+$untainted_script_path =~ /^(.+)$/ or die "ERROR: Unable to untaint script path: $script_path\n";
+$untainted_script_path = $1;
+
+my $result = system("perl", $untainted_script_path);
 
 if ($result == 0) {
     print "✅ Admin user migration completed successfully\n";
