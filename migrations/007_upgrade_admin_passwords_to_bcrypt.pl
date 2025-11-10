@@ -1,13 +1,25 @@
 #!/usr/bin/env perl
 
+# Add library path BEFORE any other use statements
+BEGIN {
+    use FindBin;
+    use File::Spec;
+    use Cwd qw(abs_path);
+
+    # Calculate library path relative to migration script location
+    my $lib_path = File::Spec->catdir($FindBin::Bin, '..', 'lib');
+    $lib_path = abs_path($lib_path);
+
+    # Untaint for taint mode compatibility
+    $lib_path =~ /^(.+)$/ or die "Unable to untaint library path";
+    $lib_path = $1;
+
+    # Add to library search path
+    unshift @INC, $lib_path;
+}
+
 use strict;
 use warnings;
-
-use FindBin;
-# Untaint the library path for taint mode compatibility
-# Use absolute path to avoid taint issues
-my $lib_path = "/usr/src/hello-perld/lib";
-BEGIN { unshift @INC, $lib_path }
 
 use HelloPerld::Database::Postgres;
 use Digest::SHA qw(sha256_hex);

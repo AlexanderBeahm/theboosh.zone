@@ -56,10 +56,37 @@ sub startup {
         $c->res->headers->header('X-Request-ID' => $request_id);
     });
 
+    # Helper to generate unique session ID for anonymous users
+    $self->helper(_get_csrf_session_id => sub {
+        my $c = shift;
+
+        # For authenticated users, use their admin_user_id
+        if (my $admin_id = $c->session('admin_user_id')) {
+            return $admin_id;
+        }
+
+        # For anonymous users, generate or retrieve unique session ID
+        my $anonymous_id = $c->session('csrf_session_id');
+        unless ($anonymous_id) {
+            # Generate unique ID: timestamp + random bytes
+            my $random_bytes = '';
+            for (1..16) {
+                $random_bytes .= chr(int(rand(256)));
+            }
+            $anonymous_id = 'anon_' . time() . '_' . unpack('H*', $random_bytes);
+            $c->session('csrf_session_id' => $anonymous_id);
+
+            # Set expiration for anonymous sessions (24 hours)
+            $c->session(expiration => 86400);
+        }
+
+        return $anonymous_id;
+    });
+
     # Add CSRF protection helpers
     $self->helper(csrf_token => sub {
         my $c = shift;
-        my $session_id = $c->session('admin_user_id') || 'anonymous';
+        my $session_id = $c->_get_csrf_session_id;
         my $secret_key = $c->app->secrets->[0];
 
         return HelloPerld::Security::CSRF::generate_token($session_id, $secret_key);
@@ -79,7 +106,7 @@ sub startup {
         return 0 unless $token; # No token provided
 
         # Get session ID and secret
-        my $session_id = $c->session('admin_user_id') || 'anonymous';
+        my $session_id = $c->_get_csrf_session_id;
         my $secret_key = $c->app->secrets->[0];
 
         # Validate token (1 hour max age)
