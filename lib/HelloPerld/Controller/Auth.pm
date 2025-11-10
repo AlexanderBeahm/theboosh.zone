@@ -265,14 +265,14 @@ sub _get_user_by_id {
         WHERE id = ? AND is_active = true
     };
 
+    my $user;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($user_id);
 
-        my $user = $sth->fetchrow_hashref();
+        $user = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
-
-        return $user;
     };
 
     if ($@) {
@@ -280,6 +280,8 @@ sub _get_user_by_id {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $user;
 }
 
 sub _hash_password {
