@@ -237,10 +237,21 @@ sub create {
     };
 
     if ($@) {
-        $dbh->rollback();
+        # Safely rollback transaction, catching any rollback exceptions
+        if ($dbh) {
+            eval { $dbh->rollback(); };
+            if ($@) {
+                if ($self->{logger}) {
+                    $self->{logger}->error("Rollback failed during article creation: $@");
+                }
+            }
+        }
+
         if ($self->{logger}) {
             $self->{logger}->error("Failed to create article: $@");
         }
+
+        # Always disconnect, even if rollback failed
         $dbh->disconnect() if $dbh;
         return undef;
     }
@@ -335,10 +346,21 @@ sub update {
     };
 
     if ($@) {
-        $dbh->rollback();
+        # Safely rollback transaction, catching any rollback exceptions
+        if ($dbh) {
+            eval { $dbh->rollback(); };
+            if ($@) {
+                if ($self->{logger}) {
+                    $self->{logger}->error("Rollback failed during article update: $@");
+                }
+            }
+        }
+
         if ($self->{logger}) {
             $self->{logger}->error("Failed to update article ID '$id': $@");
         }
+
+        # Always disconnect, even if rollback failed
         $dbh->disconnect() if $dbh;
         return undef;
     }

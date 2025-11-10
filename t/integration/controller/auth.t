@@ -30,16 +30,18 @@ subtest 'login validation - missing username' => sub {
     $t->post_ok('/api/auth/login' => json => {
         password => 'somepassword'
     })
-      ->status_is(400, 'Missing username returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Missing username returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'login validation - missing password' => sub {
     $t->post_ok('/api/auth/login' => json => {
         username => 'someuser'
     })
-      ->status_is(400, 'Missing password returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Missing password returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'login validation - empty credentials' => sub {
@@ -47,7 +49,9 @@ subtest 'login validation - empty credentials' => sub {
         username => '',
         password => ''
     })
-      ->status_is(400, 'Empty credentials return 400');
+      ->status_is(422, 'Empty credentials return 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'logout endpoint' => sub {

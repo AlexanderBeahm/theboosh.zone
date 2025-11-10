@@ -7,6 +7,7 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Database::Postgres;
+use HelloPerld::Util::ErrorResponse qw(error_response);
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
@@ -21,18 +22,22 @@ sub login {
     my $password = $self->param('password') || $body->{password};
 
     unless ($username && $password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Username and password are required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Username and password are required',
+            code => 'AUTH001',
+            details => {
+                missing_username => !$username,
+                missing_password => !$password
+            }
+        );
     }
 
     # Rate limiting check
     if ($self->_is_rate_limited($username)) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Too many login attempts. Please try again later.'
-        }, status => 429);
+        return error_response($self, 'rate_limit', 'Too many login attempts. Please try again later.',
+            code => 'AUTH002',
+            details => { username => $username },
+            retry_after => 900 # 15 minutes
+        );
     }
 
     my $user = $self->_authenticate_user($username, $password);
@@ -68,10 +73,11 @@ sub login {
 
         $self->app->logger_instance->warn("Failed login attempt for username '$username'");
 
-        return $self->render(json => {
-            success => 0,
-            error => 'Invalid username or password'
-        }, status => 401);
+        return error_response($self, 'unauthorized', 'Invalid username or password',
+            code => 'AUTH003',
+            details => { username => $username },
+            skip_logging => 1 # Already logged above
+        );
     }
 }
 
@@ -80,10 +86,9 @@ sub logout {
 
     # CSRF protection for logout
     unless ($self->csrf_protect) {
-        return $self->render(json => {
-            success => 0,
-            error => 'CSRF validation failed'
-        }, status => 403);
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
     }
 
     my $username = $self->session('admin_username') || 'unknown';
@@ -123,18 +128,16 @@ sub change_password {
     my $self = shift;
 
     unless ($self->_is_authenticated()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Authentication required'
-        }, status => 401);
+        return error_response($self, 'unauthorized', 'Authentication required',
+            code => 'AUTH004'
+        );
     }
 
     # CSRF protection for password change
     unless ($self->csrf_protect) {
-        return $self->render(json => {
-            success => 0,
-            error => 'CSRF validation failed'
-        }, status => 403);
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
     }
 
     my $current_password = $self->param('current_password');
@@ -142,24 +145,33 @@ sub change_password {
     my $confirm_password = $self->param('confirm_password');
 
     unless ($current_password && $new_password && $confirm_password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'All password fields are required'
-        }, status => 400);
+        my @missing_fields;
+        push @missing_fields, 'current_password' unless $current_password;
+        push @missing_fields, 'new_password' unless $new_password;
+        push @missing_fields, 'confirm_password' unless $confirm_password;
+
+        return error_response($self, 'validation', 'All password fields are required',
+            code => 'AUTH005',
+            details => { missing_fields => \@missing_fields }
+        );
     }
 
     if ($new_password ne $confirm_password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'New password and confirmation do not match'
-        }, status => 400);
+        return error_response($self, 'validation', 'New password and confirmation do not match',
+            code => 'AUTH006',
+            details => { field => 'confirm_password' }
+        );
     }
 
     if (length($new_password) < 8) {
-        return $self->render(json => {
-            success => 0,
-            error => 'New password must be at least 8 characters long'
-        }, status => 400);
+        return error_response($self, 'validation', 'New password must be at least 8 characters long',
+            code => 'AUTH007',
+            details => {
+                field => 'new_password',
+                current_length => length($new_password),
+                minimum_length => 8
+            }
+        );
     }
 
     my $user_id = $self->session('admin_user_id');
@@ -168,10 +180,10 @@ sub change_password {
     # Verify current password
     my $user = $self->_get_user_by_id($user_id);
     unless ($user && $self->_verify_password($current_password, $user->{password_hash})) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Current password is incorrect'
-        }, status => 400);
+        return error_response($self, 'validation', 'Current password is incorrect',
+            code => 'AUTH008',
+            details => { field => 'current_password' }
+        );
     }
 
     # Update password
@@ -183,10 +195,10 @@ sub change_password {
             message => 'Password changed successfully'
         });
     } else {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to update password'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to update password',
+            code => 'DB005',
+            details => { user_id => $user_id }
+        );
     }
 }
 
@@ -492,10 +504,9 @@ sub require_auth {
     my ($self, $controller, $action) = @_;
 
     unless ($self->_is_authenticated()) {
-        $self->render(json => {
-            success => 0,
-            error => 'Authentication required'
-        }, status => 401);
+        error_response($self, 'unauthorized', 'Authentication required',
+            code => 'AUTH004'
+        );
         return undef;  # Explicitly stop further processing
     }
 

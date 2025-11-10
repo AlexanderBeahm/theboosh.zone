@@ -67,8 +67,9 @@ subtest 'search tags endpoint' => sub {
 
 subtest 'search tags - empty query' => sub {
     $t->get_ok('/api/tags/search')
-      ->status_is(400, 'Search without query returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Search without query returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'get tag by slug - nonexistent' => sub {

@@ -107,7 +107,8 @@ subtest 'get media by id - not found' => sub {
     # Try to get nonexistent media
     $t->get_ok('/api/admin/media/999999')
       ->status_is(404, 'Nonexistent media returns 404')
-      ->json_has('/error', 'Error message included');
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 
     # Logout with CSRF token
     $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
@@ -133,8 +134,9 @@ subtest 'media upload endpoint structure' => sub {
 
     # Try to upload without file (should fail validation)
     $t->post_ok('/api/admin/media/upload' => {'X-CSRF-Token' => $csrf_token})
-      ->status_is(400, 'Upload without file returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Upload without file returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 
     # Logout with CSRF token
     $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
@@ -300,7 +302,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_script,
         base64_filename => 'malicious-script.svg',
         alt_text => 'Test SVG with script',
-    })->status_is(400, 'SVG with script tags rejected')
+    })->status_is(422, 'SVG with script tags rejected')
       ->json_is('/success' => 0)
       ->json_has('/error', 'Error message provided for malicious SVG');
 
@@ -313,7 +315,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_onclick,
         base64_filename => 'malicious-onclick.svg',
         alt_text => 'Test SVG with onclick',
-    })->status_is(400, 'SVG with onclick handler rejected')
+    })->status_is(422, 'SVG with onclick handler rejected')
       ->json_is('/success' => 0);
 
     # Test 3: SVG with event handlers with spaces should be rejected (enhanced regex test)
@@ -325,7 +327,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_spaced,
         base64_filename => 'malicious-spaced.svg',
         alt_text => 'Test SVG with spaced event handler',
-    })->status_is(400, 'SVG with spaced event handler rejected')
+    })->status_is(422, 'SVG with spaced event handler rejected')
       ->json_is('/success' => 0);
 
     # Test 4: SVG with javascript URLs should be rejected
@@ -337,7 +339,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_js,
         base64_filename => 'malicious-javascript.svg',
         alt_text => 'Test SVG with javascript URL',
-    })->status_is(400, 'SVG with javascript URL rejected')
+    })->status_is(422, 'SVG with javascript URL rejected')
       ->json_is('/success' => 0);
 
     # Test 5: SVG with foreign objects should be rejected
@@ -349,7 +351,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_foreign,
         base64_filename => 'malicious-foreign.svg',
         alt_text => 'Test SVG with foreign object',
-    })->status_is(400, 'SVG with foreign object rejected')
+    })->status_is(422, 'SVG with foreign object rejected')
       ->json_is('/success' => 0);
 
     # Test 6: SVG with CSS expressions should be rejected
@@ -361,7 +363,7 @@ subtest 'SVG security validation tests' => sub {
         base64_data => $data_url_expression,
         base64_filename => 'malicious-expression.svg',
         alt_text => 'Test SVG with CSS expression',
-    })->status_is(400, 'SVG with CSS expression rejected')
+    })->status_is(422, 'SVG with CSS expression rejected')
       ->json_is('/success' => 0);
 
     # Test 7: Clean SVG should be accepted

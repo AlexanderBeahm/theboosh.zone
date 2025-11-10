@@ -45,7 +45,7 @@ subtest 'articles pagination with custom limit' => sub {
 subtest 'articles pagination limit validation' => sub {
     # Test max limit (should return error when exceeding 100)
     $t->get_ok('/api/articles?limit=200')
-      ->status_is(400, 'Excessive limit returns 400')
+      ->status_is(422, 'Excessive limit returns 422 (validation error)')
       ->json_has('/error', 'Error message included');
 };
 

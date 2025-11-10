@@ -56,7 +56,10 @@ sub create {
     };
 
     if ($@) {
-        warn "Error creating media record: $@";
+        if ($self->{logger}) {
+            $self->{logger}->error("Error creating media record: $@");
+        }
+        $dbh->disconnect() if $dbh;
         return undef;
     }
 
@@ -124,7 +127,10 @@ sub get_all {
     };
 
     if ($@) {
-        warn "Error fetching media: $@";
+        if ($self->{logger}) {
+            $self->{logger}->error("Error fetching media: $@");
+        }
+        $dbh->disconnect() if $dbh;
         return undef;
     }
 
@@ -178,7 +184,10 @@ sub get_by_id {
     };
 
     if ($@) {
-        warn "Error fetching media by ID: $@";
+        if ($self->{logger}) {
+            $self->{logger}->error("Error fetching media by ID: $@");
+        }
+        $dbh->disconnect() if $dbh;
         return undef;
     }
 
@@ -229,7 +238,10 @@ sub update {
     };
 
     if ($@) {
-        warn "Error updating media: $@";
+        if ($self->{logger}) {
+            $self->{logger}->error("Error updating media: $@");
+        }
+        $dbh->disconnect() if $dbh;
         return undef;
     }
 
@@ -263,7 +275,10 @@ sub delete {
     };
 
     if ($@) {
-        warn "Error deleting media: $@";
+        if ($self->{logger}) {
+            $self->{logger}->error("Error deleting media: $@");
+        }
+        $dbh->disconnect() if $dbh;
         return undef;
     }
 

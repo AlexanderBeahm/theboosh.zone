@@ -45,6 +45,17 @@ sub startup {
         return $c->app->config->{database};
     });
 
+    # Add request ID correlation middleware
+    $self->hook(before_dispatch => sub {
+        my $c = shift;
+
+        # Generate or use existing request ID
+        my $request_id = $c->request_id();
+
+        # Set X-Request-ID in response headers for tracing
+        $c->res->headers->header('X-Request-ID' => $request_id);
+    });
+
     # Add CSRF protection helpers
     $self->helper(csrf_token => sub {
         my $c = shift;
@@ -82,6 +93,34 @@ sub startup {
             csrf_token => $c->csrf_token,
             expires_in => 3600 # 1 hour
         };
+    });
+
+    # Helper for request ID generation and tracking
+    $self->helper(request_id => sub {
+        my $c = shift;
+
+        # Check if request ID already exists in headers or stash
+        my $request_id = $c->req->headers->header('X-Request-ID') ||
+                        $c->stash('request_id');
+
+        # Generate new request ID if not present
+        unless ($request_id) {
+            $request_id = $c->_generate_request_id();
+            $c->stash(request_id => $request_id);
+        }
+
+        return $request_id;
+    });
+
+    $self->helper(_generate_request_id => sub {
+        # Simple UUID-like request ID generator
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            int(rand(0x10000)), int(rand(0x10000)),
+            int(rand(0x10000)),
+            int(rand(0x10000)) | 0x4000,
+            int(rand(0x10000)) | 0x8000,
+            int(rand(0x10000)), int(rand(0x10000)), int(rand(0x10000))
+        );
     });
 
     # Configure template path
