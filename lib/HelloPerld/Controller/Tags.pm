@@ -7,6 +7,7 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Model::Tag;
+use HelloPerld::Util::ErrorResponse qw(error_response);
 use JSON qw(decode_json);
 
 sub get_all {
@@ -27,17 +28,17 @@ sub get_all {
 
     # Validate parameters
     if ($limit > 100) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Limit cannot exceed 100'
-        }, status => 400);
+        return error_response($self, 'validation', 'Limit cannot exceed 100',
+            code => 'VAL002',
+            details => { field => 'limit', value => $limit, max => 100 }
+        );
     }
 
     unless ($order_by =~ /^(name|usage)$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Order must be either "name" or "usage"'
-        }, status => 400);
+        return error_response($self, 'validation', 'Order must be either "name" or "usage"',
+            code => 'VAL009',
+            details => { field => 'order', value => $order_by, allowed_values => ['name', 'usage'] }
+        );
     }
 
     # Get tags
@@ -48,10 +49,9 @@ sub get_all {
     );
 
     unless (defined $tags) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to retrieve tags'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to retrieve tags',
+            code => 'DB006'
+        );
     }
 
     # Get total count for pagination
@@ -79,10 +79,10 @@ sub get_popular {
 
     # Validate limit
     if ($limit > 50) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Limit cannot exceed 50'
-        }, status => 400);
+        return error_response($self, 'validation', 'Limit cannot exceed 50',
+            code => 'VAL010',
+            details => { field => 'limit', value => $limit, max => 50 }
+        );
     }
 
     my $tag_model = HelloPerld::Model::Tag->new(
@@ -92,10 +92,9 @@ sub get_popular {
     my $popular_tags = $tag_model->get_popular_tags($limit);
 
     unless (defined $popular_tags) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to retrieve popular tags'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to retrieve popular tags',
+            code => 'DB007'
+        );
     }
 
     return $self->render(json => {
@@ -110,10 +109,10 @@ sub get_by_slug {
     my $slug = $self->param('slug');
 
     unless ($slug) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag slug is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Tag slug is required',
+            code => 'VAL011',
+            details => { field => 'slug' }
+        );
     }
 
     my $tag_model = HelloPerld::Model::Tag->new(
@@ -123,10 +122,10 @@ sub get_by_slug {
     my $tag = $tag_model->get_by_slug($slug);
 
     unless ($tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Tag not found',
+            code => 'TAG001',
+            details => { slug => $slug }
+        );
     }
 
     return $self->render(json => {
@@ -141,10 +140,10 @@ sub get_by_id {
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid tag ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid tag ID is required',
+            code => 'VAL012',
+            details => { field => 'id', value => $id }
+        );
     }
 
     my $tag_model = HelloPerld::Model::Tag->new(
@@ -154,10 +153,10 @@ sub get_by_id {
     my $tag = $tag_model->get_by_id($id);
 
     unless ($tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Tag not found',
+            code => 'TAG002',
+            details => { id => $id }
+        );
     }
 
     return $self->render(json => {
@@ -173,18 +172,18 @@ sub search {
     my $limit = $self->param('limit') || 20;
 
     unless ($q) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Search query is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Search query is required',
+            code => 'VAL013',
+            details => { field => 'q' }
+        );
     }
 
     # Validate limit
     if ($limit > 50) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Limit cannot exceed 50'
-        }, status => 400);
+        return error_response($self, 'validation', 'Limit cannot exceed 50',
+            code => 'VAL010',
+            details => { field => 'limit', value => $limit, max => 50 }
+        );
     }
 
     my $tag_model = HelloPerld::Model::Tag->new(
@@ -194,10 +193,10 @@ sub search {
     my $tags = $tag_model->search($q, $limit);
 
     unless (defined $tags) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to search tags'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to search tags',
+            code => 'DB008',
+            details => { search_query => $q }
+        );
     }
 
     return $self->render(json => {
@@ -212,14 +211,21 @@ sub create {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     # Get tag data from request
     my $tag_data = $self->_parse_tag_request();
 
     unless ($tag_data && $tag_data->{name}) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag name is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Tag name is required',
+            code => 'VAL014',
+            details => { field => 'name' }
+        );
     }
 
     # Check if tag already exists
@@ -230,10 +236,10 @@ sub create {
     my $existing_tag = $tag_model->get_by_name($tag_data->{name});
 
     if ($existing_tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag with this name already exists'
-        }, status => 409);
+        return error_response($self, 'conflict', 'Tag with this name already exists',
+            code => 'TAG003',
+            details => { name => $tag_data->{name} }
+        );
     }
 
     # Generate slug if not provided
@@ -244,10 +250,10 @@ sub create {
     my $created_tag = $tag_model->create($tag_data);
 
     unless ($created_tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to create tag'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to create tag',
+            code => 'DB009',
+            details => { name => $tag_data->{name} }
+        );
     }
 
     $self->app->logger_instance->info("Tag created with ID " . $created_tag->{id} . " by admin user " . $self->session('admin_username'));
@@ -264,13 +270,20 @@ sub update {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid tag ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid tag ID is required',
+            code => 'VAL012',
+            details => { field => 'id', value => $id }
+        );
     }
 
     # Check if tag exists
@@ -281,30 +294,30 @@ sub update {
     my $existing_tag = $tag_model->get_by_id($id);
 
     unless ($existing_tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Tag not found',
+            code => 'TAG004',
+            details => { id => $id }
+        );
     }
 
     # Get updated tag data
     my $tag_data = $self->_parse_tag_request();
 
     unless ($tag_data && $tag_data->{name}) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag name is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Tag name is required',
+            code => 'VAL014',
+            details => { field => 'name' }
+        );
     }
 
     # Check if another tag with this name exists (excluding current tag)
     if ($tag_data->{name} ne $existing_tag->{name}) {
         my $duplicate_tag = $tag_model->get_by_name($tag_data->{name});
         if ($duplicate_tag && $duplicate_tag->{id} != $id) {
-            return $self->render(json => {
-                success => 0,
-                error => 'Another tag with this name already exists'
-            }, status => 409);
+            return error_response($self, 'conflict', 'Another tag with this name already exists',
+                code => 'TAG005',
+                details => { name => $tag_data->{name}, existing_id => $duplicate_tag->{id} }
+            );
         }
     }
 
@@ -317,10 +330,10 @@ sub update {
     my $rows_affected = $tag_model->update($id, $tag_data);
 
     unless ($rows_affected) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to update tag'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to update tag',
+            code => 'DB010',
+            details => { id => $id }
+        );
     }
 
     # Return updated tag
@@ -340,13 +353,20 @@ sub delete {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid tag ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid tag ID is required',
+            code => 'VAL012',
+            details => { field => 'id', value => $id }
+        );
     }
 
     my $tag_model = HelloPerld::Model::Tag->new(
@@ -358,27 +378,27 @@ sub delete {
     my $existing_tag = $tag_model->get_by_id($id);
 
     unless ($existing_tag) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Tag not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Tag not found',
+            code => 'TAG006',
+            details => { id => $id }
+        );
     }
 
     # Check if tag is in use
     if ($existing_tag->{usage_count} > 0) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Cannot delete tag that is currently in use by articles'
-        }, status => 409);
+        return error_response($self, 'conflict', 'Cannot delete tag that is currently in use by articles',
+            code => 'TAG007',
+            details => { id => $id, usage_count => $existing_tag->{usage_count} }
+        );
     }
 
     my $rows_affected = $tag_model->delete($id);
 
     unless ($rows_affected) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to delete tag'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to delete tag',
+            code => 'DB011',
+            details => { id => $id }
+        );
     }
 
     $self->app->logger_instance->info("Tag ID $id deleted by admin user " . $self->session('admin_username'));

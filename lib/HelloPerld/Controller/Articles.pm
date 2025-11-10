@@ -8,6 +8,7 @@ our $VERSION = '1.0.0';
 
 use HelloPerld::Model::Article;
 use HelloPerld::Model::Tag;
+use HelloPerld::Util::ErrorResponse qw(error_response);
 use JSON qw(decode_json);
 
 sub get_all {
@@ -42,10 +43,10 @@ sub get_all {
 
     # Validate parameters
     if ($limit > 100) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Limit cannot exceed 100'
-        }, status => 400);
+        return error_response($self, 'validation', 'Limit cannot exceed 100',
+            code => 'VAL002',
+            details => { field => 'limit', value => $limit, max => 100 }
+        );
     }
 
     # Get articles
@@ -57,10 +58,9 @@ sub get_all {
     );
 
     unless (defined $articles) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to retrieve articles'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to retrieve articles',
+            code => 'DB001'
+        );
     }
 
     # Get total count for pagination
@@ -92,10 +92,10 @@ sub get_by_slug {
     my $slug = $self->param('slug');
 
     unless ($slug) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article slug is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Article slug is required',
+            code => 'VAL001',
+            details => { field => 'slug' }
+        );
     }
 
     my $article_model = HelloPerld::Model::Article->new(
@@ -105,18 +105,18 @@ sub get_by_slug {
     my $article = $article_model->get_by_slug($slug);
 
     unless ($article) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART001',
+            details => { slug => $slug }
+        );
     }
 
     # Check if article is published (unless admin)
     if (!$article->{is_published} && !$self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART002',
+            details => { slug => $slug }
+        );
     }
 
     return $self->render(json => {
@@ -131,10 +131,10 @@ sub get_by_id {
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid article ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid article ID is required',
+            code => 'VAL003',
+            details => { field => 'id', value => $id }
+        );
     }
 
     my $article_model = HelloPerld::Model::Article->new(
@@ -144,18 +144,18 @@ sub get_by_id {
     my $article = $article_model->get_by_id($id);
 
     unless ($article) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART003',
+            details => { id => $id }
+        );
     }
 
     # Check if article is published (unless admin)
     if (!$article->{is_published} && !$self->_is_admin()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART004',
+            details => { id => $id }
+        );
     }
 
     return $self->render(json => {
@@ -169,22 +169,32 @@ sub create {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     # Get article data from request
     my $article_data = $self->_parse_article_request();
 
     unless ($article_data) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Invalid article data'
-        }, status => 400);
+        return error_response($self, 'bad_request', 'Invalid article data',
+            code => 'REQ001'
+        );
     }
 
     # Validate required fields
     unless ($article_data->{title} && $article_data->{content}) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Title and content are required'
-        }, status => 400);
+        my @missing_fields;
+        push @missing_fields, 'title' unless $article_data->{title};
+        push @missing_fields, 'content' unless $article_data->{content};
+
+        return error_response($self, 'validation', 'Required fields are missing',
+            code => 'VAL004',
+            details => { missing_fields => \@missing_fields }
+        );
     }
 
     # Process tags
@@ -205,10 +215,9 @@ sub create {
     my $created_article = $article_model->create($article_data);
 
     unless ($created_article) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to create article'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to create article',
+            code => 'DB002'
+        );
     }
 
     $self->app->logger_instance->info("Article created with ID " . $created_article->{id} . " by admin user " . $self->session('admin_username'));
@@ -225,13 +234,20 @@ sub update {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid article ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid article ID is required',
+            code => 'VAL003',
+            details => { field => 'id', value => $id }
+        );
     }
 
     # Check if article exists
@@ -242,20 +258,19 @@ sub update {
     my $existing_article = $article_model->get_by_id($id);
 
     unless ($existing_article) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART005',
+            details => { id => $id }
+        );
     }
 
     # Get updated article data
     my $article_data = $self->_parse_article_request();
 
     unless ($article_data) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Invalid article data'
-        }, status => 400);
+        return error_response($self, 'bad_request', 'Invalid article data',
+            code => 'REQ001'
+        );
     }
 
     # Process tags
@@ -274,10 +289,10 @@ sub update {
     my $rows_affected = $article_model->update($id, $article_data);
 
     unless ($rows_affected) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to update article'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to update article',
+            code => 'DB003',
+            details => { id => $id }
+        );
     }
 
     # Return updated article
@@ -297,13 +312,20 @@ sub delete {
 
     # Note: Authentication is handled by the /admin route middleware
 
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     my $id = $self->param('id');
 
     unless ($id && $id =~ /^\d+$/) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Valid article ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Valid article ID is required',
+            code => 'VAL003',
+            details => { field => 'id', value => $id }
+        );
     }
 
     my $article_model = HelloPerld::Model::Article->new(
@@ -315,19 +337,19 @@ sub delete {
     my $existing_article = $article_model->get_by_id($id);
 
     unless ($existing_article) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Article not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Article not found',
+            code => 'ART006',
+            details => { id => $id }
+        );
     }
 
     my $rows_affected = $article_model->delete($id);
 
     unless ($rows_affected) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to delete article'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to delete article',
+            code => 'DB004',
+            details => { id => $id }
+        );
     }
 
     $self->app->logger_instance->info("Article ID $id deleted by admin user " . $self->session('admin_username'));

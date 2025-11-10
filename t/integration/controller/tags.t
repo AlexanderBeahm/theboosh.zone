@@ -67,8 +67,9 @@ subtest 'search tags endpoint' => sub {
 
 subtest 'search tags - empty query' => sub {
     $t->get_ok('/api/tags/search')
-      ->status_is(400, 'Search without query returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Search without query returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'get tag by slug - nonexistent' => sub {
@@ -98,11 +99,15 @@ subtest 'admin tag CRUD - with authentication' => sub {
         password => $admin_pass
     })->status_is(200, 'Login successful');
 
+    # Get CSRF token
+    $t->get_ok('/api/csrf-token')->status_is(200);
+    my $csrf_token = $t->tx->res->json->{data}->{csrf_token};
+
     # Create a test tag
     my $test_name = 'TestTag' . time();
     my $tag_id;
 
-    $t->post_ok('/api/admin/tags' => json => {
+    $t->post_ok('/api/admin/tags' => {'X-CSRF-Token' => $csrf_token} => json => {
         name => $test_name
     })
       ->status_is(201, 'Tag created successfully')
@@ -126,14 +131,14 @@ subtest 'admin tag CRUD - with authentication' => sub {
       ->json_is('/tag/slug' => $slug, 'Slug matches');
 
     # Update the tag
-    $t->put_ok("/api/admin/tags/$tag_id" => json => {
+    $t->put_ok("/api/admin/tags/$tag_id" => {'X-CSRF-Token' => $csrf_token} => json => {
         name => "$test_name Updated"
     })
       ->status_is(200, 'Tag updated successfully')
       ->json_is('/tag/name' => "$test_name Updated", 'Name was updated');
 
     # Delete the tag
-    $t->delete_ok("/api/admin/tags/$tag_id")
+    $t->delete_ok("/api/admin/tags/$tag_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Tag deleted successfully')
       ->json_has('/message', 'Delete confirmation message');
 
@@ -142,7 +147,10 @@ subtest 'admin tag CRUD - with authentication' => sub {
       ->status_is(404, 'Deleted tag not found');
 
     # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Get CSRF token and logout
+    $t->get_ok('/api/csrf-token')->status_is(200);
+    my $logout_csrf_token = $t->tx->res->json->{data}->{csrf_token};
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $logout_csrf_token})->status_is(200);
 };
 
 subtest 'tag usage count reflects article associations' => sub {
@@ -159,16 +167,20 @@ subtest 'tag usage count reflects article associations' => sub {
         password => $admin_pass
     })->status_is(200);
 
+    # Get CSRF token
+    $t->get_ok('/api/csrf-token')->status_is(200);
+    my $csrf_token = $t->tx->res->json->{data}->{csrf_token};
+
     # Create a unique tag
     my $tag_name = 'UsageTest' . time();
-    $t->post_ok('/api/admin/tags' => json => {
+    $t->post_ok('/api/admin/tags' => {'X-CSRF-Token' => $csrf_token} => json => {
         name => $tag_name
     })->status_is(201);
 
     my $tag_id = $t->tx->res->json->{tag}->{id};
 
     # Create an article with this tag
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => "Article with $tag_name",
         content => 'Content',
         is_published => 1,
@@ -187,14 +199,17 @@ subtest 'tag usage count reflects article associations' => sub {
       ->status_is(200, 'Tag exists before article deletion');
 
     # Delete article (triggers automatic orphaned tag cleanup)
-    $t->delete_ok("/api/admin/articles/$article_id")
+    $t->delete_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Article deleted successfully');
 
     # Verify tag was automatically deleted due to orphaned tag cleanup
     $t->get_ok("/api/admin/tags/$tag_id")
       ->status_is(404, 'Orphaned tag was automatically deleted');
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Get CSRF token and logout
+    $t->get_ok('/api/csrf-token')->status_is(200);
+    my $logout_csrf_token = $t->tx->res->json->{data}->{csrf_token};
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $logout_csrf_token})->status_is(200);
 };
 
 done_testing();
