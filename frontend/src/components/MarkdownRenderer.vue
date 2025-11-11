@@ -1,12 +1,12 @@
 <template>
-  <!-- v-html is safe here: content is sanitized with DOMPurify -->
-  <!-- eslint-disable vue/no-v-html -->
-  <div
-    class="markdown-content"
-    @click="handleLinkClick"
-    v-html="renderedContent"
-  />
-  <!-- eslint-enable vue/no-v-html -->
+    <!-- v-html is safe here: content is sanitized with DOMPurify -->
+    <!-- eslint-disable vue/no-v-html -->
+    <div
+        class="markdown-content"
+        @click="handleLinkClick"
+        v-html="renderedContent"
+    />
+    <!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup>
