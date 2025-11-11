@@ -7,8 +7,11 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Database::Postgres;
+use HelloPerld::Util::ErrorResponse qw(error_response);
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
+use Crypt::Bcrypt qw(bcrypt bcrypt_check);
+use JSON qw(encode_json decode_json);
 
 sub login {
     my $self = shift;
@@ -19,18 +22,22 @@ sub login {
     my $password = $self->param('password') || $body->{password};
 
     unless ($username && $password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Username and password are required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Username and password are required',
+            code => 'AUTH001',
+            details => {
+                missing_username => !$username,
+                missing_password => !$password
+            }
+        );
     }
 
     # Rate limiting check
     if ($self->_is_rate_limited($username)) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Too many login attempts. Please try again later.'
-        }, status => 429);
+        return error_response($self, 'rate_limit', 'Too many login attempts. Please try again later.',
+            code => 'AUTH002',
+            details => { username => $username },
+            retry_after => 900 # 15 minutes
+        );
     }
 
     my $user = $self->_authenticate_user($username, $password);
@@ -57,7 +64,8 @@ sub login {
                 id => $user->{id},
                 username => $user->{username},
                 email => $user->{email}
-            }
+            },
+            %{$self->csrf_token_response}
         });
     } else {
         # Track failed login attempt
@@ -65,15 +73,23 @@ sub login {
 
         $self->app->logger_instance->warn("Failed login attempt for username '$username'");
 
-        return $self->render(json => {
-            success => 0,
-            error => 'Invalid username or password'
-        }, status => 401);
+        return error_response($self, 'unauthorized', 'Invalid username or password',
+            code => 'AUTH003',
+            details => { username => $username },
+            skip_logging => 1 # Already logged above
+        );
     }
 }
 
 sub logout {
     my $self = shift;
+
+    # CSRF protection for logout
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
 
     my $username = $self->session('admin_username') || 'unknown';
 
@@ -98,7 +114,8 @@ sub status {
                 id => $self->session('admin_user_id'),
                 username => $self->session('admin_username'),
                 email => $self->session('admin_email')
-            }
+            },
+            %{$self->csrf_token_response}
         });
     } else {
         return $self->render(json => {
@@ -111,10 +128,16 @@ sub change_password {
     my $self = shift;
 
     unless ($self->_is_authenticated()) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Authentication required'
-        }, status => 401);
+        return error_response($self, 'unauthorized', 'Authentication required',
+            code => 'AUTH004'
+        );
+    }
+
+    # CSRF protection for password change
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
     }
 
     my $current_password = $self->param('current_password');
@@ -122,24 +145,33 @@ sub change_password {
     my $confirm_password = $self->param('confirm_password');
 
     unless ($current_password && $new_password && $confirm_password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'All password fields are required'
-        }, status => 400);
+        my @missing_fields;
+        push @missing_fields, 'current_password' unless $current_password;
+        push @missing_fields, 'new_password' unless $new_password;
+        push @missing_fields, 'confirm_password' unless $confirm_password;
+
+        return error_response($self, 'validation', 'All password fields are required',
+            code => 'AUTH005',
+            details => { missing_fields => \@missing_fields }
+        );
     }
 
     if ($new_password ne $confirm_password) {
-        return $self->render(json => {
-            success => 0,
-            error => 'New password and confirmation do not match'
-        }, status => 400);
+        return error_response($self, 'validation', 'New password and confirmation do not match',
+            code => 'AUTH006',
+            details => { field => 'confirm_password' }
+        );
     }
 
     if (length($new_password) < 8) {
-        return $self->render(json => {
-            success => 0,
-            error => 'New password must be at least 8 characters long'
-        }, status => 400);
+        return error_response($self, 'validation', 'New password must be at least 8 characters long',
+            code => 'AUTH007',
+            details => {
+                field => 'new_password',
+                current_length => length($new_password),
+                minimum_length => 8
+            }
+        );
     }
 
     my $user_id = $self->session('admin_user_id');
@@ -148,10 +180,10 @@ sub change_password {
     # Verify current password
     my $user = $self->_get_user_by_id($user_id);
     unless ($user && $self->_verify_password($current_password, $user->{password_hash})) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Current password is incorrect'
-        }, status => 400);
+        return error_response($self, 'validation', 'Current password is incorrect',
+            code => 'AUTH008',
+            details => { field => 'current_password' }
+        );
     }
 
     # Update password
@@ -163,10 +195,10 @@ sub change_password {
             message => 'Password changed successfully'
         });
     } else {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to update password'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to update password',
+            code => 'DB005',
+            details => { user_id => $user_id }
+        );
     }
 }
 
@@ -245,14 +277,14 @@ sub _get_user_by_id {
         WHERE id = ? AND is_active = true
     };
 
+    my $user;
     eval {
         my $sth = $dbh->prepare($sql);
         $sth->execute($user_id);
 
-        my $user = $sth->fetchrow_hashref();
+        $user = $sth->fetchrow_hashref();
+        $sth->finish();
         $dbh->disconnect();
-
-        return $user;
     };
 
     if ($@) {
@@ -260,26 +292,41 @@ sub _get_user_by_id {
         $dbh->disconnect() if $dbh;
         return undef;
     }
+
+    return $user;
 }
 
 sub _hash_password {
     my ($self, $password) = @_;
 
-    # Generate a random salt
-    my $salt = unpack('H*', makerandom_octet(Length => 16));
-
-    # Create hash with salt
-    my $hash = sha256_hex($password . $salt);
-
-    # Return salt + hash combined
-    return $salt . $hash;
+    # Use bcrypt with cost factor 12 (recommended security level)
+    # bcrypt automatically handles salt generation when salt parameter is omitted
+    use Crypt::Bcrypt qw(bcrypt);
+    return bcrypt($password, '2b', 12, makerandom_octet(Length => 16));
 }
 
 sub _verify_password {
     my ($self, $password, $stored_hash) = @_;
 
-    return 0 unless $stored_hash && length($stored_hash) == 96; # 32 hex chars salt + 64 hex chars hash
+    return 0 unless $stored_hash;
 
+    # Detect hash format: bcrypt starts with $2b$, SHA-256 is exactly 96 hex chars
+    if ($stored_hash =~ /^\$2[abxy]\$/) {
+        # New bcrypt hash - use bcrypt_check for verification
+        return bcrypt_check($password, $stored_hash) ? 1 : 0;
+    } elsif (length($stored_hash) == 96 && $stored_hash =~ /^[0-9a-fA-F]{96}$/) {
+        # Legacy SHA-256 hash - maintain backward compatibility
+        return $self->_verify_sha256_password($password, $stored_hash);
+    } else {
+        # Unknown hash format
+        return 0;
+    }
+}
+
+sub _verify_sha256_password {
+    my ($self, $password, $stored_hash) = @_;
+
+    # Legacy verification for existing SHA-256 passwords
     # Extract salt (first 32 characters)
     my $salt = substr($stored_hash, 0, 32);
 
@@ -364,17 +411,63 @@ sub _update_password {
     return 1;
 }
 
-# Simple in-memory rate limiting (in production, use Redis or database)
+# Enhanced in-memory rate limiting with file persistence
 my %login_attempts = ();
+my $rate_limit_file = $ENV{RATE_LIMIT_FILE} || '/tmp/hello-perld-rate-limits.json';
+
+# Load rate limit data from file on first use
+sub _load_rate_limits {
+    return if %login_attempts; # Already loaded
+
+    return unless -f $rate_limit_file;
+
+    eval {
+        open my $fh, '<', $rate_limit_file or return;
+        my $content = do { local $/; <$fh> };
+        close $fh;
+
+        return unless $content;
+
+        my $data = decode_json($content);
+        %login_attempts = %{$data} if $data && ref($data) eq 'HASH';
+    };
+
+    # Clean up expired entries on load
+    my $now = time();
+    for my $username (keys %login_attempts) {
+        my $attempts = $login_attempts{$username} || [];
+        @$attempts = grep { $now - $_ < 900 } @$attempts; # 15 minutes
+        delete $login_attempts{$username} unless @$attempts;
+    }
+}
+
+# Save rate limit data to file
+sub _save_rate_limits {
+    eval {
+        # Ensure directory exists for the file path
+        require File::Path;
+        require File::Basename;
+        my $dir = File::Basename::dirname($rate_limit_file);
+        File::Path::make_path($dir) unless -d $dir;
+
+        open my $fh, '>', $rate_limit_file or return;
+        print $fh encode_json(\%login_attempts);
+        close $fh;
+    };
+}
 
 sub _is_rate_limited {
     my ($self, $username) = @_;
+
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
 
     my $now = time();
     my $attempts = $login_attempts{$username} || [];
 
     # Remove attempts older than 15 minutes
     @$attempts = grep { $now - $_ < 900 } @$attempts;
+    $login_attempts{$username} = $attempts;
 
     # Check if more than 5 attempts in the last 15 minutes
     return scalar(@$attempts) >= 5;
@@ -383,15 +476,27 @@ sub _is_rate_limited {
 sub _track_failed_login {
     my ($self, $username) = @_;
 
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
+
     my $now = time();
     $login_attempts{$username} ||= [];
     push @{$login_attempts{$username}}, $now;
+
+    # Save to file after tracking failed login
+    _save_rate_limits();
 }
 
 sub _clear_rate_limit {
     my ($self, $username) = @_;
 
+    # Load rate limits from file if not already loaded
+    _load_rate_limits();
+
     delete $login_attempts{$username};
+
+    # Save to file after clearing rate limit
+    _save_rate_limits();
 }
 
 # Middleware for protecting admin routes
@@ -399,10 +504,9 @@ sub require_auth {
     my ($self, $controller, $action) = @_;
 
     unless ($self->_is_authenticated()) {
-        $self->render(json => {
-            success => 0,
-            error => 'Authentication required'
-        }, status => 401);
+        error_response($self, 'unauthorized', 'Authentication required',
+            code => 'AUTH004'
+        );
         return undef;  # Explicitly stop further processing
     }
 

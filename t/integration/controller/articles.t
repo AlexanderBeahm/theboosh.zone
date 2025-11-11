@@ -45,7 +45,7 @@ subtest 'articles pagination with custom limit' => sub {
 subtest 'articles pagination limit validation' => sub {
     # Test max limit (should return error when exceeding 100)
     $t->get_ok('/api/articles?limit=200')
-      ->status_is(400, 'Excessive limit returns 400')
+      ->status_is(422, 'Excessive limit returns 422 (validation error)')
       ->json_has('/error', 'Error message included');
 };
 
@@ -87,17 +87,21 @@ subtest 'admin article CRUD - with authentication' => sub {
         return;
     }
 
-    # Login first
-    $t->post_ok('/api/auth/login' => json => {
+    # Login first and get CSRF token from response
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $admin_user,
         password => $admin_pass
-    })->status_is(200, 'Login successful');
+    })->status_is(200, 'Login successful')->tx->res->json;
+
+    # Get CSRF token from login response
+    my $csrf_token = $login_response->{csrf_token};
+    ok($csrf_token, 'Got CSRF token from login response');
 
     # Create a test article
     my $test_title = 'Test Article ' . time();
     my $article_id;
 
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $test_title,
         content => 'This is test content with **markdown**.',
         excerpt => 'Test excerpt',
@@ -120,7 +124,7 @@ subtest 'admin article CRUD - with authentication' => sub {
       ->json_is('/article/title' => $test_title, 'Title matches');
 
     # Update the article
-    $t->put_ok("/api/admin/articles/$article_id" => json => {
+    $t->put_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token} => json => {
         title => "$test_title Updated",
         is_published => 1
     })
@@ -137,7 +141,7 @@ subtest 'admin article CRUD - with authentication' => sub {
       ->json_is('/article/title' => "$test_title Updated", 'Title matches');
 
     # Delete the article
-    $t->delete_ok("/api/admin/articles/$article_id")
+    $t->delete_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Article deleted successfully')
       ->json_has('/message', 'Delete confirmation message');
 
@@ -146,7 +150,7 @@ subtest 'admin article CRUD - with authentication' => sub {
       ->status_is(404, 'Deleted article not found');
 
     # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'article creation with auto-slug generation' => sub {
@@ -157,15 +161,17 @@ subtest 'article creation with auto-slug generation' => sub {
         return;
     }
 
-    # Login
-    $t->post_ok('/api/auth/login' => json => {
+    # Login and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create article without explicit slug
     my $unique_title = "Auto Slug Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $unique_title,
         content => 'Content here',
         is_published => 0
@@ -178,9 +184,9 @@ subtest 'article creation with auto-slug generation' => sub {
 
     # Clean up
     my $id = $t->tx->res->json->{article}->{id};
-    $t->delete_ok("/api/admin/articles/$id")->status_is(200);
+    $t->delete_ok("/api/admin/articles/$id" => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'draft articles not visible to public' => sub {
@@ -191,15 +197,17 @@ subtest 'draft articles not visible to public' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create a draft article
     my $draft_title = "Draft Article " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $draft_title,
         content => 'Draft content',
         is_published => 0
@@ -210,20 +218,22 @@ subtest 'draft articles not visible to public' => sub {
     my $draft_id = $t->tx->res->json->{article}->{id};
 
     # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 
     # Try to access draft as public user
     $t->get_ok("/api/articles/$draft_slug")
       ->status_is(404, 'Draft article not accessible to public');
 
     # Login again to clean up
-    $t->post_ok('/api/auth/login' => json => {
+    my $login_response2 = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
 
-    $t->delete_ok("/api/admin/articles/$draft_id")->status_is(200);
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    my $csrf_token2 = $login_response2->{csrf_token};
+
+    $t->delete_ok("/api/admin/articles/$draft_id" => {'X-CSRF-Token' => $csrf_token2})->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token2})->status_is(200);
 };
 
 subtest 'admin can retrieve all articles regardless of published status' => sub {
@@ -234,15 +244,17 @@ subtest 'admin can retrieve all articles regardless of published status' => sub 
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create a published article
     my $published_title = "Published for All Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $published_title,
         content => 'Published content',
         is_published => 1
@@ -251,7 +263,7 @@ subtest 'admin can retrieve all articles regardless of published status' => sub 
 
     # Create a draft article
     my $draft_title = "Draft for All Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $draft_title,
         content => 'Draft content',
         is_published => 0
@@ -297,9 +309,9 @@ subtest 'admin can retrieve all articles regardless of published status' => sub 
     is(scalar @published_test_in_drafts, 0, 'Published article not found when filtering published=0');
 
     # Clean up
-    $t->delete_ok("/api/admin/articles/$published_id")->status_is(200);
-    $t->delete_ok("/api/admin/articles/$draft_id")->status_is(200);
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->delete_ok("/api/admin/articles/$published_id" => {'X-CSRF-Token' => $csrf_token})->status_is(200);
+    $t->delete_ok("/api/admin/articles/$draft_id" => {'X-CSRF-Token' => $csrf_token})->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'orphaned tag cleanup - unique tag deletion' => sub {
@@ -310,18 +322,20 @@ subtest 'orphaned tag cleanup - unique tag deletion' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create unique tag name to ensure it doesn't already exist
     my $unique_tag = 'orphan-test-' . time();
 
     # Create article with unique tag
     my $article_title = "Orphan Tag Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $article_title,
         content => 'Test content for orphaned tag cleanup',
         is_published => 1,
@@ -341,7 +355,7 @@ subtest 'orphaned tag cleanup - unique tag deletion' => sub {
     my $tag_id = $created_tag->{id};
 
     # Delete the article
-    $t->delete_ok("/api/admin/articles/$article_id")
+    $t->delete_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Article deleted successfully');
 
     # Verify orphaned tag was cleaned up
@@ -352,7 +366,7 @@ subtest 'orphaned tag cleanup - unique tag deletion' => sub {
     my ($orphaned_tag) = grep { $_->{slug} eq $unique_tag } @{$tags_after};
     ok(!$orphaned_tag, "Orphaned tag '$unique_tag' was deleted");
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'orphaned tag cleanup - shared tags preserved' => sub {
@@ -363,11 +377,13 @@ subtest 'orphaned tag cleanup - shared tags preserved' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create unique tag names
     my $shared_tag = 'shared-tag-' . time();
@@ -375,7 +391,7 @@ subtest 'orphaned tag cleanup - shared tags preserved' => sub {
 
     # Create first article with shared and unique tags
     my $article1_title = "Shared Tags Test 1 " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $article1_title,
         content => 'First article content',
         is_published => 1,
@@ -385,7 +401,7 @@ subtest 'orphaned tag cleanup - shared tags preserved' => sub {
 
     # Create second article with only shared tag
     my $article2_title = "Shared Tags Test 2 " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $article2_title,
         content => 'Second article content',
         is_published => 1,
@@ -402,7 +418,7 @@ subtest 'orphaned tag cleanup - shared tags preserved' => sub {
     ok($unique_before, "Unique tag exists before deletion");
 
     # Delete first article (has unique tag and shared tag)
-    $t->delete_ok("/api/admin/articles/$article1_id")
+    $t->delete_ok("/api/admin/articles/$article1_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200);
 
     # Verify shared tag still exists, unique tag deleted
@@ -414,8 +430,8 @@ subtest 'orphaned tag cleanup - shared tags preserved' => sub {
     ok(!$unique_after, "Unique tag deleted (not used by any articles)");
 
     # Clean up
-    $t->delete_ok("/api/admin/articles/$article2_id")->status_is(200);
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->delete_ok("/api/admin/articles/$article2_id" => {'X-CSRF-Token' => $csrf_token})->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
@@ -426,11 +442,13 @@ subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create article with multiple unique tags
     my $tag1 = 'multi-orphan-1-' . time();
@@ -438,7 +456,7 @@ subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
     my $tag3 = 'multi-orphan-3-' . time();
 
     my $article_title = "Multiple Orphans Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $article_title,
         content => 'Test content with multiple tags',
         is_published => 1,
@@ -457,7 +475,7 @@ subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
     ok($tag3_before, "Tag 3 exists before deletion");
 
     # Delete article
-    $t->delete_ok("/api/admin/articles/$article_id")
+    $t->delete_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200);
 
     # Verify all orphaned tags were deleted
@@ -470,7 +488,7 @@ subtest 'orphaned tag cleanup - multiple orphaned tags' => sub {
     ok(!$tag2_after, "Tag 2 deleted");
     ok(!$tag3_after, "Tag 3 deleted");
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'orphaned tag cleanup - article with no tags' => sub {
@@ -481,15 +499,17 @@ subtest 'orphaned tag cleanup - article with no tags' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create article without tags
     my $article_title = "No Tags Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $article_title,
         content => 'Article without tags',
         is_published => 1
@@ -497,10 +517,10 @@ subtest 'orphaned tag cleanup - article with no tags' => sub {
     my $article_id = $t->tx->res->json->{article}->{id};
 
     # Delete article (should not error even though there are no tags)
-    $t->delete_ok("/api/admin/articles/$article_id")
+    $t->delete_ok("/api/admin/articles/$article_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200, 'Article without tags deleted successfully');
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 subtest 'orphaned tag cleanup - draft article deletion' => sub {
@@ -511,18 +531,20 @@ subtest 'orphaned tag cleanup - draft article deletion' => sub {
         return;
     }
 
-    # Login as admin
-    $t->post_ok('/api/auth/login' => json => {
+    # Login as admin and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $ENV{ADMIN_USERNAME} || 'admin',
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
 
     # Create unique tag
     my $draft_tag = 'draft-orphan-' . time();
 
     # Create draft article with unique tag
     my $draft_title = "Draft Orphan Test " . time();
-    $t->post_ok('/api/admin/articles' => json => {
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => {
         title => $draft_title,
         content => 'Draft article content',
         is_published => 0,
@@ -537,7 +559,7 @@ subtest 'orphaned tag cleanup - draft article deletion' => sub {
     ok($tag_before, "Draft article tag exists");
 
     # Delete draft article
-    $t->delete_ok("/api/admin/articles/$draft_id")
+    $t->delete_ok("/api/admin/articles/$draft_id" => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200);
 
     # Verify orphaned tag was cleaned up (even from draft)
@@ -546,7 +568,7 @@ subtest 'orphaned tag cleanup - draft article deletion' => sub {
     my ($tag_after) = grep { $_->{slug} eq $draft_tag } @{$tags_after};
     ok(!$tag_after, "Orphaned tag from draft article was deleted");
 
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 done_testing();

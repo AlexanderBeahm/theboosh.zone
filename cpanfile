@@ -13,6 +13,7 @@ requires 'Mojolicious::Plugin::SwaggerUI';
 # Cryptography and Security
 requires 'Crypt::Random';
 requires 'Digest::SHA';
+requires 'Crypt::Bcrypt';
 
 # Image Processing
 requires 'Imager';

@@ -15,6 +15,11 @@ frontend/.env
 frontend/.env.local
 frontend/.env.*.local
 
+# Allow frontend mode-specific environment files (no secrets, just API URLs)
+!frontend/.env.development
+!frontend/.env.staging
+!frontend/.env.production
+
 .continue/*
 Makefile
 MYMETA.json

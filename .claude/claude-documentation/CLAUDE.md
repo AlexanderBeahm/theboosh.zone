@@ -320,12 +320,62 @@ User ID 1000 is the default non-root user in the Docker container (appuser)
 - Metadata support (alt text, caption)
 
 ### Security Considerations
-- Admin endpoints protected by session authentication
-- File upload validation (type, size)
-- Sanitize and validate all user inputs
-- Use prepared statements for database queries
-- Rate limiting on authentication endpoints
-- CSRF protection via Mojolicious sessions
+
+**Authentication & Session Security:**
+- Admin endpoints protected by session-based authentication (24-hour expiration)
+- bcrypt password hashing with backward compatibility for legacy SHA-256 passwords
+- Environment-specific session cookie security:
+  - Development: `httponly=1`, `samesite=Lax` (HTTP allowed)
+  - Production: `secure=1`, `httponly=1`, `samesite=Strict` (HTTPS only)
+- Session secrets are environment-specific and never committed to version control
+
+**CSRF Protection Architecture:**
+- Comprehensive CSRF token system using HMAC-SHA256 with session binding
+- All state-changing operations (POST/PUT/DELETE) require valid CSRF tokens
+- Frontend automatic integration via `composables/useCSRF.js` with axios interceptors
+- Tokens included in login/logout responses and available via `/api/csrf-token`
+- Automatic retry on token failures with fresh token fetch
+
+**Content Security Policy (CSP):**
+- Modern XSS protection with restrictive CSP headers applied to all responses
+- Blocks inline scripts and eval() for maximum security
+- Allows inline styles for Vue.js component compatibility
+- Restricts all resource loading to same origin only
+- Prevents embedding in frames and plugin execution
+
+**Rate Limiting (Defense in Depth):**
+- **Layer 1 (nginx)**: 30 requests/hour per IP with burst=5 (volume attack protection)
+- **Layer 2 (Application)**: 5 attempts/15min per username (credential attack protection)
+- File-based persistence at `/tmp/hello-perld-rate-limits.json` (survives restarts)
+- Automatic cleanup of expired entries (15-minute TTL)
+
+**Input Validation & Injection Prevention:**
+- All database queries use prepared statements with parameterized queries
+- Schema name validation with whitelist patterns and SQL injection detection
+- File upload validation with magic number checking and MIME type validation
+- SVG content validation to prevent embedded script execution
+- Wildcard escaping in search queries to prevent LIKE injection
+
+**Migration Security:**
+- Comprehensive validation of Perl migration files with content security scanning
+- Path traversal protection using canonical path validation
+- Dangerous pattern detection (system calls, file operations, network access)
+- Execution in Perl taint mode (`-T` flag) for additional security
+- Strict filename format validation for SQL and Perl migrations
+
+**File Upload Security:**
+- Type validation against allowed MIME types with magic number verification
+- Size validation (configurable via `UPLOAD_MAX_SIZE`)
+- Image dimension extraction and validation using Imager library
+- Unique filename generation with SHA-256 hashing
+- Organized storage with date-based directory structure (`uploads/YYYY/MM/`)
+
+**Additional Security Headers:**
+- X-Frame-Options: DENY (prevents clickjacking)
+- X-Content-Type-Options: nosniff (prevents MIME sniffing)
+- X-XSS-Protection: 1; mode=block (legacy XSS protection)
+- Referrer-Policy: strict-origin-when-cross-origin
+- Content Security Policy (detailed above)
 
 ### Miscellaneous Code Styling
 - No emoji use at all in code or comments
@@ -344,16 +394,26 @@ User ID 1000 is the default non-root user in the Docker container (appuser)
 - `frontend/src/components/ImageUploader.vue` - Image upload component
 - `frontend/src/components/MediaLibrary.vue` - Media grid with search
 
+### Frontend Security & Composables
+- `frontend/src/composables/useCSRF.js` - CSRF token management with axios interceptors
+
 ### Backend Controllers
 - `lib/HelloPerld.pm` - Main application with route definitions
 - `lib/HelloPerld/Controller/Articles.pm` - Article endpoints
 - `lib/HelloPerld/Controller/Tags.pm` - Tag endpoints
 - `lib/HelloPerld/Controller/Auth.pm` - Authentication endpoints
 - `lib/HelloPerld/Controller/Media.pm` - Media upload/management endpoints
+
+### Backend Models & Data
 - `lib/HelloPerld/Model/Article.pm` - Article database operations
 - `lib/HelloPerld/Model/Tag.pm` - Tag database operations
 - `lib/HelloPerld/Model/Media.pm` - Media database operations
 - `lib/HelloPerld/Database/Postgres.pm` - DB connection & migrations
+
+### Backend Security
+- `lib/HelloPerld/Security/CSRF.pm` - CSRF token generation and validation
+
+### API Documentation
 - `swagger/swagger.json` - OpenAPI 3.0.3 specification
 
 ### Configuration Files
@@ -418,23 +478,33 @@ UPLOAD_ALLOWED_TYPES=image/jpeg,image/png,image/gif,image/webp,image/svg+xml
 - `GET /api/tags/search?q=<query>` - Search tags
 
 ### Authentication
-- `POST /api/auth/login` - Admin login
-- `POST /api/auth/logout` - Admin logout
+- `POST /api/auth/login` - Admin login (returns CSRF token)
+- `POST /api/auth/logout` - Admin logout (requires CSRF token)
 - `GET /api/auth/status` - Check authentication status
+- `GET /api/csrf-token` - Get fresh CSRF token for authenticated users
 
-### Admin - Articles
+### Security
+- `POST /api/auth/change-password` - Change admin password (requires CSRF token)
+
+### Admin - Articles (All write operations require CSRF token)
 - `GET /api/admin/articles` - List all articles (including drafts)
-- `POST /api/admin/articles` - Create new article
+- `POST /api/admin/articles` - Create new article (requires CSRF token)
 - `GET /api/admin/articles/{id}` - Get article by ID
-- `PUT /api/admin/articles/{id}` - Update article
-- `DELETE /api/admin/articles/{id}` - Delete article
+- `PUT /api/admin/articles/{id}` - Update article (requires CSRF token)
+- `DELETE /api/admin/articles/{id}` - Delete article (requires CSRF token)
 
-### Admin - Media
-- `POST /api/admin/media/upload` - Upload media file
+### Admin - Media (All write operations require CSRF token)
+- `POST /api/admin/media/upload` - Upload media file (requires CSRF token)
 - `GET /api/admin/media` - List media files (pagination, search, filter)
 - `GET /api/admin/media/{id}` - Get media by ID
-- `PUT /api/admin/media/{id}` - Update media metadata
-- `DELETE /api/admin/media/{id}` - Delete media file
+- `PUT /api/admin/media/{id}` - Update media metadata (requires CSRF token)
+- `DELETE /api/admin/media/{id}` - Delete media file (requires CSRF token)
+
+### Admin - Tags (All write operations require CSRF token)
+- `GET /api/admin/tags` - List all tags (admin view)
+- `POST /api/admin/tags` - Create new tag (requires CSRF token)
+- `PUT /api/admin/tags/{id}` - Update tag (requires CSRF token)
+- `DELETE /api/admin/tags/{id}` - Delete tag (requires CSRF token)
 
 ## Lessons Learned & Important Implementation Notes
 

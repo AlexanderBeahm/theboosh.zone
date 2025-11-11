@@ -9,6 +9,7 @@ BEGIN { unshift @INC, "$FindBin::Bin/../lib" }
 use HelloPerld::Database::Postgres;
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
+use Crypt::Bcrypt qw(bcrypt);
 
 # Get environment variables for admin user
 my $username = $ENV{'ADMIN_USERNAME'} || 'admin';
@@ -47,10 +48,12 @@ eval {
     $check_sth->execute($username, $email);
 
     if (my $existing_user = $check_sth->fetchrow_hashref()) {
+        $check_sth->finish(); # Properly finish statement handle before disconnect
         print "Admin user already exists (ID: $existing_user->{id}). Skipping creation.\n";
         $dbh->disconnect();
         exit 0;
     }
+    $check_sth->finish(); # Properly finish statement handle before disconnect
 
     # Hash the password using the same method as Auth controller
     my $password_hash = hash_password($password);
@@ -66,6 +69,7 @@ eval {
     $insert_sth->execute($username, $password_hash, $email);
 
     my ($user_id) = $insert_sth->fetchrow_array();
+    $insert_sth->finish(); # Properly finish statement handle before disconnect
 
     print "✅ Admin user created successfully with ID: $user_id\n";
     print "You can now log in with:\n";
@@ -85,14 +89,8 @@ if ($@) {
 sub hash_password {
     my ($password) = @_;
 
-    # Generate a random salt (same method as Auth controller)
-    my $salt = unpack('H*', makerandom_octet(Length => 16));
-
-    # Create hash with salt
-    my $hash = sha256_hex($password . $salt);
-
-    # Return salt + hash combined
-    return $salt . $hash;
+    # Use bcrypt with cost factor 12 (same as Auth controller)
+    return bcrypt($password, '2b', 12, makerandom_octet(Length => 16));
 }
 
 __END__
@@ -129,10 +127,9 @@ exists with the same username or email.
 =head1 SECURITY
 
 The script uses the same password hashing method as HelloPerld::Controller::Auth:
-- Generates a random 16-byte salt
-- Combines password with salt
-- Creates SHA256 hash
-- Returns salt + hash (96 hex characters total)
+- Uses bcrypt with cost factor 12 for secure password hashing
+- bcrypt is designed to be computationally expensive to resist brute force attacks
+- Automatically includes salt generation and is resistant to timing attacks
 
 =head1 EXIT CODES
 

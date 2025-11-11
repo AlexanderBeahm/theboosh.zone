@@ -5,6 +5,7 @@ use strict;
 use warnings;
 
 use HelloPerld::Model::Media;
+use HelloPerld::Util::ErrorResponse qw(error_response);
 use Imager;
 use File::Path qw(make_path);
 use File::Copy;
@@ -18,6 +19,12 @@ use Time::Local;
 
 # Upload media file
 sub upload ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
     my $upload = $self->req->upload('file');
 
     # Support both form parameters and JSON body (like other endpoints)
@@ -27,10 +34,10 @@ sub upload ($self) {
 
     # Support both file upload and base64 data
     unless ($upload || $base64_data) {
-        return $self->render(json => {
-            success => 0,
-            error => 'No file uploaded or base64 data provided'
-        }, status => 400);
+        return error_response($self, 'validation', 'No file uploaded or base64 data provided',
+            code => 'VAL015',
+            details => { expected_fields => ['file', 'base64_data'] }
+        );
     }
 
     # Get configuration
@@ -55,20 +62,20 @@ sub upload ($self) {
         my ($data_uri_prefix, $encoded_data) = split /,/, $base64_data, 2;
 
         unless ($encoded_data) {
-            return $self->render(json => {
-                success => 0,
-                error => 'Invalid base64 data format. Expected data URI format: data:mime/type;base64,data'
-            }, status => 400);
+            return error_response($self, 'validation', 'Invalid base64 data format. Expected data URI format: data:mime/type;base64,data',
+                code => 'VAL016',
+                details => { expected_format => 'data:mime/type;base64,data' }
+            );
         }
 
         # Extract MIME type from data URI
         if ($data_uri_prefix =~ /data:([^;]+);base64/) {
             $mime_type = $1;
         } else {
-            return $self->render(json => {
-                success => 0,
-                error => 'Could not determine MIME type from base64 data'
-            }, status => 400);
+            return error_response($self, 'validation', 'Could not determine MIME type from base64 data',
+                code => 'VAL017',
+                details => { data_uri_prefix => $data_uri_prefix }
+            );
         }
 
         # Decode base64 data
@@ -76,10 +83,10 @@ sub upload ($self) {
             $file_data = decode_base64($encoded_data);
         };
         if ($@) {
-            return $self->render(json => {
-                success => 0,
-                error => 'Failed to decode base64 data'
-            }, status => 400);
+            return error_response($self, 'validation', 'Failed to decode base64 data',
+                code => 'VAL018',
+                details => { decode_error => $@ }
+            );
         }
 
         $file_size = length($file_data);
@@ -99,18 +106,25 @@ sub upload ($self) {
 
     # Validate file size
     if ($file_size > $max_size) {
-        return $self->render(json => {
-            success => 0,
-            error => "File size exceeds maximum allowed size of " . int($max_size / 1048576) . "MB"
-        }, status => 400);
+        return error_response($self, 'validation', "File size exceeds maximum allowed size of " . int($max_size / 1048576) . "MB",
+            code => 'VAL019',
+            details => {
+                file_size => $file_size,
+                max_size => $max_size,
+                max_size_mb => int($max_size / 1048576)
+            }
+        );
     }
 
     # Validate MIME type
     unless ($allowed_types_hash{$mime_type}) {
-        return $self->render(json => {
-            success => 0,
-            error => "File type not allowed. Allowed types: " . join(', ', @allowed_mime_types)
-        }, status => 400);
+        return error_response($self, 'validation', "File type not allowed. Allowed types: " . join(', ', @allowed_mime_types),
+            code => 'VAL020',
+            details => {
+                file_type => $mime_type,
+                allowed_types => \@allowed_mime_types
+            }
+        );
     }
 
     # Server-side file content validation - SECURITY CRITICAL
@@ -130,10 +144,11 @@ sub upload ($self) {
     my $is_valid_signature = $self->_validate_file_signature($file_content, $mime_type);
     unless ($is_valid_signature) {
         $self->app->log->warn("File signature validation failed for MIME type: $mime_type");
-        return $self->render(json => {
-            success => 0,
-            error => "File content does not match declared file type"
-        }, status => 400);
+        return error_response($self, 'validation', "File content does not match declared file type",
+            code => 'MEDIA001',
+            details => { mime_type => $mime_type },
+            skip_logging => 1 # Already logged above
+        );
     }
 
     # Additional validation for images using Imager library
@@ -166,10 +181,11 @@ sub upload ($self) {
         unless ($can_read) {
             my $error_msg = $validation_img->errstr() || "Unknown image validation error";
             $self->app->log->warn("Image processing validation failed: $error_msg");
-            return $self->render(json => {
-                success => 0,
-                error => "File appears to be corrupted or is not a valid image"
-            }, status => 400);
+            return error_response($self, 'validation', "File appears to be corrupted or is not a valid image",
+                code => 'MEDIA002',
+                details => { validation_error => $error_msg },
+                skip_logging => 1 # Already logged above
+            );
         }
 
         $self->app->log->info("Image content validation passed for MIME type: $mime_type");
@@ -180,10 +196,11 @@ sub upload ($self) {
         my $is_valid_svg = $self->_validate_svg_content($file_content);
         unless ($is_valid_svg) {
             $self->app->log->warn("SVG validation failed - potentially malicious content");
-            return $self->render(json => {
-                success => 0,
-                error => "SVG file contains invalid or potentially dangerous content"
-            }, status => 400);
+            return error_response($self, 'validation', "SVG file contains invalid or potentially dangerous content",
+                code => 'MEDIA003',
+                details => { file_type => 'SVG' },
+                skip_logging => 1 # Already logged above
+            );
         }
     }
 
@@ -208,10 +225,11 @@ sub upload ($self) {
         };
         if ($@) {
             $self->app->log->error("Failed to create upload directory: $@");
-            return $self->render(json => {
-                success => 0,
-                error => "Failed to create upload directory"
-            }, status => 500);
+            return error_response($self, 'server_error', "Failed to create upload directory",
+                code => 'MEDIA004',
+                details => { directory => $full_dir, error => $@ },
+                skip_logging => 1 # Already logged above
+            );
         }
     }
 
@@ -234,10 +252,11 @@ sub upload ($self) {
     };
     if ($@) {
         $self->app->log->error("Failed to save file: $@");
-        return $self->render(json => {
-            success => 0,
-            error => "Failed to save file"
-        }, status => 500);
+        return error_response($self, 'server_error', "Failed to save file",
+            code => 'MEDIA005',
+            details => { filepath => $full_filepath, error => $@ },
+            skip_logging => 1 # Already logged above
+        );
     }
 
     # Get image dimensions if it's an image
@@ -290,10 +309,9 @@ sub upload ($self) {
     unless ($media) {
         # Clean up the uploaded file if database insert fails
         unlink $full_filepath;
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to create media record in database'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to create media record in database',
+            code => 'DB012'
+        );
     }
 
     # Add URL to the response
@@ -327,10 +345,9 @@ sub get_all ($self) {
     my $result = $media_model->get_all(%params);
 
     unless ($result) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to fetch media'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to fetch media',
+            code => 'DB013'
+        );
     }
 
     # Add URLs to all media items
@@ -350,10 +367,10 @@ sub get_by_id ($self) {
     my $id = $self->param('id');
 
     unless ($id) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Media ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Media ID is required',
+            code => 'VAL021',
+            details => { field => 'id' }
+        );
     }
 
     my $media_model = HelloPerld::Model::Media->new(
@@ -363,10 +380,10 @@ sub get_by_id ($self) {
     my $media = $media_model->get_by_id($id);
 
     unless ($media) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Media not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Media not found',
+            code => 'MEDIA006',
+            details => { id => $id }
+        );
     }
 
     # Add URL to the response
@@ -380,13 +397,19 @@ sub get_by_id ($self) {
 
 # Update media metadata (alt_text, caption)
 sub update ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
     my $id = $self->param('id');
 
     unless ($id) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Media ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Media ID is required',
+            code => 'VAL022',
+            details => { field => 'id' }
+        );
     }
 
     # Get request body with length validation
@@ -416,10 +439,10 @@ sub update ($self) {
     );
 
     unless ($media) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Failed to update media'
-        }, status => 500);
+        return error_response($self, 'server_error', 'Failed to update media',
+            code => 'DB014',
+            details => { id => $id }
+        );
     }
 
     # Add URL to the response
@@ -433,13 +456,19 @@ sub update ($self) {
 
 # Delete media
 sub delete ($self) {
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
     my $id = $self->param('id');
 
     unless ($id) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Media ID is required'
-        }, status => 400);
+        return error_response($self, 'validation', 'Media ID is required',
+            code => 'VAL023',
+            details => { field => 'id' }
+        );
     }
 
     my $media_model = HelloPerld::Model::Media->new(
@@ -450,10 +479,10 @@ sub delete ($self) {
     # First, get the media record to obtain file path before deletion
     my $media_record = $media_model->get_by_id($id);
     unless ($media_record) {
-        return $self->render(json => {
-            success => 0,
-            error => 'Media not found'
-        }, status => 404);
+        return error_response($self, 'not_found', 'Media not found',
+            code => 'MEDIA007',
+            details => { id => $id }
+        );
     }
 
     # Construct full file path
@@ -496,10 +525,11 @@ sub delete ($self) {
         my $result = $media_model->delete($id);
         unless ($result) {
             $self->app->log->error("Failed to delete media record from database for ID: $id");
-            return $self->render(json => {
-                success => 0,
-                error => 'Failed to delete media record from database'
-            }, status => 500);
+            return error_response($self, 'server_error', 'Failed to delete media record from database',
+                code => 'DB015',
+                details => { id => $id },
+                skip_logging => 1 # Already logged above
+            );
         }
 
         # Add cache invalidation headers to help browsers clear cached content
@@ -514,10 +544,14 @@ sub delete ($self) {
         });
     } else {
         # File deletion failed, don't delete database record
-        return $self->render(json => {
-            success => 0,
-            error => "Failed to delete physical file: $file_deletion_error"
-        }, status => 500);
+        return error_response($self, 'server_error', "Failed to delete physical file: $file_deletion_error",
+            code => 'MEDIA008',
+            details => {
+                id => $id,
+                filepath => $full_filepath,
+                error => $file_deletion_error
+            }
+        );
     }
 }
 

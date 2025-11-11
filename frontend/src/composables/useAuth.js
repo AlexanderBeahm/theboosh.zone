@@ -1,6 +1,7 @@
 import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
+import { useCSRF } from "./useCSRF";
 
 // Shared authentication state
 const isAuthenticated = ref(false);
@@ -15,6 +16,7 @@ const authCache = {
 
 export function useAuth() {
     const router = useRouter();
+    const { extractTokenFromResponse, clearToken } = useCSRF();
 
     /**
      * Check current authentication status
@@ -43,6 +45,9 @@ export function useAuth() {
             if (response.data.authenticated) {
                 isAuthenticated.value = true;
                 user.value = response.data.user || null;
+
+                // Extract CSRF token from auth status response
+                extractTokenFromResponse(response.data);
             } else {
                 isAuthenticated.value = false;
                 user.value = null;
@@ -81,6 +86,9 @@ export function useAuth() {
                 isAuthenticated.value = true;
                 user.value = response.data.user || { username };
 
+                // Extract CSRF token from login response
+                extractTokenFromResponse(response.data);
+
                 // Invalidate cache to force fresh check
                 authCache.timestamp = Date.now();
 
@@ -118,6 +126,9 @@ export function useAuth() {
             // Clear shared state
             isAuthenticated.value = false;
             user.value = null;
+
+            // Clear CSRF token on logout
+            clearToken();
 
             // Invalidate cache
             authCache.timestamp = 0;

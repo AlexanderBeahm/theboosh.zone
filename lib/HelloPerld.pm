@@ -4,6 +4,7 @@ use Mojo::Base 'Mojolicious';
 our $VERSION = '1.0.0';
 
 use HelloPerld::Logger::LoggerFactory;
+use HelloPerld::Security::CSRF;
 
 sub startup {
     my $self = shift;
@@ -42,6 +43,111 @@ sub startup {
     $self->helper(db_config => sub {
         my $c = shift;
         return $c->app->config->{database};
+    });
+
+    # Add request ID correlation middleware
+    $self->hook(before_dispatch => sub {
+        my $c = shift;
+
+        # Generate or use existing request ID
+        my $request_id = $c->request_id();
+
+        # Set X-Request-ID in response headers for tracing
+        $c->res->headers->header('X-Request-ID' => $request_id);
+    });
+
+    # Helper to generate unique session ID for anonymous users
+    $self->helper(_get_csrf_session_id => sub {
+        my $c = shift;
+
+        # For authenticated users, use their admin_user_id
+        if (my $admin_id = $c->session('admin_user_id')) {
+            return $admin_id;
+        }
+
+        # For anonymous users, generate or retrieve unique session ID
+        my $anonymous_id = $c->session('csrf_session_id');
+        unless ($anonymous_id) {
+            # Generate unique ID: timestamp + random bytes
+            my $random_bytes = '';
+            for (1..16) {
+                $random_bytes .= chr(int(rand(256)));
+            }
+            $anonymous_id = 'anon_' . time() . '_' . unpack('H*', $random_bytes);
+            $c->session('csrf_session_id' => $anonymous_id);
+
+            # Set expiration for anonymous sessions (24 hours)
+            $c->session(expiration => 86400);
+        }
+
+        return $anonymous_id;
+    });
+
+    # Add CSRF protection helpers
+    $self->helper(csrf_token => sub {
+        my $c = shift;
+        my $session_id = $c->_get_csrf_session_id;
+        my $secret_key = $c->app->secrets->[0];
+
+        return HelloPerld::Security::CSRF::generate_token($session_id, $secret_key);
+    });
+
+    $self->helper(csrf_protect => sub {
+        my $c = shift;
+
+        # Skip CSRF protection for GET requests (safe methods)
+        return 1 if $c->req->method eq 'GET';
+
+        # Get CSRF token from header or form parameter
+        my $token = $c->req->headers->header('X-CSRF-Token') ||
+                   $c->req->headers->header('X-Requested-With-Token') ||
+                   $c->param('_csrf_token');
+
+        return 0 unless $token; # No token provided
+
+        # Get session ID and secret
+        my $session_id = $c->_get_csrf_session_id;
+        my $secret_key = $c->app->secrets->[0];
+
+        # Validate token (1 hour max age)
+        return HelloPerld::Security::CSRF::validate_token($token, $session_id, $secret_key, 3600);
+    });
+
+    # Helper to get CSRF token for responses
+    $self->helper(csrf_token_response => sub {
+        my $c = shift;
+        return {
+            csrf_token => $c->csrf_token,
+            expires_in => 3600 # 1 hour
+        };
+    });
+
+    # Helper for request ID generation and tracking
+    $self->helper(request_id => sub {
+        my $c = shift;
+
+        # Check if request ID already exists in headers or stash
+        my $request_id = $c->req->headers->header('X-Request-ID') ||
+                        $c->stash('request_id');
+
+        # Generate new request ID if not present
+        unless ($request_id) {
+            $request_id = $c->_generate_request_id();
+            $c->stash(request_id => $request_id);
+        }
+
+        return $request_id;
+    });
+
+    $self->helper(_generate_request_id => sub {
+        # Simple UUID-like request ID generator
+        return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            int(rand(0x10000)), int(rand(0x10000)),
+            int(rand(0x10000)),
+            int(rand(0x10000)) | 0x4000,
+            int(rand(0x10000)) | 0x8000,
+            int(rand(0x10000)), int(rand(0x10000)), int(rand(0x10000))
+        );
     });
 
     # Configure template path
@@ -126,6 +232,30 @@ sub startup {
     $self->secrets([$session_config->{secret}]);
     $self->sessions->default_expiration($session_config->{expiration});
 
+    # Configure session security based on environment
+    if (defined $session_config->{secure}) {
+        $self->sessions->secure($session_config->{secure});
+    }
+    if (defined $session_config->{samesite}) {
+        $self->sessions->samesite($session_config->{samesite});
+    }
+
+    # Configure HttpOnly via hook since it's not directly supported by sessions
+    if (defined $session_config->{httponly} && $session_config->{httponly}) {
+        $self->hook(after_dispatch => sub {
+            my $c = shift;
+
+            # Apply HttpOnly to session cookies in response
+            my $cookie_name = $c->app->sessions->cookie_name || 'mojolicious';
+
+            # Check if a session cookie is being set in the response
+            my @cookies = grep { $_->name eq $cookie_name } @{$c->res->cookies};
+            for my $cookie (@cookies) {
+                $cookie->httponly(1) if $cookie->can('httponly');
+            }
+        });
+    }
+
     # Configure OpenAPI plugin - limit to /api routes only
     # TEMPORARILY DISABLED to test uploads route
     # $self->plugin('OpenAPI' => {
@@ -170,6 +300,15 @@ sub startup {
     $api->post('/auth/login')->to('Auth#login');
     $api->post('/auth/logout')->to('Auth#logout');
     $api->get('/auth/status')->to('Auth#status');
+
+    # CSRF token endpoint
+    $api->get('/csrf-token')->to(cb => sub {
+        my $c = shift;
+        $c->render(json => {
+            success => 1,
+            data => $c->csrf_token_response
+        });
+    });
 
     # Public article routes
     $api->get('/articles')->to('Articles#get_all');
@@ -243,10 +382,34 @@ sub startup {
     # Add security headers
     $self->hook(after_dispatch => sub {
         my $c = shift;
+        my $path = $c->req->url->path->to_string;
+
+        # Basic security headers (apply to all routes)
         $c->res->headers->header('X-Frame-Options' => 'DENY');
         $c->res->headers->header('X-Content-Type-Options' => 'nosniff');
         $c->res->headers->header('X-XSS-Protection' => '1; mode=block');
         $c->res->headers->header('Referrer-Policy' => 'strict-origin-when-cross-origin');
+
+        # Skip CSP for Swagger UI (needs inline scripts) but apply to all other routes
+        unless ($path =~ m{^/swagger}) {
+            # Content Security Policy - Modern XSS protection
+            my $csp = join('; ',
+                "default-src 'self'",                           # Only allow resources from same origin by default
+                "script-src 'self'",                            # Only scripts from same origin (no inline, no eval)
+                "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
+                "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
+                "font-src 'self'",                              # Web fonts from same origin only
+                "connect-src 'self'",                           # AJAX/fetch only to same origin (API calls)
+                "media-src 'self'",                             # Audio/video from same origin only
+                "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
+                "base-uri 'self'",                              # Restrict <base> tag to same origin
+                "form-action 'self'",                           # Forms can only submit to same origin
+                "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
+                "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
+            );
+
+            $c->res->headers->header('Content-Security-Policy' => $csp);
+        }
     });
 
     # Log startup

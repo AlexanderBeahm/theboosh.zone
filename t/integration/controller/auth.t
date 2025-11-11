@@ -30,16 +30,18 @@ subtest 'login validation - missing username' => sub {
     $t->post_ok('/api/auth/login' => json => {
         password => 'somepassword'
     })
-      ->status_is(400, 'Missing username returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Missing username returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'login validation - missing password' => sub {
     $t->post_ok('/api/auth/login' => json => {
         username => 'someuser'
     })
-      ->status_is(400, 'Missing password returns 400')
-      ->json_has('/error', 'Error message included');
+      ->status_is(422, 'Missing password returns 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'login validation - empty credentials' => sub {
@@ -47,13 +49,16 @@ subtest 'login validation - empty credentials' => sub {
         username => '',
         password => ''
     })
-      ->status_is(400, 'Empty credentials return 400');
+      ->status_is(422, 'Empty credentials return 422')
+      ->json_has('/error', 'Error message included')
+      ->json_is('/success' => 0, 'Success flag is false');
 };
 
 subtest 'logout endpoint' => sub {
+    # Logout without being logged in should return 403 (CSRF protection)
     $t->post_ok('/api/auth/logout')
-      ->status_is(200, 'Logout returns 200')
-      ->json_is('/message' => 'Logged out successfully', 'Success message returned');
+      ->status_is(403, 'Logout returns 403 without CSRF token')
+      ->json_is('/error' => 'CSRF validation failed', 'CSRF error message returned');
 };
 
 # Test with actual admin credentials from environment (if available)
@@ -66,13 +71,17 @@ subtest 'login with admin credentials (if available)' => sub {
         return;
     }
 
-    $t->post_ok('/api/auth/login' => json => {
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
         username => $admin_user,
         password => $admin_pass
     })
       ->status_is(200, 'Login with correct credentials succeeds')
       ->json_is('/success' => 1, 'Success flag is true')
-      ->json_has('/user', 'User object included');
+      ->json_has('/user', 'User object included')->tx->res->json;
+
+    # Get CSRF token from login response BEFORE doing other requests
+    my $csrf_token = $login_response->{csrf_token};
+    ok($csrf_token, 'Got CSRF token from login response');
 
     # Check that session is now authenticated
     $t->get_ok('/api/auth/status')
@@ -81,8 +90,8 @@ subtest 'login with admin credentials (if available)' => sub {
       ->json_is('/user/username' => $admin_user, 'Username matches')
       ->json_has('/user/email', 'Email included in status');
 
-    # Logout
-    $t->post_ok('/api/auth/logout')
+    # Logout with CSRF token
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})
       ->status_is(200);
 
     # Verify logged out
@@ -92,6 +101,10 @@ subtest 'login with admin credentials (if available)' => sub {
 };
 
 subtest 'protected admin endpoints without auth' => sub {
+    # Note: Previous tests may have left a session active
+    # This test relies on there being NO active session
+    # The current test user should have logged out in the previous test
+
     # Try to access an admin endpoint without authentication
     $t->get_ok('/api/admin/articles')
       ->status_is(401, 'Admin endpoint returns 401 without authentication')
@@ -124,10 +137,13 @@ subtest 'session persistence across requests' => sub {
     }
 
     # Login
-    $t->post_ok('/api/auth/login' => json => {
+    my $session_login_response = $t->post_ok('/api/auth/login' => json => {
         username => $admin_user,
         password => $admin_pass
-    })->status_is(200);
+    })->status_is(200)->tx->res->json;
+
+    # Get CSRF token from login response
+    my $csrf_token = $session_login_response->{csrf_token};
 
     # Make multiple authenticated requests
     for my $i (1..3) {
@@ -136,8 +152,8 @@ subtest 'session persistence across requests' => sub {
           ->json_is('/authenticated' => 1, "Request $i: Session persists");
     }
 
-    # Logout
-    $t->post_ok('/api/auth/logout')->status_is(200);
+    # Logout using CSRF token from login
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
 };
 
 done_testing();

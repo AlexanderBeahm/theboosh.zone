@@ -15,7 +15,8 @@ WriteMakefile(
         'Mojolicious::Plugin::OpenAPI' => 0, # Added for OpenAPI/Swagger
         'Mojolicious::Plugin::SwaggerUI' => 0, # Added for Swagger UI
         'Crypt::Random'       => 0,  # Added for password salt generation
-        'Digest::SHA'         => 0,  # Added for password hashing
+        'Digest::SHA'         => 0,  # Added for password hashing (legacy)
+        'Crypt::Bcrypt'       => 0,  # Added for secure password hashing
         'Imager'              => 0,  # Added for image processing
         'File::Path'          => 0,  # Added for directory creation
         'File::Copy'          => 0,  # Added for file operations
