@@ -6,11 +6,8 @@ our $VERSION = '1.0.0';
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
 
-# Load generated CSP frame-src configuration (single source of truth)
-# Use FindBin to find the script directory and construct the correct path
-use FindBin;
-require "$FindBin::Bin/../config/generated/csp-frame-src.conf";
-our $CSP_FRAME_SRC; # Import the variable from the configuration file
+# CSP frame-src configuration will be loaded in startup method
+our $CSP_FRAME_SRC;
 
 sub startup {
     my $self = shift;
@@ -26,6 +23,16 @@ sub startup {
 
     $self->log->info("Loading configuration for mode: $mode");
     $self->log->info("Config file: $config_file");
+
+    # Load generated CSP frame-src configuration (single source of truth)
+    my $csp_config_file = $self->home->rel_file('config/generated/csp-frame-src.conf');
+    if (-e $csp_config_file) {
+        require $csp_config_file;
+        $self->log->info("Loaded CSP frame-src configuration from: $csp_config_file");
+    } else {
+        $self->log->warn("CSP frame-src configuration not found at: $csp_config_file");
+        $CSP_FRAME_SRC = "frame-src 'none'"; # Fallback - no embedded frames allowed
+    }
 
     # Validate production configuration
     if ($mode eq 'production' || $mode eq 'staging') {
