@@ -86,6 +86,34 @@ echo ""
 echo "Cleaning up stale Docker networks..."
 docker network prune -f
 
+# Check Node.js and install dependencies for CSP generation
+echo ""
+echo "Checking Node.js dependencies for CSP generation..."
+if ! command -v node &> /dev/null; then
+    echo "Error: Node.js is not installed on deployment server!"
+    echo "Please install Node.js: curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs"
+    exit 1
+fi
+
+# Install Node.js dependencies for CSP generation script
+if [ ! -d "node_modules" ] || [ ! -f "node_modules/ajv/package.json" ]; then
+    echo "Installing Node.js dependencies for CSP generation..."
+    npm install ajv ajv-formats || {
+        echo "Error: Failed to install CSP generation dependencies!"
+        echo "Please ensure npm is working and try manually: npm install ajv ajv-formats"
+        exit 1
+    }
+fi
+
+# Generate CSP configuration files
+echo ""
+echo "Generating CSP configuration files..."
+node script/generate-csp-configs || {
+    echo "Error: Failed to generate CSP configuration files!"
+    echo "This is required for nginx and backend CSP headers."
+    exit 1
+}
+
 # Pull latest images
 echo ""
 echo "Pulling latest Docker images..."

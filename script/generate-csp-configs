@@ -15,8 +15,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+const Ajv = require('ajv');
+const addFormats = require('ajv-formats');
 
 // Configuration
+const STRICT_MODE = process.env.CSP_GEN_STRICT !== 'false'; // Default to strict
 const CONFIG_FILE = path.join(__dirname, '..', 'config', 'trusted-embed-domains.json');
 const FRONTEND_OUTPUT = path.join(__dirname, '..', 'frontend', 'src', 'generated', 'trusted-domains.js');
 const BACKEND_OUTPUT = path.join(__dirname, '..', 'config', 'generated', 'csp-frame-src.conf');
@@ -25,16 +29,126 @@ const NGINX_STAGING_TEMPLATE = path.join(__dirname, '..', 'nginx', 'templates', 
 const NGINX_PRODUCTION_OUTPUT = path.join(__dirname, '..', 'nginx', 'generated', 'production.conf');
 const NGINX_STAGING_OUTPUT = path.join(__dirname, '..', 'nginx', 'generated', 'staging.conf');
 
+// Load JSON Schema for configuration validation
+const SCHEMA_FILE = path.join(__dirname, '..', 'config', 'trusted-embed-domains.schema.json');
+let configSchema;
+try {
+    configSchema = JSON.parse(fs.readFileSync(SCHEMA_FILE, 'utf8'));
+    console.log(`✅ Loaded schema from ${SCHEMA_FILE}`);
+} catch (error) {
+    if (STRICT_MODE) {
+        console.error(`❌ STRICT_MODE: Failed to load schema from ${SCHEMA_FILE}: ${error.message}`);
+        process.exit(1);
+    } else {
+        console.warn(`⚠️  Warning: Could not load schema file (${error.message}), proceeding without external validation`);
+        configSchema = { type: 'object' }; // Minimal fallback schema
+    }
+}
+
+/**
+ * Validate configuration against JSON schema
+ */
+function validateConfigSchema(config) {
+    const ajv = new Ajv({ allErrors: true, strict: true });
+    addFormats(ajv);
+
+    const validate = ajv.compile(configSchema);
+    const valid = validate(config);
+
+    if (!valid) {
+        console.error('❌ Configuration validation failed:');
+
+        // User-friendly error messages
+        validate.errors.forEach(error => {
+            const path = error.instancePath || 'root';
+            const message = error.message;
+            const data = error.data !== undefined ? ` (got: ${JSON.stringify(error.data)})` : '';
+            console.error(`  ${path}: ${message}${data}`);
+        });
+
+        throw new Error('Invalid configuration schema');
+    }
+
+    console.log(`✅ Configuration schema validated: ${config.domains.length} domains`);
+    return config;
+}
+
+/**
+ * Validate business logic rules
+ */
+function validateBusinessLogic(config) {
+    const errors = [];
+    const warnings = [];
+    const seenDomains = new Set();
+
+    config.domains.forEach((domainConfig, index) => {
+        const domainKey = domainConfig.domain.toLowerCase();
+
+        // Check for duplicates
+        if (seenDomains.has(domainKey)) {
+            errors.push(`Duplicate domain at index ${index}: ${domainConfig.domain}`);
+        }
+        seenDomains.add(domainKey);
+
+        // Validate subdomain flag makes sense
+        if (domainConfig.subdomains && domainConfig.domain.split('.').length > 2) {
+            warnings.push(
+                `Domain "${domainConfig.domain}" has subdomain wildcard enabled but is already a subdomain. ` +
+                `This will allow *.${domainConfig.domain} (e.g., *.www.example.com)`
+            );
+        }
+
+        // Check variant duplicates
+        const variants = [domainConfig.domain, ...(domainConfig.variants || [])];
+        const uniqueVariants = new Set(variants.map(v => v.toLowerCase()));
+        if (uniqueVariants.size !== variants.length) {
+            errors.push(`Domain at index ${index} has duplicate variants: ${domainConfig.domain}`);
+        }
+
+        // Validate protocols
+        if (domainConfig.protocols && domainConfig.protocols.length === 0) {
+            errors.push(`Domain at index ${index} has empty protocols array: ${domainConfig.domain}`);
+        }
+
+        // Warn about http in production
+        if (domainConfig.protocols && domainConfig.protocols.includes('http')) {
+            warnings.push(`Domain "${domainConfig.domain}" allows HTTP. Consider HTTPS-only for security.`);
+        }
+    });
+
+    // Display warnings
+    warnings.forEach(warning => console.warn(`⚠️  ${warning}`));
+
+    if (errors.length > 0) {
+        console.error('❌ Business logic validation failed:');
+        errors.forEach(err => console.error(`  - ${err}`));
+        throw new Error('Invalid business logic');
+    }
+
+    console.log('✅ Business logic validated');
+    return config;
+}
+
 /**
  * Load and parse the trusted embed domains configuration
  */
 function loadTrustedDomains() {
     try {
         const configContent = fs.readFileSync(CONFIG_FILE, 'utf8');
-        const config = JSON.parse(configContent);
-        return config;
+        const rawConfig = JSON.parse(configContent);
+
+        // Validate configuration schema and business logic
+        const validatedConfig = validateConfigSchema(rawConfig);
+        return validateBusinessLogic(validatedConfig);
     } catch (error) {
-        console.error(`Error reading configuration file ${CONFIG_FILE}:`, error.message);
+        if (error.code === 'ENOENT') {
+            console.error(`❌ Configuration file not found: ${CONFIG_FILE}`);
+        } else if (error.name === 'SyntaxError') {
+            console.error(`❌ Invalid JSON in configuration file: ${CONFIG_FILE}`);
+            console.error(`   ${error.message}`);
+        } else {
+            console.error(`❌ Error loading configuration: ${error.message}`);
+        }
         process.exit(1);
     }
 }
@@ -100,6 +214,36 @@ function ensureDirectoryExists(filePath) {
 }
 
 /**
+ * Atomic file write to prevent race conditions
+ */
+function writeFileAtomic(filePath, content) {
+    const tempPath = `${filePath}.tmp.${crypto.randomBytes(6).toString('hex')}`;
+    try {
+        // Ensure directory exists first
+        ensureDirectoryExists(filePath);
+
+        // Write to temporary file
+        fs.writeFileSync(tempPath, content, 'utf8');
+
+        // Atomically rename to final destination
+        fs.renameSync(tempPath, filePath);
+
+        console.log(`✅ Atomically written: ${filePath} (${content.length} bytes)`);
+    } catch (error) {
+        // Cleanup temp file on error
+        if (fs.existsSync(tempPath)) {
+            try {
+                fs.unlinkSync(tempPath);
+                console.log(`🧹 Cleaned up temp file: ${tempPath}`);
+            } catch (cleanupError) {
+                console.warn(`⚠️  Could not cleanup temp file ${tempPath}: ${cleanupError.message}`);
+            }
+        }
+        throw new Error(`Atomic write failed for ${filePath}: ${error.message}`);
+    }
+}
+
+/**
  * Generate frontend JavaScript file
  */
 function generateFrontendConfig(config, domainList) {
@@ -130,9 +274,7 @@ export const TRUSTED_DOMAINS_CONFIG = {
 };
 `;
 
-    ensureDirectoryExists(FRONTEND_OUTPUT);
-    fs.writeFileSync(FRONTEND_OUTPUT, content, 'utf8');
-    console.log(`Generated frontend config: ${FRONTEND_OUTPUT}`);
+    writeFileAtomic(FRONTEND_OUTPUT, content);
 }
 
 /**
@@ -145,9 +287,21 @@ function generateBackendConfig(config, cspFrameSrc) {
 # Source: config/trusted-embed-domains.json
 # Generator: script/generate-csp-configs
 
-# CSP frame-src directive for trusted embed domains
-# This variable is used by lib/HelloPerld.pm in the CSP header construction
-our $CSP_FRAME_SRC = "frame-src ${cspFrameSrc}";
+# CSP frame-src directive for trusted embed domains (INCLUDES 'frame-src' PREFIX)
+#
+# IMPORTANT: This variable contains the complete CSP directive including the prefix.
+# Usage in HelloPerld.pm:
+#   my @csp_directives = (
+#       "default-src 'self'",
+#       "script-src 'self'",
+#       $CSP_FRAME_SRC_DIRECTIVE,  # <-- Use directly, do NOT add "frame-src" prefix again
+#       ...
+#   );
+#
+# The generated value format is:
+#   "frame-src https://youtube.com https://vimeo.com ..."
+#
+our $CSP_FRAME_SRC_DIRECTIVE = "frame-src ${cspFrameSrc}";
 
 # Configuration metadata
 our $CSP_CONFIG_VERSION = "${config.version}";
@@ -156,9 +310,7 @@ our $CSP_CONFIG_GENERATED = "${timestamp}";
 1; # Required for Perl module
 `;
 
-    ensureDirectoryExists(BACKEND_OUTPUT);
-    fs.writeFileSync(BACKEND_OUTPUT, content, 'utf8');
-    console.log(`Generated backend config: ${BACKEND_OUTPUT}`);
+    writeFileAtomic(BACKEND_OUTPUT, content);
 }
 
 /**
@@ -169,13 +321,115 @@ function generateNginxConfig(templateFile, outputFile, cspFrameSrc) {
         const template = fs.readFileSync(templateFile, 'utf8');
         const content = template.replace(/\{\{CSP_FRAME_SRC\}\}/g, cspFrameSrc);
 
-        ensureDirectoryExists(outputFile);
-        fs.writeFileSync(outputFile, content, 'utf8');
-        console.log(`Generated nginx config: ${outputFile}`);
+        writeFileAtomic(outputFile, content);
     } catch (error) {
         console.error(`Error processing nginx template ${templateFile}:`, error.message);
         process.exit(1);
     }
+}
+
+/**
+ * Validate required templates exist when in strict mode
+ */
+function validateTemplates() {
+    if (!STRICT_MODE) {
+        return; // Skip validation in non-strict mode
+    }
+
+    const templateErrors = [];
+
+    if (!fs.existsSync(NGINX_PRODUCTION_TEMPLATE)) {
+        templateErrors.push(`Required template missing: ${NGINX_PRODUCTION_TEMPLATE}`);
+    }
+    if (!fs.existsSync(NGINX_STAGING_TEMPLATE)) {
+        templateErrors.push(`Required template missing: ${NGINX_STAGING_TEMPLATE}`);
+    }
+
+    if (templateErrors.length > 0) {
+        console.error('❌ Template validation failed:');
+        templateErrors.forEach(err => console.error(`  - ${err}`));
+        console.error('\nTo make nginx configs optional, set: CSP_GEN_STRICT=false');
+        throw new Error('Required templates missing');
+    }
+
+    console.log('✅ All required templates present');
+}
+
+/**
+ * Validate generated files exist and contain expected content
+ */
+function validateGeneratedFiles() {
+    const requiredFiles = [
+        {
+            path: FRONTEND_OUTPUT,
+            minSize: 200,
+            mustContain: ['TRUSTED_EMBED_DOMAINS', 'export const'],
+            description: 'Frontend trusted domains file'
+        },
+        {
+            path: BACKEND_OUTPUT,
+            minSize: 150,
+            mustContain: ['CSP_FRAME_SRC_DIRECTIVE', 'our $CSP_FRAME_SRC_DIRECTIVE'],
+            description: 'Backend CSP configuration file'
+        }
+    ];
+
+    // Add nginx files to validation if they should exist
+    if (fs.existsSync(NGINX_PRODUCTION_TEMPLATE)) {
+        requiredFiles.push({
+            path: NGINX_PRODUCTION_OUTPUT,
+            minSize: 500,
+            mustContain: ['Content-Security-Policy', 'frame-src'],
+            description: 'Nginx production configuration'
+        });
+    }
+
+    if (fs.existsSync(NGINX_STAGING_TEMPLATE)) {
+        requiredFiles.push({
+            path: NGINX_STAGING_OUTPUT,
+            minSize: 500,
+            mustContain: ['Content-Security-Policy', 'frame-src'],
+            description: 'Nginx staging configuration'
+        });
+    }
+
+    const errors = [];
+
+    for (const file of requiredFiles) {
+        // Check file exists
+        if (!fs.existsSync(file.path)) {
+            errors.push(`Generated file missing: ${file.path} (${file.description})`);
+            continue;
+        }
+
+        // Check file size
+        try {
+            const content = fs.readFileSync(file.path, 'utf8');
+            if (content.length < file.minSize) {
+                errors.push(`Generated file too small: ${file.path} (${content.length} bytes, expected >${file.minSize}) - ${file.description}`);
+                continue;
+            }
+
+            // Check required content
+            const missingContent = file.mustContain.filter(required => !content.includes(required));
+            if (missingContent.length > 0) {
+                errors.push(`Generated file missing expected content: ${file.path} should contain: ${missingContent.join(', ')} - ${file.description}`);
+                continue;
+            }
+
+            console.log(`✅ Validated: ${file.description} (${content.length} bytes)`);
+        } catch (readError) {
+            errors.push(`Cannot read generated file: ${file.path} - ${readError.message}`);
+        }
+    }
+
+    if (errors.length > 0) {
+        console.error('❌ Post-generation validation failed:');
+        errors.forEach(err => console.error(`  - ${err}`));
+        throw new Error('Generated files validation failed');
+    }
+
+    console.log(`✅ All ${requiredFiles.length} generated files validated successfully`);
 }
 
 /**
@@ -204,18 +458,37 @@ function main() {
         generateFrontendConfig(config, domainList);
         generateBackendConfig(config, cspFrameSrc);
 
-        // Generate nginx configs (templates will be created next)
+        // Generate nginx configs with strict validation
+        validateTemplates();
+
         if (fs.existsSync(NGINX_PRODUCTION_TEMPLATE)) {
             generateNginxConfig(NGINX_PRODUCTION_TEMPLATE, NGINX_PRODUCTION_OUTPUT, cspFrameSrc);
         } else {
-            console.warn(`Nginx production template not found: ${NGINX_PRODUCTION_TEMPLATE}`);
+            const message = `Nginx production template not found: ${NGINX_PRODUCTION_TEMPLATE}`;
+            if (STRICT_MODE) {
+                console.error('❌ ' + message);
+                console.error('   Set CSP_GEN_STRICT=false to make nginx configs optional');
+                throw new Error(message);
+            } else {
+                console.warn('⚠️  ' + message);
+            }
         }
 
         if (fs.existsSync(NGINX_STAGING_TEMPLATE)) {
             generateNginxConfig(NGINX_STAGING_TEMPLATE, NGINX_STAGING_OUTPUT, cspFrameSrc);
         } else {
-            console.warn(`Nginx staging template not found: ${NGINX_STAGING_TEMPLATE}`);
+            const message = `Nginx staging template not found: ${NGINX_STAGING_TEMPLATE}`;
+            if (STRICT_MODE) {
+                console.error('❌ ' + message);
+                console.error('   Set CSP_GEN_STRICT=false to make nginx configs optional');
+                throw new Error(message);
+            } else {
+                console.warn('⚠️  ' + message);
+            }
         }
+
+        // Validate all generated files
+        validateGeneratedFiles();
 
         console.log('\n✅ Configuration generation completed successfully!');
         console.log('\nNext steps:');

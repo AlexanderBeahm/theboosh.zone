@@ -6,7 +6,9 @@ COPY frontend/package*.json ./
 RUN npm ci
 # Copy necessary files for CSP config generation
 COPY config/trusted-embed-domains.json /config/trusted-embed-domains.json
+COPY config/trusted-embed-domains.schema.json /config/trusted-embed-domains.schema.json
 COPY script/generate-csp-configs /script/generate-csp-configs
+COPY nginx/templates/ /nginx/templates/
 RUN chmod +x /script/generate-csp-configs
 # Copy frontend source
 COPY frontend/ ./
@@ -39,6 +41,8 @@ COPY --chown=appuser:appuser . /usr/src/hello-perld
 COPY --from=frontend-builder --chown=appuser:appuser /frontend/dist /usr/src/hello-perld/lib/HelloPerld/Public/dist
 # Copy generated CSP configuration from frontend builder stage
 COPY --from=frontend-builder --chown=appuser:appuser /config/generated /usr/src/hello-perld/config/generated
+# Copy generated nginx configuration from frontend builder stage
+COPY --from=frontend-builder --chown=appuser:appuser /nginx/generated /usr/src/hello-perld/nginx/generated
 
 # Copy and set up entrypoint script
 COPY --chown=appuser:appuser docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

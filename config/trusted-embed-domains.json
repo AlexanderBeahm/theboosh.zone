@@ -1,4 +1,5 @@
 {
+  "$schema": "./trusted-embed-domains.schema.json",
   "version": "1.0",
   "last_updated": "2025-11-11",
   "description": "Single source of truth for trusted iframe embed domains. Used to generate frontend validation arrays, backend CSP headers, and nginx CSP configurations.",

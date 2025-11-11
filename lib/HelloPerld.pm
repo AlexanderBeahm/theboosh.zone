@@ -6,8 +6,8 @@ our $VERSION = '1.0.0';
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
 
-# CSP frame-src configuration will be loaded in startup method
-our $CSP_FRAME_SRC;
+# CSP frame-src directive configuration will be loaded in startup method
+our $CSP_FRAME_SRC_DIRECTIVE;
 
 sub startup {
     my $self = shift;
@@ -31,7 +31,33 @@ sub startup {
         $self->log->info("Loaded CSP frame-src configuration from: $csp_config_file");
     } else {
         $self->log->warn("CSP frame-src configuration not found at: $csp_config_file");
-        $CSP_FRAME_SRC = "frame-src 'none'"; # Fallback - no embedded frames allowed
+        $CSP_FRAME_SRC_DIRECTIVE = "frame-src 'none'"; # Fallback - no embedded frames allowed
+    }
+
+    # Validate CSP frame-src configuration at startup
+    if (!defined $CSP_FRAME_SRC_DIRECTIVE) {
+        $self->log->error("CSP_FRAME_SRC_DIRECTIVE is not defined. Config loading failed.");
+        die "CSP configuration validation failed: directive not defined";
+    }
+
+    if (!$CSP_FRAME_SRC_DIRECTIVE) {
+        $self->log->error("CSP_FRAME_SRC_DIRECTIVE is empty. Config may be corrupted.");
+        die "CSP configuration validation failed: directive is empty";
+    }
+
+    if ($CSP_FRAME_SRC_DIRECTIVE !~ /^frame-src\s+/) {
+        $self->log->error("CSP_FRAME_SRC_DIRECTIVE malformed. Expected format: 'frame-src ...' but got: '$CSP_FRAME_SRC_DIRECTIVE'");
+        $self->log->error("This indicates a bug in the CSP config generation. Check script/generate-csp-configs");
+        die "CSP configuration validation failed: invalid directive format";
+    }
+
+    # Validate directive contains actual domains (not just 'frame-src 'none'')
+    my $domain_count = () = $CSP_FRAME_SRC_DIRECTIVE =~ /https?:\/\/[^\s]+/g;
+    if ($domain_count == 0 && $CSP_FRAME_SRC_DIRECTIVE !~ /'none'/) {
+        $self->log->warn("CSP_FRAME_SRC_DIRECTIVE contains no domains and no 'none' directive: '$CSP_FRAME_SRC_DIRECTIVE'");
+        $self->log->warn("This may indicate a configuration issue. iframe embeds will be blocked.");
+    } else {
+        $self->log->info("CSP_FRAME_SRC_DIRECTIVE validated: $domain_count trusted domain(s) configured");
     }
 
     # Validate production configuration
@@ -418,7 +444,7 @@ sub startup {
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
                 "form-action 'self'",                           # Forms can only submit to same origin
                 "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
-                $CSP_FRAME_SRC,                                 # Trusted iframe embed domains (generated from config/trusted-embed-domains.json)
+                $CSP_FRAME_SRC_DIRECTIVE,                       # Trusted iframe embed domains (generated from config/trusted-embed-domains.json)
                 "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
             );
 
