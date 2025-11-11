@@ -38,6 +38,11 @@ frontend/node_modules/
 frontend/dist/
 lib/HelloPerld/Public/dist/
 
+# Generated CSP configuration files (created by script/generate-csp-configs)
+config/generated/
+frontend/src/generated/
+nginx/generated/
+
 # Node.js
 node_modules/
 npm-debug.log*
