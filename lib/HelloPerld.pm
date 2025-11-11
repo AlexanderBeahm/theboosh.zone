@@ -6,6 +6,12 @@ our $VERSION = '1.0.0';
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
 
+# Load generated CSP frame-src configuration (single source of truth)
+# Use FindBin to find the script directory and construct the correct path
+use FindBin;
+require "$FindBin::Bin/../config/generated/csp-frame-src.conf";
+our $CSP_FRAME_SRC; # Import the variable from the configuration file
+
 sub startup {
     my $self = shift;
 
@@ -405,7 +411,7 @@ sub startup {
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
                 "form-action 'self'",                           # Forms can only submit to same origin
                 "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
-                "frame-src https://*.bandcamp.com https://bandcamp.com https://youtube.com https://www.youtube.com https://youtube-nocookie.com https://www.youtube-nocookie.com https://youtu.be https://vimeo.com https://player.vimeo.com https://spotify.com https://open.spotify.com https://soundcloud.com https://w.soundcloud.com https://codepen.io https://codesandbox.io https://jsfiddle.net", # Allow trusted iframe embed domains
+                $CSP_FRAME_SRC,                                 # Trusted iframe embed domains (generated from config/trusted-embed-domains.json)
                 "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
             );
 

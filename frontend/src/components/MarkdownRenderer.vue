@@ -151,22 +151,8 @@ marked.setOptions({
     xhtml: false,
 });
 
-// Whitelist of trusted domains for iframe embeds
-const TRUSTED_EMBED_DOMAINS = [
-    "bandcamp.com",
-    "youtube.com",
-    "youtube-nocookie.com",
-    "youtu.be",
-    "vimeo.com",
-    "player.vimeo.com",
-    "spotify.com",
-    "open.spotify.com",
-    "soundcloud.com",
-    "w.soundcloud.com",
-    "codepen.io",
-    "codesandbox.io",
-    "jsfiddle.net",
-];
+// Import trusted domains from generated configuration (single source of truth)
+import { TRUSTED_EMBED_DOMAINS } from '../generated/trusted-domains.js';
 
 // Per-domain sandbox configurations for iframe security
 //
