@@ -48,7 +48,7 @@ services:
             - "443:443"
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-            - ./nginx/generated/production.conf:/etc/nginx/conf.d/default.conf:ro
+            - ./nginx/production.conf:/etc/nginx/conf.d/default.conf:ro
             - /mnt/volume_nyc3_01/hello-perld-prod/uploads:/usr/share/nginx/html/uploads:ro
             - /etc/letsencrypt:/etc/letsencrypt:ro
             - /var/www/certbot:/var/www/certbot:ro

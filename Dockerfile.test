@@ -3,11 +3,6 @@ FROM node:lts-alpine AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package*.json ./
 RUN npm ci
-# Copy necessary files for CSP config generation
-COPY config/trusted-embed-domains.json /config/trusted-embed-domains.json
-COPY script/generate-csp-configs /script/generate-csp-configs
-RUN chmod +x /script/generate-csp-configs
-# Copy frontend source
 COPY frontend/ ./
 RUN npm run build:test
 
@@ -24,8 +19,6 @@ COPY . /usr/src/hello-perld
 
 # Copy built frontend
 COPY --from=frontend-builder /frontend/dist /usr/src/hello-perld/lib/HelloPerld/Public/dist
-# Copy generated CSP configuration from frontend builder stage
-COPY --from=frontend-builder /config/generated /usr/src/hello-perld/config/generated
 
 # Create test uploads directory
 RUN mkdir -p /tmp/test-uploads

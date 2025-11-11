@@ -41,7 +41,7 @@ services:
             - "443:443"
         volumes:
             - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-            - ./nginx/generated/staging.conf:/etc/nginx/conf.d/default.conf:ro
+            - ./nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
             - /mnt/volume_sfo3_01/hello-perld-staging/uploads:/usr/share/nginx/html/uploads:ro
             - /etc/letsencrypt:/etc/letsencrypt:ro
             - /var/www/certbot:/var/www/certbot:ro

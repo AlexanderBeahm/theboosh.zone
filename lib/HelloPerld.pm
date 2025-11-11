@@ -6,9 +6,6 @@ our $VERSION = '1.0.0';
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
 
-# CSP frame-src configuration will be loaded in startup method
-our $CSP_FRAME_SRC;
-
 sub startup {
     my $self = shift;
 
@@ -23,16 +20,6 @@ sub startup {
 
     $self->log->info("Loading configuration for mode: $mode");
     $self->log->info("Config file: $config_file");
-
-    # Load generated CSP frame-src configuration (single source of truth)
-    my $csp_config_file = $self->home->rel_file('config/generated/csp-frame-src.conf');
-    if (-e $csp_config_file) {
-        require $csp_config_file;
-        $self->log->info("Loaded CSP frame-src configuration from: $csp_config_file");
-    } else {
-        $self->log->warn("CSP frame-src configuration not found at: $csp_config_file");
-        $CSP_FRAME_SRC = "frame-src 'none'"; # Fallback - no embedded frames allowed
-    }
 
     # Validate production configuration
     if ($mode eq 'production' || $mode eq 'staging') {
@@ -418,7 +405,7 @@ sub startup {
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
                 "form-action 'self'",                           # Forms can only submit to same origin
                 "frame-ancestors 'none'",                       # Prevent embedding in frames (like X-Frame-Options)
-                $CSP_FRAME_SRC,                                 # Trusted iframe embed domains (generated from config/trusted-embed-domains.json)
+                "frame-src https://*.bandcamp.com https://bandcamp.com https://youtube.com https://www.youtube.com https://youtube-nocookie.com https://www.youtube-nocookie.com https://youtu.be https://vimeo.com https://player.vimeo.com https://spotify.com https://open.spotify.com https://soundcloud.com https://w.soundcloud.com https://codepen.io https://codesandbox.io https://jsfiddle.net", # Allow trusted iframe embed domains
                 "upgrade-insecure-requests"                     # Automatically upgrade HTTP to HTTPS in production
             );
 

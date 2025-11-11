@@ -1,12 +1,12 @@
 <template>
-  <!-- v-html is safe here: content is sanitized with DOMPurify -->
-  <!-- eslint-disable vue/no-v-html -->
-  <div
-    class="markdown-content"
-    @click="handleLinkClick"
-    v-html="renderedContent"
-  />
-  <!-- eslint-enable vue/no-v-html -->
+    <!-- v-html is safe here: content is sanitized with DOMPurify -->
+    <!-- eslint-disable vue/no-v-html -->
+    <div
+        class="markdown-content"
+        @click="handleLinkClick"
+        v-html="renderedContent"
+    />
+    <!-- eslint-enable vue/no-v-html -->
 </template>
 
 <script setup>
@@ -151,8 +151,22 @@ marked.setOptions({
     xhtml: false,
 });
 
-// Import trusted domains from generated configuration (single source of truth)
-import { TRUSTED_EMBED_DOMAINS } from '../generated/trusted-domains.js';
+// Whitelist of trusted domains for iframe embeds
+const TRUSTED_EMBED_DOMAINS = [
+    "bandcamp.com",
+    "youtube.com",
+    "youtube-nocookie.com",
+    "youtu.be",
+    "vimeo.com",
+    "player.vimeo.com",
+    "spotify.com",
+    "open.spotify.com",
+    "soundcloud.com",
+    "w.soundcloud.com",
+    "codepen.io",
+    "codesandbox.io",
+    "jsfiddle.net",
+];
 
 // Per-domain sandbox configurations for iframe security
 //
