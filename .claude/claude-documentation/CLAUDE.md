@@ -132,6 +132,17 @@ TheBoosh.Zone is Alex Beahm's personal portfolio and blog website, built with a 
   - Media library with search/filter
   - Metadata management (alt text, captions)
   - Organized storage (YYYY/MM directory structure)
+- **Synchronized Radio Station**:
+  - Live streaming radio with synchronized playback across all users
+  - M3U and HLS (M3U8) playlist support
+  - Automatic duration calculation for playlists
+  - Time-based synchronization (all users hear the same position)
+  - Infinite looping playback
+  - Admin-managed playlist configuration
+  - Full-screen audio visualizer with Web Audio API
+  - Volume control and playlist viewer
+  - S3/CloudFront compatible for hosted media
+  - "Click to Listen Live" splash screen
 
 ## Development Priorities
 See CLAUDE-FEATURE-TODO.md for detailed feature requests and priorities.
@@ -769,6 +780,157 @@ curl -X POST http://localhost:3000/api/admin/media/upload \
 'Digest::SHA'      => 0,  # Hash generation for unique filenames
 ```
 
+### Synchronized Radio Station Flow
+
+**Overview**: The Radio feature provides a synchronized streaming experience where all users hear the same audio at the same time, similar to traditional radio broadcasting.
+
+**Architecture**:
+- **Backend**: Perl/Mojolicious with PostgreSQL
+- **Frontend**: Vue 3 with Web Audio API, HLS.js for streaming
+- **Storage**: S3/CloudFront or local file storage
+- **Sync Method**: Time-based calculation from playlist upload timestamp
+
+**Database Schema** (`migrations/008_create_radio_config_table.sql` and `009_add_radio_sync_fields.sql`):
+```sql
+CREATE TABLE radio_config (
+    id SERIAL PRIMARY KEY,
+    config_key VARCHAR(255) NOT NULL UNIQUE,
+    config_value TEXT NOT NULL,
+    description TEXT,
+    total_duration INTEGER,  -- Playlist duration in seconds
+    updated_by INTEGER REFERENCES admin_users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Synchronization Logic**:
+1. Admin uploads playlist URL → Backend calculates total duration
+2. `updated_at` timestamp serves as the "radio station start time"
+3. User requests sync info → Backend calculates:
+   - `elapsed = current_server_time - updated_at`
+   - `position = elapsed % total_duration` (modulo for looping)
+   - Determines current track index and position within track
+4. Frontend loads track and seeks to calculated position
+5. Playback starts automatically after user clicks "Listen Live"
+
+**Playlist Format Support**:
+
+*M3U Playlists*:
+```m3u
+#EXTM3U
+#EXTINF:180,Artist - Song Title
+https://example.com/song.mp3
+#EXTINF:240,Artist - Another Song
+https://example.com/song2.mp3
+```
+
+*HLS Streams (M3U8)*:
+- Supports both master playlists and media playlists
+- Auto-detects VOD vs Live streams
+- Calculates duration from `#EXTINF` segment durations
+- Requires `#EXT-X-ENDLIST` tag for VOD detection
+
+**Backend Implementation** (`lib/HelloPerld/Controller/Radio.pm`):
+
+Key Methods:
+- `get_playlist()` - Public endpoint to fetch playlist URL
+- `get_sync_info()` - Public endpoint for synchronization data
+- `update_playlist()` - Admin endpoint to update playlist (calculates duration)
+- `delete_playlist()` - Admin endpoint to remove playlist
+- `_calculate_playlist_duration()` - Parses M3U/M3U8 and sums durations
+- `_parse_m3u()` - Extracts track info from M3U format
+
+**Frontend Implementation**:
+
+*Audio Player* (`frontend/src/composables/useAudioPlayer.js`):
+- `loadPlaylistWithSync()` - Fetches sync info and loads at correct position
+- `syncToPosition()` - Syncs to specific track and time offset
+- Auto-looping: When track ends, loads next track or loops to beginning
+- HLS.js integration for M3U8 streams
+
+*Radio Page* (`frontend/src/views/RadioPage.vue`):
+- Full-screen visualizer using Web Audio API
+- "Click to Listen Live" splash screen (browser autoplay requirement)
+- Volume control and playlist viewer (read-only)
+- No playback controls (play/pause/skip) - true radio station experience
+
+*Audio Visualizer* (`frontend/src/composables/useAudioVisualizer.js`):
+- Web Audio API with AnalyserNode
+- Particle-based abstract visualization
+- Canvas rendering with RequestAnimationFrame
+- Retro-futuristic styling (pink/silver theme)
+
+**CORS Configuration for S3**:
+```json
+[
+    {
+        "AllowedHeaders": ["*"],
+        "AllowedMethods": ["GET", "HEAD"],
+        "AllowedOrigins": [
+            "http://localhost:3000",
+            "https://yourdomain.com"
+        ],
+        "ExposeHeaders": [
+            "Content-Length",
+            "Content-Type",
+            "Content-Range"
+        ],
+        "MaxAgeSeconds": 3600
+    }
+]
+```
+
+**CSP Configuration**:
+```perl
+"media-src 'self' blob: https:",     # Audio/video from HTTPS sources
+"connect-src 'self' https:",         # XHR/fetch for HLS manifests
+```
+
+**API Endpoints**:
+
+Public:
+- `GET /api/radio/playlist?parse=1` - Get playlist with tracks
+- `GET /api/radio/sync-info` - Get synchronization data
+
+Admin (requires session auth + CSRF):
+- `GET /api/admin/radio/config` - Get current configuration
+- `POST /api/admin/radio/playlist` - Update playlist URL
+- `DELETE /api/admin/radio/playlist` - Delete playlist
+
+**Sync Info Response**:
+```json
+{
+  "success": true,
+  "sync_info": {
+    "configured": true,
+    "server_time": 1700000000,
+    "playlist_start_time": 1699999000,
+    "playlist_url": "https://...",
+    "total_duration": 1800,
+    "elapsed_time": 1000,
+    "current_position": 100,
+    "current_track_index": 2,
+    "is_hls": false
+  }
+}
+```
+
+**Important Notes**:
+- All users synchronized within ±1 second accuracy
+- Playlist loops infinitely until admin uploads new playlist
+- HLS master playlists automatically resolved to media playlists
+- Duration calculation handles both M3U and HLS VOD formats
+- Live HLS streams (no `#EXT-X-ENDLIST`) treated as infinite duration
+- Browser autoplay policies require user interaction before playback
+- Media Session API integration for OS-level controls
+
+**Troubleshooting**:
+- If sync is incorrect, check `total_duration` is not NULL in database
+- For HLS, ensure manifest has `#EXT-X-ENDLIST` tag for VOD detection
+- CORS errors: Configure S3 bucket or use CloudFront
+- Playback issues: Check CSP headers allow media-src and connect-src
+
 ### Mojolicious OpenAPI Route Configuration
 
 **CRITICAL**: Routes defined in `swagger/swagger.json` MUST include `x-mojo-to` directive!
@@ -881,6 +1043,56 @@ perl -I/usr/src/hello-perld/lib -MHelloPerld::Database::Postgres -e "..."
 
 ### Database Connection Best Practices
 
+**CRITICAL: Always use HelloPerld::Model::Base for new models!**
+
+All model classes MUST inherit from `HelloPerld::Model::Base` which provides:
+- Consistent database connection handling via `_get_dbh()`
+- Automatic config-based or default connection fallback
+- Built-in logging helpers (`_log_error()`, `_log_info()`)
+- Proper error handling and connection cleanup
+
+**Model Structure Pattern**:
+```perl
+package HelloPerld::Model::YourModel;
+
+use strict;
+use warnings;
+
+our $VERSION = '1.0.0';
+
+use parent 'HelloPerld::Model::Base';  # REQUIRED!
+
+# Your model methods here
+sub get_something {
+    my ($self, $param) = @_;
+    
+    my $dbh = $self->_get_dbh();  # Use this, NOT db_config->connect_db()
+    return undef unless $dbh;
+    
+    # ... database operations
+}
+```
+
+**Instantiation Pattern in Controllers**:
+```perl
+my $model = HelloPerld::Model::YourModel->new(
+    logger => $self->app->logger_instance,
+    db_config => $self->db_config
+);
+```
+
+**WRONG - Do NOT do this**:
+```perl
+# ❌ WRONG - Missing parent class
+package HelloPerld::Model::Bad;
+use Mojo::Base -base, -signatures;
+has 'db_config';
+
+# ❌ WRONG - Direct connect_db() call
+my $dbh = $self->db_config->connect_db();
+```
+
+**Additional Best Practices**:
 1. **Always disconnect after queries** to prevent "active statement handle" warnings
 2. **Use eval blocks** for error handling in database operations
 3. **Test connection before running migrations** (done in entrypoint script)

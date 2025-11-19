@@ -17,7 +17,11 @@ export function useCSRF() {
      */
     async function getToken() {
         // Check if we have a valid cached token
-        if (csrfToken.value && tokenExpiry.value && Date.now() < tokenExpiry.value) {
+        if (
+            csrfToken.value &&
+            tokenExpiry.value &&
+            Date.now() < tokenExpiry.value
+        ) {
             return csrfToken.value;
         }
 
@@ -53,17 +57,14 @@ export function useCSRF() {
 
                 csrfToken.value = csrf_token;
                 // Set expiry to 90% of server expiry to refresh before it expires
-                tokenExpiry.value = Date.now() + (expires_in * 1000 * 0.9);
+                tokenExpiry.value = Date.now() + expires_in * 1000 * 0.9;
 
-                console.debug("CSRF token refreshed successfully");
                 return true;
             } else {
-                console.warn("Failed to get CSRF token from server");
                 clearToken();
                 return false;
             }
-        } catch (error) {
-            console.error("Error refreshing CSRF token:", error);
+        } catch {
             clearToken();
             return false;
         } finally {
@@ -76,10 +77,14 @@ export function useCSRF() {
      * @param {Object} responseData - API response data
      */
     function extractTokenFromResponse(responseData) {
-        if (responseData && responseData.csrf_token && responseData.expires_in) {
+        if (
+            responseData &&
+            responseData.csrf_token &&
+            responseData.expires_in
+        ) {
             csrfToken.value = responseData.csrf_token;
-            tokenExpiry.value = Date.now() + (responseData.expires_in * 1000 * 0.9);
-            console.debug("CSRF token extracted from response");
+            tokenExpiry.value =
+                Date.now() + responseData.expires_in * 1000 * 0.9;
         }
     }
 
@@ -112,9 +117,11 @@ export function useCSRF() {
     function getTokenInfo() {
         return {
             hasToken: !!csrfToken.value,
-            expiry: tokenExpiry.value ? new Date(tokenExpiry.value).toISOString() : null,
+            expiry: tokenExpiry.value
+                ? new Date(tokenExpiry.value).toISOString()
+                : null,
             needsRefresh: needsRefresh(),
-            isRefreshing: isRefreshing.value
+            isRefreshing: isRefreshing.value,
         };
     }
 
@@ -130,7 +137,7 @@ export function useCSRF() {
         extractTokenFromResponse,
         clearToken,
         needsRefresh,
-        getTokenInfo
+        getTokenInfo,
     };
 }
 
@@ -144,24 +151,21 @@ export function setupCSRFInterceptor() {
     axios.interceptors.request.use(
         async (config) => {
             // Only add CSRF token to non-GET requests
-            if (config.method && config.method.toLowerCase() !== 'get') {
+            if (config.method && config.method.toLowerCase() !== "get") {
                 try {
                     const token = await getToken();
                     if (token) {
-                        config.headers['X-CSRF-Token'] = token;
-                        console.debug("Added CSRF token to request:", config.method, config.url);
-                    } else {
-                        console.warn("No CSRF token available for request:", config.method, config.url);
+                        config.headers["X-CSRF-Token"] = token;
                     }
-                } catch (error) {
-                    console.error("Failed to get CSRF token for request:", error);
+                } catch {
+                    // Failed to get CSRF token
                 }
             }
             return config;
         },
         (error) => {
             return Promise.reject(error);
-        }
+        },
     );
 
     // Response interceptor - handle CSRF token refresh on 403 errors
@@ -173,11 +177,10 @@ export function setupCSRFInterceptor() {
             const { refreshToken, getToken } = useCSRF();
 
             // Handle CSRF validation failures
-            if (error.response?.status === 403 &&
-                error.response?.data?.error === 'CSRF validation failed') {
-
-                console.log("CSRF validation failed, attempting token refresh...");
-
+            if (
+                error.response?.status === 403 &&
+                error.response?.data?.error === "CSRF validation failed"
+            ) {
                 // Try to refresh token and retry the request
                 const refreshSuccess = await refreshToken();
                 if (refreshSuccess && error.config && !error.config._retry) {
@@ -186,14 +189,13 @@ export function setupCSRFInterceptor() {
                     // Add fresh token to the retry request
                     const newToken = await getToken();
                     if (newToken) {
-                        error.config.headers['X-CSRF-Token'] = newToken;
-                        console.log("Retrying request with fresh CSRF token");
+                        error.config.headers["X-CSRF-Token"] = newToken;
                         return axios.request(error.config);
                     }
                 }
             }
 
             return Promise.reject(error);
-        }
+        },
     );
 }

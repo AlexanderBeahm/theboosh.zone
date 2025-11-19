@@ -22,6 +22,12 @@
       >
         ARTICLES
       </router-link>
+      <router-link
+        to="/radio"
+        :class="{ active: $route.path === '/radio' }"
+      >
+        RADIO
+      </router-link>
       <a
         v-if="config.enableSwagger"
         href="/swagger"
@@ -42,6 +48,13 @@
         :class="{ active: $route.path.startsWith('/admin/media') }"
       >
         MEDIA
+      </router-link>
+      <router-link
+        v-if="isAuthenticated"
+        to="/admin/radio"
+        :class="{ active: $route.path.startsWith('/admin/radio') }"
+      >
+        RADIO CONFIG
       </router-link>
     </nav>
     <div class="nav-spacer" />
@@ -90,6 +103,7 @@ onMounted(() => {
     box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
+    z-index: 1000;
 }
 
 /* Subtle geometric grid pattern overlay */
