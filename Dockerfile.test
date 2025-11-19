@@ -12,7 +12,7 @@ WORKDIR /usr/src/hello-perld
 
 # Install test dependencies
 COPY Makefile.PL cpanfile* /usr/src/hello-perld/
-RUN cpanm --installdeps .
+RUN cpanm --installdeps --notest .
 
 # Copy application files
 COPY . /usr/src/hello-perld

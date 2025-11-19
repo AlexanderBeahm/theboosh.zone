@@ -207,7 +207,12 @@ sub update_playlist ($self) {
         }
 
         # Check for path traversal attempts
-        if ($playlist_url =~ m{\.\.} || $playlist_url =~ m{//}) {
+        # Decode URL encoding first to catch encoded traversal attempts like %2e%2e
+        use Mojo::Util qw(url_unescape);
+        my $decoded_path = url_unescape($playlist_url);
+
+        if ($playlist_url =~ m{\.\.} || $playlist_url =~ m{//} ||
+            $decoded_path =~ m{\.\.} || $decoded_path =~ m{//}) {
             return error_response($self, 'validation',
                 'Invalid path: path traversal sequences not allowed',
                 code => 'VAL003',

@@ -10,34 +10,6 @@ use lib "$FindBin::Bin/../../../lib";
 # Initialize the Mojolicious app
 my $t = Test::Mojo->new('HelloPerld');
 
-# Clean up any existing playlist configuration before tests
-# This ensures tests start from a clean state
-sub cleanup_playlist {
-    my $admin_user = $ENV{ADMIN_USERNAME} || 'admin';
-    my $admin_pass = $ENV{ADMIN_PASSWORD};
-
-    return unless $admin_pass;
-
-    # Login
-    my $login_response = $t->post_ok('/api/auth/login' => json => {
-        username => $admin_user,
-        password => $admin_pass
-    })->tx->res->json;
-
-    return unless $login_response && $login_response->{csrf_token};
-
-    my $csrf_token = $login_response->{csrf_token};
-
-    # Delete playlist (ignore if it doesn't exist)
-    $t->delete_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token});
-
-    # Logout
-    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token});
-}
-
-# Clean up before starting tests
-cleanup_playlist();
-
 # ====== PUBLIC ENDPOINTS (No Auth Required) ======
 
 subtest 'get_playlist - no playlist configured' => sub {
