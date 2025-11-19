@@ -402,13 +402,24 @@ sub startup {
         # Skip CSP for Swagger UI (needs inline scripts) but apply to all other routes
         unless ($path =~ m{^/swagger}) {
             # Content Security Policy - Modern XSS protection
+            # Build connect-src based on environment (for SSH bastion support)
+            my $connect_src = "'self' https:";
+            my $mode = $c->app->mode;
+            if ($mode eq 'staging') {
+                # Allow staging domain for SSH bastion access
+                $connect_src = "'self' https://staging.theboosh.zone https:";
+            } elsif ($mode eq 'production') {
+                # Allow production domain for SSH bastion access
+                $connect_src = "'self' https://theboosh.zone https:";
+            }
+
             my $csp = join('; ',
                 "default-src 'self'",                           # Only allow resources from same origin by default
                 "script-src 'self'",                            # Only scripts from same origin (no inline, no eval)
                 "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
                 "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
                 "font-src 'self'",                              # Web fonts from same origin only
-                "connect-src 'self' https:",                    # AJAX/fetch to same origin + HTTPS (for HLS streaming)
+                "connect-src $connect_src",                     # AJAX/fetch to same origin, domain, + HTTPS (for HLS streaming and SSH bastion)
                 "media-src 'self' blob: https:",                # Audio/video from same origin, blob URLs (Web Audio API), and HTTPS sources
                 "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
