@@ -402,25 +402,15 @@ sub startup {
         # Skip CSP for Swagger UI (needs inline scripts) but apply to all other routes
         unless ($path =~ m{^/swagger}) {
             # Content Security Policy - Modern XSS protection
-            # Build connect-src based on environment (for SSH bastion support)
+            # Note: Using relative URLs for API calls, so connect-src only needs 'self'
             # Note: connect-src controls fetch/XHR, media-src controls audio/video loading
-            my $connect_src = "'self'";
-            my $mode = $c->app->mode;
-            if ($mode eq 'staging') {
-                # Allow staging domain for SSH bastion access (localhost:8443 -> staging.theboosh.zone)
-                $connect_src = "'self' https://staging.theboosh.zone";
-            } elsif ($mode eq 'production') {
-                # Allow production domain for SSH bastion access
-                $connect_src = "'self' https://theboosh.zone";
-            }
-
             my $csp = join('; ',
                 "default-src 'self'",                           # Only allow resources from same origin by default
                 "script-src 'self'",                            # Only scripts from same origin (no inline, no eval)
                 "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
                 "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
                 "font-src 'self'",                              # Web fonts from same origin only
-                "connect-src $connect_src",                     # AJAX/fetch restricted to self and explicit domain (SSH bastion support)
+                "connect-src 'self'",                           # AJAX/fetch restricted to same origin only
                 "media-src 'self' blob: https:",                # Audio/video: self-hosted, blob URLs (HLS.js), and external HTTPS streams
                 "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
