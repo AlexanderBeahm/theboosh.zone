@@ -65,7 +65,7 @@ export function useAudioPlayer() {
      * Initialize audio element and load saved preferences
      */
     function init() {
-        audio.value = new Audio();
+        audio.value = new window.Audio();
         audio.value.crossOrigin = "anonymous"; // Enable CORS for Web Audio API
 
         // Load saved volume
@@ -123,8 +123,7 @@ export function useAudioPlayer() {
             } else {
                 error.value = "No playlist configured";
             }
-        } catch (err) {
-            console.error("Failed to load playlist:", err);
+        } catch {
             error.value = "Failed to load playlist";
         } finally {
             isLoading.value = false;
@@ -143,8 +142,7 @@ export function useAudioPlayer() {
             if (playlist.value.length > 0) {
                 loadTrack(0);
             }
-        } catch (err) {
-            console.error("Failed to fetch playlist:", err);
+        } catch {
             error.value = "Failed to fetch playlist file";
         }
     }
@@ -241,12 +239,10 @@ export function useAudioPlayer() {
             hls.value.attachMedia(audio.value);
 
             hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log("HLS manifest loaded, ready to play");
                 isLoading.value = false;
             });
 
             hls.value.on(Hls.Events.ERROR, (event, data) => {
-                console.error("HLS error:", data);
                 if (data.fatal) {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
@@ -290,8 +286,7 @@ export function useAudioPlayer() {
 
         try {
             await audio.value.play();
-        } catch (err) {
-            console.error("Play failed:", err);
+        } catch {
             error.value = "Playback failed";
         }
     }
@@ -382,7 +377,7 @@ export function useAudioPlayer() {
             return;
         }
 
-        navigator.mediaSession.metadata = new MediaMetadata({
+        navigator.mediaSession.metadata = new window.MediaMetadata({
             title: currentTrack.value.title,
             artist: currentTrack.value.artist,
             album: "TheBoosh Radio",
@@ -436,8 +431,7 @@ export function useAudioPlayer() {
         isPlaying.value = false;
     }
 
-    function handleError(event) {
-        console.error("Audio error:", event);
+    function handleError() {
         error.value = "Failed to load audio track";
         isLoading.value = false;
         isPlaying.value = false;
@@ -558,8 +552,7 @@ export function useAudioPlayer() {
                 error.value = "No tracks in playlist";
                 return false;
             }
-        } catch (err) {
-            console.error("Failed to load playlist with sync:", err);
+        } catch {
             error.value = "Failed to load synchronized playlist";
             return false;
         } finally {

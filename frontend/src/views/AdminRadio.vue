@@ -1,117 +1,142 @@
 <template>
-    <div class="admin-radio-page">
-        <div class="page-header">
-            <h1>Radio Configuration</h1>
-            <p class="page-description">
-                Configure the radio streaming playlist for your visitors
-            </p>
-        </div>
-
-        <div class="config-section">
-            <!-- Current Configuration Display -->
-            <div
-                v-if="currentPlaylistUrl && !isEditing"
-                class="current-config-card"
-            >
-                <h2>Current Playlist</h2>
-                <div class="config-display">
-                    <div class="config-label">Playlist URL:</div>
-                    <div class="config-value">{{ currentPlaylistUrl }}</div>
-                </div>
-                <div class="button-group">
-                    <button class="btn-edit" @click="startEditing">
-                        Update Playlist URL
-                    </button>
-                    <button
-                        class="btn-delete"
-                        @click="confirmDelete"
-                        :disabled="isDeleting"
-                    >
-                        {{ isDeleting ? "Deleting..." : "Delete Playlist" }}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Configuration Form -->
-            <div
-                v-if="!currentPlaylistUrl || isEditing"
-                class="config-form-card"
-            >
-                <h2>
-                    {{ currentPlaylistUrl ? "Update" : "Set" }} Playlist URL
-                </h2>
-
-                <form @submit.prevent="savePlaylistUrl">
-                    <div class="form-group">
-                        <label for="playlist-url">Playlist URL</label>
-                        <input
-                            id="playlist-url"
-                            v-model="playlistUrl"
-                            type="text"
-                            placeholder="https://example.com/playlist.m3u or /uploads/playlist.m3u"
-                            required
-                            :disabled="isSaving"
-                        />
-                        <p class="help-text">
-                            Enter a URL to a .m3u or .m3u8 playlist file. Can be
-                            an HTTP(S) URL or a local path starting with /.
-                        </p>
-                    </div>
-
-                    <div v-if="error" class="error-message">
-                        {{ error }}
-                    </div>
-
-                    <div class="form-actions">
-                        <button
-                            v-if="isEditing"
-                            type="button"
-                            class="btn-secondary"
-                            :disabled="isSaving"
-                            @click="cancelEditing"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            class="btn-primary"
-                            :disabled="isSaving || !playlistUrl"
-                        >
-                            {{ isSaving ? "Saving..." : "Save Playlist URL" }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Playlist Preview (if parse is successful) -->
-            <div v-if="previewTracks.length > 0" class="preview-card">
-                <h2>Playlist Preview</h2>
-                <div class="tracks-list">
-                    <div
-                        v-for="(track, index) in previewTracks"
-                        :key="index"
-                        class="track-item"
-                    >
-                        <div class="track-number">{{ index + 1 }}</div>
-                        <div class="track-info">
-                            <div class="track-title">{{ track.title }}</div>
-                            <div class="track-artist">{{ track.artist }}</div>
-                        </div>
-                        <div v-if="track.duration > 0" class="track-duration">
-                            {{ formatDuration(track.duration) }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Success Toast -->
-        <Transition name="toast">
-            <div v-if="showSuccessToast" class="success-toast">
-                {{ successMessage }}
-            </div>
-        </Transition>
+  <div class="admin-radio-page">
+    <div class="page-header">
+      <h1>Radio Configuration</h1>
+      <p class="page-description">
+        Configure the radio streaming playlist for your visitors
+      </p>
     </div>
+
+    <div class="config-section">
+      <!-- Current Configuration Display -->
+      <div
+        v-if="currentPlaylistUrl && !isEditing"
+        class="current-config-card"
+      >
+        <h2>Current Playlist</h2>
+        <div class="config-display">
+          <div class="config-label">
+            Playlist URL:
+          </div>
+          <div class="config-value">
+            {{ currentPlaylistUrl }}
+          </div>
+        </div>
+        <div class="button-group">
+          <button
+            class="btn-edit"
+            @click="startEditing"
+          >
+            Update Playlist URL
+          </button>
+          <button
+            class="btn-delete"
+            :disabled="isDeleting"
+            @click="confirmDelete"
+          >
+            {{ isDeleting ? "Deleting..." : "Delete Playlist" }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Configuration Form -->
+      <div
+        v-if="!currentPlaylistUrl || isEditing"
+        class="config-form-card"
+      >
+        <h2>
+          {{ currentPlaylistUrl ? "Update" : "Set" }} Playlist URL
+        </h2>
+
+        <form @submit.prevent="savePlaylistUrl">
+          <div class="form-group">
+            <label for="playlist-url">Playlist URL</label>
+            <input
+              id="playlist-url"
+              v-model="playlistUrl"
+              type="text"
+              placeholder="https://example.com/playlist.m3u or /uploads/playlist.m3u"
+              required
+              :disabled="isSaving"
+            >
+            <p class="help-text">
+              Enter a URL to a .m3u or .m3u8 playlist file. Can be
+              an HTTP(S) URL or a local path starting with /.
+            </p>
+          </div>
+
+          <div
+            v-if="error"
+            class="error-message"
+          >
+            {{ error }}
+          </div>
+
+          <div class="form-actions">
+            <button
+              v-if="isEditing"
+              type="button"
+              class="btn-secondary"
+              :disabled="isSaving"
+              @click="cancelEditing"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn-primary"
+              :disabled="isSaving || !playlistUrl"
+            >
+              {{ isSaving ? "Saving..." : "Save Playlist URL" }}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Playlist Preview (if parse is successful) -->
+      <div
+        v-if="previewTracks.length > 0"
+        class="preview-card"
+      >
+        <h2>Playlist Preview</h2>
+        <div class="tracks-list">
+          <div
+            v-for="(track, index) in previewTracks"
+            :key="index"
+            class="track-item"
+          >
+            <div class="track-number">
+              {{ index + 1 }}
+            </div>
+            <div class="track-info">
+              <div class="track-title">
+                {{ track.title }}
+              </div>
+              <div class="track-artist">
+                {{ track.artist }}
+              </div>
+            </div>
+            <div
+              v-if="track.duration > 0"
+              class="track-duration"
+            >
+              {{ formatDuration(track.duration) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Success Toast -->
+    <Transition name="toast">
+      <div
+        v-if="showSuccessToast"
+        class="success-toast"
+      >
+        {{ successMessage }}
+      </div>
+    </Transition>
+  </div>
 </template>
 
 <script setup>
@@ -158,8 +183,7 @@ async function loadCurrentConfig() {
                 }
             }
         }
-    } catch (err) {
-        console.error("Failed to load radio configuration:", err);
+    } catch {
         error.value = "Failed to load current configuration";
     }
 }
@@ -173,8 +197,7 @@ async function loadPlaylistPreview() {
         if (response.data.success && response.data.playlist.tracks) {
             previewTracks.value = response.data.playlist.tracks.slice(0, 10); // Show first 10 tracks
         }
-    } catch (err) {
-        console.error("Failed to load playlist preview:", err);
+    } catch {
         // Don't show error to user - preview is optional
     }
 }
@@ -231,7 +254,6 @@ async function deletePlaylist() {
             error.value = response.data.message || "Failed to delete playlist";
         }
     } catch (err) {
-        console.error("Failed to delete playlist:", err);
         if (err.response?.data?.message) {
             error.value = err.response.data.message;
         } else {
@@ -277,8 +299,6 @@ async function savePlaylistUrl() {
             loadPlaylistPreview();
         }
     } catch (err) {
-        console.error("Failed to save playlist URL:", err);
-
         if (err.response?.data?.error) {
             error.value = err.response.data.error;
         } else {

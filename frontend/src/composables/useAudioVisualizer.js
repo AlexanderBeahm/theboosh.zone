@@ -42,7 +42,6 @@ export function useAudioVisualizer() {
      */
     function init(audioElement) {
         if (isInitialized.value) {
-            console.warn("Audio visualizer already initialized");
             return;
         }
 
@@ -74,8 +73,7 @@ export function useAudioVisualizer() {
             isInitialized.value = true;
 
             return true;
-        } catch (err) {
-            console.error("Failed to initialize audio visualizer:", err);
+        } catch {
             return false;
         }
     }
@@ -146,7 +144,7 @@ export function useAudioVisualizer() {
      */
     function stop() {
         if (animationId.value) {
-            cancelAnimationFrame(animationId.value);
+            window.cancelAnimationFrame(animationId.value);
             animationId.value = null;
         }
     }
@@ -155,7 +153,7 @@ export function useAudioVisualizer() {
      * Main animation loop
      */
     function animate() {
-        animationId.value = requestAnimationFrame(animate);
+        animationId.value = window.requestAnimationFrame(animate);
 
         if (!analyser.value || !canvasContext.value || !canvas.value) {
             return;

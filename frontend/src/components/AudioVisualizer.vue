@@ -41,65 +41,73 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
-import { useAudioVisualizer } from '../composables/useAudioVisualizer';
+import { ref, onMounted, watch, computed } from "vue";
+import { useAudioVisualizer } from "../composables/useAudioVisualizer";
 
 const props = defineProps({
     audioElement: {
-        type: HTMLAudioElement,
-        default: null
+        type: Object, // HTMLAudioElement
+        default: null,
     },
     isPlaying: {
         type: Boolean,
-        default: false
-    }
+        default: false,
+    },
 });
 
 const canvasRef = ref(null);
 const visualizer = useAudioVisualizer();
 
-const { isInitialized, setupCanvas, init, start, stop, resumeContext } = visualizer;
+const { isInitialized, setupCanvas, init, start, stop, resumeContext } =
+    visualizer;
 
 const placeholderText = computed(() => {
     if (!props.audioElement) {
-        return 'Loading audio...';
+        return "Loading audio...";
     }
     if (!isInitialized.value) {
-        return 'Initializing visualizer...';
+        return "Initializing visualizer...";
     }
     if (!props.isPlaying) {
-        return 'Press play to start';
+        return "Press play to start";
     }
-    return '';
+    return "";
 });
 
 // Initialize when audio element is available
-watch(() => props.audioElement, (newAudio) => {
-    if (newAudio && !isInitialized.value) {
-        const success = init(newAudio);
-        if (success && canvasRef.value) {
-            setupCanvas(canvasRef.value);
-            if (props.isPlaying) {
-                resumeContext().then(() => {
-                    start();
-                });
+watch(
+    () => props.audioElement,
+    (newAudio) => {
+        if (newAudio && !isInitialized.value) {
+            const success = init(newAudio);
+            if (success && canvasRef.value) {
+                setupCanvas(canvasRef.value);
+                if (props.isPlaying) {
+                    resumeContext().then(() => {
+                        start();
+                    });
+                }
             }
         }
-    }
-}, { immediate: true });
+    },
+    { immediate: true },
+);
 
 // Start/stop visualization based on playback state
-watch(() => props.isPlaying, (playing) => {
-    if (!isInitialized.value) return;
+watch(
+    () => props.isPlaying,
+    (playing) => {
+        if (!isInitialized.value) return;
 
-    if (playing) {
-        resumeContext().then(() => {
-            start();
-        });
-    } else {
-        stop();
-    }
-});
+        if (playing) {
+            resumeContext().then(() => {
+                start();
+            });
+        } else {
+            stop();
+        }
+    },
+);
 
 onMounted(() => {
     if (canvasRef.value && props.audioElement && !isInitialized.value) {
@@ -155,7 +163,8 @@ onMounted(() => {
 }
 
 @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 0.6;
         transform: scale(1);
     }
@@ -166,7 +175,8 @@ onMounted(() => {
 }
 
 @keyframes pulse-ring {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 1;
         stroke-width: 2;
     }

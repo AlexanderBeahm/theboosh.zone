@@ -1,66 +1,78 @@
 <template>
-    <div class="nav-bar">
-        <nav class="nav-links" aria-label="Main navigation">
-            <router-link to="/" :class="{ active: $route.path === '/' }">
-                THEBOOSH.ZONE
-            </router-link>
-            <router-link
-                to="/about"
-                :class="{ active: $route.path === '/about' }"
-            >
-                ABOUT
-            </router-link>
-            <router-link
-                to="/articles"
-                :class="{ active: $route.path.startsWith('/articles') }"
-            >
-                ARTICLES
-            </router-link>
-            <router-link
-                to="/radio"
-                :class="{ active: $route.path === '/radio' }"
-            >
-                RADIO
-            </router-link>
-            <a
-                v-if="config.enableSwagger"
-                href="/swagger"
-                target="_blank"
-                aria-label="View API documentation in Swagger UI (opens in new tab)"
-                rel="noopener noreferrer"
-                >SWAGGER</a
-            >
-            <router-link
-                v-if="isAuthenticated"
-                to="/admin"
-                :class="{ active: $route.path.endsWith('/admin') }"
-            >
-                ADMIN
-            </router-link>
-            <router-link
-                v-if="isAuthenticated"
-                to="/admin/media"
-                :class="{ active: $route.path.startsWith('/admin/media') }"
-            >
-                MEDIA
-            </router-link>
-            <router-link
-                v-if="isAuthenticated"
-                to="/admin/radio"
-                :class="{ active: $route.path.startsWith('/admin/radio') }"
-            >
-                RADIO CONFIG
-            </router-link>
-        </nav>
-        <div class="nav-spacer" />
+  <div class="nav-bar">
+    <nav
+      class="nav-links"
+      aria-label="Main navigation"
+    >
+      <router-link
+        to="/"
+        :class="{ active: $route.path === '/' }"
+      >
+        THEBOOSH.ZONE
+      </router-link>
+      <router-link
+        to="/about"
+        :class="{ active: $route.path === '/about' }"
+      >
+        ABOUT
+      </router-link>
+      <router-link
+        to="/articles"
+        :class="{ active: $route.path.startsWith('/articles') }"
+      >
+        ARTICLES
+      </router-link>
+      <router-link
+        to="/radio"
+        :class="{ active: $route.path === '/radio' }"
+      >
+        RADIO
+      </router-link>
+      <a
+        v-if="config.enableSwagger"
+        href="/swagger"
+        target="_blank"
+        aria-label="View API documentation in Swagger UI (opens in new tab)"
+        rel="noopener noreferrer"
+      >SWAGGER</a>
+      <router-link
+        v-if="isAuthenticated"
+        to="/admin"
+        :class="{ active: $route.path.endsWith('/admin') }"
+      >
+        ADMIN
+      </router-link>
+      <router-link
+        v-if="isAuthenticated"
+        to="/admin/media"
+        :class="{ active: $route.path.startsWith('/admin/media') }"
+      >
+        MEDIA
+      </router-link>
+      <router-link
+        v-if="isAuthenticated"
+        to="/admin/radio"
+        :class="{ active: $route.path.startsWith('/admin/radio') }"
+      >
+        RADIO CONFIG
+      </router-link>
+    </nav>
+    <div class="nav-spacer" />
 
-        <!-- Admin Logout Button (only visible when authenticated) -->
-        <div v-if="isAuthenticated" class="nav-actions">
-            <button class="logout-button" title="Logout" @click="handleLogout">
-                LOGOUT
-            </button>
-        </div>
+    <!-- Admin Logout Button (only visible when authenticated) -->
+    <div
+      v-if="isAuthenticated"
+      class="nav-actions"
+    >
+      <button
+        class="logout-button"
+        title="Logout"
+        @click="handleLogout"
+      >
+        LOGOUT
+      </button>
     </div>
+  </div>
 </template>
 
 <script setup>
