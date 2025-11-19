@@ -403,14 +403,15 @@ sub startup {
         unless ($path =~ m{^/swagger}) {
             # Content Security Policy - Modern XSS protection
             # Build connect-src based on environment (for SSH bastion support)
-            my $connect_src = "'self' https:";
+            # Note: connect-src controls fetch/XHR, media-src controls audio/video loading
+            my $connect_src = "'self'";
             my $mode = $c->app->mode;
             if ($mode eq 'staging') {
-                # Allow staging domain for SSH bastion access
-                $connect_src = "'self' https://staging.theboosh.zone https:";
+                # Allow staging domain for SSH bastion access (localhost:8443 -> staging.theboosh.zone)
+                $connect_src = "'self' https://staging.theboosh.zone";
             } elsif ($mode eq 'production') {
                 # Allow production domain for SSH bastion access
-                $connect_src = "'self' https://theboosh.zone https:";
+                $connect_src = "'self' https://theboosh.zone";
             }
 
             my $csp = join('; ',
@@ -419,8 +420,8 @@ sub startup {
                 "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
                 "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
                 "font-src 'self'",                              # Web fonts from same origin only
-                "connect-src $connect_src",                     # AJAX/fetch to same origin, domain, + HTTPS (for HLS streaming and SSH bastion)
-                "media-src 'self' blob: https:",                # Audio/video from same origin, blob URLs (Web Audio API), and HTTPS sources
+                "connect-src $connect_src",                     # AJAX/fetch restricted to self and explicit domain (SSH bastion support)
+                "media-src 'self' blob: https:",                # Audio/video: self-hosted, blob URLs (HLS.js), and external HTTPS streams
                 "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
                 "form-action 'self'",                           # Forms can only submit to same origin
