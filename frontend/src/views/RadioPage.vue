@@ -165,7 +165,7 @@
         <!-- Click to Listen Live Overlay -->
         <div v-if="!hasStarted" class="listen-live-overlay">
             <div class="listen-live-content">
-                <h1 class="listen-live-title">TheBoosh Radio</h1>
+                <h1 class="listen-live-title">TheBoosh.Zone Radio</h1>
                 <p class="listen-live-subtitle">
                     Synchronized streaming for all listeners
                 </p>
