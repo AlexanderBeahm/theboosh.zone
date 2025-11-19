@@ -181,10 +181,44 @@ sub update_playlist ($self) {
         );
     }
 
-    # Basic URL validation
-    unless ($playlist_url =~ m{^(?:https?://|/)} || $playlist_url =~ m{\.m3u8?$}i) {
+    # Strict URL validation for security
+    my $is_http_url = $playlist_url =~ m{^https?://};
+    my $is_local_path = $playlist_url =~ m{^/[^/]};  # Must start with / but not //
+    my $has_m3u_extension = $playlist_url =~ m{\.m3u8?$}i;
+
+    # HTTP/HTTPS URLs must end with .m3u or .m3u8
+    if ($is_http_url) {
+        unless ($has_m3u_extension) {
+            return error_response($self, 'validation',
+                'HTTP(S) URLs must end with .m3u or .m3u8 extension',
+                code => 'VAL003',
+                details => { field => 'playlist_url', value => $playlist_url }
+            );
+        }
+    }
+    # Local paths must start with / (not //) and end with .m3u or .m3u8
+    elsif ($is_local_path) {
+        unless ($has_m3u_extension) {
+            return error_response($self, 'validation',
+                'Local paths must end with .m3u or .m3u8 extension',
+                code => 'VAL003',
+                details => { field => 'playlist_url', value => $playlist_url }
+            );
+        }
+
+        # Check for path traversal attempts
+        if ($playlist_url =~ m{\.\.} || $playlist_url =~ m{//}) {
+            return error_response($self, 'validation',
+                'Invalid path: path traversal sequences not allowed',
+                code => 'VAL003',
+                details => { field => 'playlist_url', value => $playlist_url }
+            );
+        }
+    }
+    # Reject any other format (javascript:, file:, data:, etc.)
+    else {
         return error_response($self, 'validation',
-            'Invalid playlist URL format. Must be HTTP(S) URL or local path ending in .m3u or .m3u8',
+            'Invalid playlist URL format. Must be HTTP(S) URL or local path starting with /',
             code => 'VAL003',
             details => { field => 'playlist_url', value => $playlist_url }
         );
@@ -377,19 +411,36 @@ sub get_sync_info ($self) {
             my $tracks = $self->_fetch_and_parse_playlist($playlist_url);
 
             if ($tracks && @$tracks) {
-                my $accumulated_time = 0;
-
-                for (my $i = 0; $i < @$tracks; $i++) {
-                    my $track_duration = $tracks->[$i]->{duration};
-                    $track_duration = 0 if $track_duration < 0; # Handle unknown durations
-
-                    if ($current_position < $accumulated_time + $track_duration) {
-                        $current_track_index = $i;
-                        $current_position = $current_position - $accumulated_time;
+                # Check if any tracks have unknown duration
+                my $has_unknown_duration = 0;
+                for my $track (@$tracks) {
+                    if ($track->{duration} < 0) {
+                        $has_unknown_duration = 1;
                         last;
                     }
+                }
 
-                    $accumulated_time += $track_duration;
+                if ($has_unknown_duration) {
+                    # Can't calculate accurate position with unknown durations
+                    # Fall back to live stream behavior
+                    $self->app->logger_instance->warn("Playlist contains tracks with unknown duration, cannot calculate accurate sync position");
+                    $current_position = $elapsed;
+                    $current_track_index = 0;
+                } else {
+                    # All tracks have known durations, calculate accurate position
+                    my $accumulated_time = 0;
+
+                    for (my $i = 0; $i < @$tracks; $i++) {
+                        my $track_duration = $tracks->[$i]->{duration};
+
+                        if ($current_position < $accumulated_time + $track_duration) {
+                            $current_track_index = $i;
+                            $current_position = $current_position - $accumulated_time;
+                            last;
+                        }
+
+                        $accumulated_time += $track_duration;
+                    }
                 }
             }
         }
@@ -423,8 +474,105 @@ Returns hashref: { valid => 1/0, error => 'message' }
 =cut
 
 sub _validate_playlist_url ($self, $url) {
+    # SSRF Protection: Extract and validate host/IP before making request
+    use Mojo::URL;
+    use Socket qw(inet_aton inet_ntoa);
+
+    my $parsed_url = Mojo::URL->new($url);
+    my $host = $parsed_url->host;
+
+    unless ($host) {
+        return {
+            valid => 0,
+            error => 'Invalid URL: no host found'
+        };
+    }
+
+    # Check if host is an IP address or resolve hostname to IP
+    my $ip_addr;
+    if ($host =~ /^(\d{1,3}\.){3}\d{1,3}$/) {
+        # Already an IPv4 address
+        $ip_addr = $host;
+    } elsif ($host =~ /:/) {
+        # IPv6 address - block all for now as private range check is complex
+        return {
+            valid => 0,
+            error => 'IPv6 addresses not allowed for security reasons'
+        };
+    } else {
+        # Hostname - resolve to IP
+        my $packed_ip = gethostbyname($host);
+        unless ($packed_ip) {
+            return {
+                valid => 0,
+                error => "Cannot resolve hostname: $host"
+            };
+        }
+        $ip_addr = inet_ntoa($packed_ip);
+    }
+
+    # Block private IP ranges (SSRF protection)
+    my @octets = split /\./, $ip_addr;
+
+    # 127.0.0.0/8 (loopback)
+    if ($octets[0] == 127) {
+        return {
+            valid => 0,
+            error => 'Localhost addresses not allowed'
+        };
+    }
+
+    # 10.0.0.0/8 (private)
+    if ($octets[0] == 10) {
+        return {
+            valid => 0,
+            error => 'Private IP addresses not allowed'
+        };
+    }
+
+    # 172.16.0.0/12 (private)
+    if ($octets[0] == 172 && $octets[1] >= 16 && $octets[1] <= 31) {
+        return {
+            valid => 0,
+            error => 'Private IP addresses not allowed'
+        };
+    }
+
+    # 192.168.0.0/16 (private)
+    if ($octets[0] == 192 && $octets[1] == 168) {
+        return {
+            valid => 0,
+            error => 'Private IP addresses not allowed'
+        };
+    }
+
+    # 169.254.0.0/16 (link-local)
+    if ($octets[0] == 169 && $octets[1] == 254) {
+        return {
+            valid => 0,
+            error => 'Link-local addresses not allowed'
+        };
+    }
+
+    # 0.0.0.0/8 (this network)
+    if ($octets[0] == 0) {
+        return {
+            valid => 0,
+            error => 'Invalid IP address'
+        };
+    }
+
+    # 224.0.0.0/4 (multicast)
+    if ($octets[0] >= 224 && $octets[0] <= 239) {
+        return {
+            valid => 0,
+            error => 'Multicast addresses not allowed'
+        };
+    }
+
+    # Now make the actual HTTP request
     my $ua = Mojo::UserAgent->new;
-    $ua->max_redirects(3);
+    $ua->max_redirects(0);  # Disable redirects to prevent redirect-based SSRF
     $ua->connect_timeout(5);
     $ua->request_timeout(10);
 
@@ -437,7 +585,15 @@ sub _validate_playlist_url ($self, $url) {
         };
     }
 
-    # Check if response is successful
+    # Check if response is successful (or redirect, which we'll handle manually)
+    my $code = $tx->res->code;
+    if ($code >= 300 && $code < 400) {
+        return {
+            valid => 0,
+            error => 'Redirects not allowed for security reasons'
+        };
+    }
+
     unless ($tx->res->is_success) {
         return {
             valid => 0,
@@ -480,17 +636,48 @@ sub _fetch_and_parse_playlist ($self, $url) {
 
         $content = $tx->res->body;
     } else {
-        # Read from local file (relative to app root or absolute path)
+        # Read from local file with path traversal protection
+        use File::Spec;
+        use Cwd 'abs_path';
+
         my $file_path = $url;
         $file_path =~ s{^/}{}; # Remove leading slash for relative path
 
-        unless (-f $file_path) {
-            $self->app->logger_instance->error("Playlist file not found: $file_path");
+        # Path traversal protection: canonicalize and validate path
+        # The path should already have been validated to not contain .. in update_playlist,
+        # but we double-check here for defense in depth
+        my $canonical_path = File::Spec->canonpath($file_path);
+
+        # Additional safety: ensure the canonical path doesn't contain .. sequences
+        if ($canonical_path =~ m{\.\.} || $canonical_path =~ m{^/}) {
+            $self->app->logger_instance->error("Path traversal attempt detected: $file_path");
+            return undef;
+        }
+
+        # Resolve to absolute path relative to app home
+        my $app_home = $self->app->home->to_string;
+        my $absolute_path = File::Spec->catfile($app_home, $canonical_path);
+
+        # Use abs_path to resolve symlinks and get real path
+        my $real_path = eval { abs_path($absolute_path) };
+        unless ($real_path) {
+            $self->app->logger_instance->error("Cannot resolve path: $file_path");
+            return undef;
+        }
+
+        # Ensure the resolved path is within app home directory
+        unless ($real_path =~ m{^\Q$app_home\E}) {
+            $self->app->logger_instance->error("Path outside app directory: $file_path -> $real_path");
+            return undef;
+        }
+
+        unless (-f $real_path) {
+            $self->app->logger_instance->error("Playlist file not found: $real_path");
             return undef;
         }
 
         eval {
-            open my $fh, '<', $file_path or die "Cannot open file: $!";
+            open my $fh, '<', $real_path or die "Cannot open file: $!";
             local $/;
             $content = <$fh>;
             close $fh;

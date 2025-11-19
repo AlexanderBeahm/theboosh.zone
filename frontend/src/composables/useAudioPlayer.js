@@ -123,8 +123,8 @@ export function useAudioPlayer() {
             } else {
                 error.value = "No playlist configured";
             }
-        } catch {
-            error.value = "Failed to load playlist";
+        } catch (err) {
+            error.value = `Failed to load playlist: ${err.message || "Unknown error"}`;
         } finally {
             isLoading.value = false;
         }
@@ -142,8 +142,8 @@ export function useAudioPlayer() {
             if (playlist.value.length > 0) {
                 loadTrack(0);
             }
-        } catch {
-            error.value = "Failed to fetch playlist file";
+        } catch (err) {
+            error.value = `Failed to fetch playlist file: ${err.message || "Unknown error"}`;
         }
     }
 
@@ -203,10 +203,11 @@ export function useAudioPlayer() {
 
     /**
      * Load a specific track by index
+     * Returns a promise that resolves when the track is ready to play
      */
     function loadTrack(index) {
         if (!audio.value || index < 0 || index >= playlist.value.length) {
-            return;
+            return Promise.resolve();
         }
 
         const track = playlist.value[index];
@@ -227,55 +228,85 @@ export function useAudioPlayer() {
         // Check if URL is HLS stream (.m3u8)
         const isHLS = track.url.includes(".m3u8");
 
-        if (isHLS && Hls.isSupported()) {
-            // Use HLS.js for HLS streams
-            hls.value = new Hls({
-                enableWorker: true,
-                lowLatencyMode: false,
-                backBufferLength: 90,
-            });
-
-            hls.value.loadSource(track.url);
-            hls.value.attachMedia(audio.value);
-
-            hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+        // Return a promise that resolves when the media is ready
+        return new Promise((resolve, reject) => {
+            // Set up one-time event listeners for when media is ready
+            const onCanPlay = () => {
                 isLoading.value = false;
-            });
+                cleanup();
+                resolve();
+            };
 
-            hls.value.on(Hls.Events.ERROR, (event, data) => {
-                if (data.fatal) {
-                    switch (data.type) {
-                        case Hls.ErrorTypes.NETWORK_ERROR:
-                            error.value = "Network error loading stream";
-                            hls.value.startLoad();
-                            break;
-                        case Hls.ErrorTypes.MEDIA_ERROR:
-                            error.value = "Media error";
-                            hls.value.recoverMediaError();
-                            break;
-                        default:
-                            error.value = "Fatal error loading stream";
-                            hls.value.destroy();
-                            hls.value = null;
-                            break;
+            const onError = () => {
+                error.value = "Failed to load track";
+                isLoading.value = false;
+                cleanup();
+                reject(new Error("Failed to load track"));
+            };
+
+            const cleanup = () => {
+                audio.value?.removeEventListener("canplay", onCanPlay);
+                audio.value?.removeEventListener("error", onError);
+            };
+
+            audio.value.addEventListener("canplay", onCanPlay, { once: true });
+            audio.value.addEventListener("error", onError, { once: true });
+
+            if (isHLS && Hls.isSupported()) {
+                // Use HLS.js for HLS streams
+                hls.value = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    backBufferLength: 90,
+                });
+
+                hls.value.loadSource(track.url);
+                hls.value.attachMedia(audio.value);
+
+                hls.value.on(Hls.Events.MANIFEST_PARSED, () => {
+                    isLoading.value = false;
+                });
+
+                hls.value.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                error.value = "Network error loading stream";
+                                isLoading.value = false;
+                                hls.value.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                error.value = "Media error";
+                                isLoading.value = false;
+                                hls.value.recoverMediaError();
+                                break;
+                            default:
+                                error.value = "Fatal error loading stream";
+                                isLoading.value = false;
+                                cleanup();
+                                reject(new Error(error.value));
+                                hls.value.destroy();
+                                hls.value = null;
+                                break;
+                        }
                     }
-                }
-            });
-        } else if (
-            isHLS &&
-            audio.value.canPlayType("application/vnd.apple.mpegurl")
-        ) {
-            // Native HLS support (Safari)
-            audio.value.src = track.url;
-            audio.value.load();
-        } else {
-            // Regular audio file
-            audio.value.src = track.url;
-            audio.value.load();
-        }
+                });
+            } else if (
+                isHLS &&
+                audio.value.canPlayType("application/vnd.apple.mpegurl")
+            ) {
+                // Native HLS support (Safari)
+                audio.value.src = track.url;
+                audio.value.load();
+            } else {
+                // Regular audio file
+                audio.value.src = track.url;
+                audio.value.load();
+            }
 
-        // Update Media Session API
-        updateMediaSession();
+            // Update Media Session API
+            updateMediaSession();
+        });
     }
 
     /**
@@ -286,8 +317,8 @@ export function useAudioPlayer() {
 
         try {
             await audio.value.play();
-        } catch {
-            error.value = "Playback failed";
+        } catch (err) {
+            error.value = `Playback failed: ${err.message || "Unknown error"}`;
         }
     }
 
@@ -403,9 +434,18 @@ export function useAudioPlayer() {
         }
     }
 
+    // Debounce timeupdate to reduce reactivity overhead
+    let timeUpdateTimer = null;
     function handleTimeUpdate() {
         if (audio.value) {
-            currentTime.value = audio.value.currentTime;
+            if (timeUpdateTimer) {
+                clearTimeout(timeUpdateTimer);
+            }
+
+            timeUpdateTimer = setTimeout(() => {
+                currentTime.value = audio.value.currentTime;
+                timeUpdateTimer = null;
+            }, 100); // Update at most every 100ms
         }
     }
 
@@ -476,9 +516,14 @@ export function useAudioPlayer() {
     // Cleanup on unmount
     onUnmounted(cleanup);
 
-    // Watch for volume changes to update audio
+    // Watch for volume changes to update audio element only
+    // Don't call setVolume() to avoid circular updates
     watch(volume, (newVolume) => {
-        setVolume(newVolume);
+        if (audio.value) {
+            const vol = Math.max(0, Math.min(100, newVolume));
+            audio.value.volume = vol / 100;
+            localStorage.setItem("radio_volume", vol.toString());
+        }
     });
 
     /**
@@ -552,8 +597,8 @@ export function useAudioPlayer() {
                 error.value = "No tracks in playlist";
                 return false;
             }
-        } catch {
-            error.value = "Failed to load synchronized playlist";
+        } catch (err) {
+            error.value = `Failed to load synchronized playlist: ${err.message || "Unknown error"}`;
             return false;
         } finally {
             isLoading.value = false;

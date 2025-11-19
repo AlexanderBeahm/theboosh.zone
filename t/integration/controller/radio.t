@@ -433,4 +433,216 @@ subtest 'update_playlist - update existing playlist URL' => sub {
       ->status_is(200);
 };
 
+# ====== SECURITY TESTS ======
+
+subtest 'security - reject malicious URL schemes' => sub {
+    my $admin_user = $ENV{ADMIN_USERNAME} || 'admin';
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set in environment';
+        return;
+    }
+
+    # Login
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
+        username => $admin_user,
+        password => $admin_pass
+    })
+      ->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
+
+    # Test javascript: protocol
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'javascript:alert(1).m3u'
+    })
+      ->status_is(422, 'Rejects javascript: protocol')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/invalid.*format/i);
+
+    # Test file: protocol
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'file:///etc/passwd.m3u'
+    })
+      ->status_is(422, 'Rejects file: protocol')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/invalid.*format/i);
+
+    # Test data: protocol
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'data:text/plain,malicious.m3u'
+    })
+      ->status_is(422, 'Rejects data: protocol')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/invalid.*format/i);
+
+    # Test FTP protocol with .m3u extension (should still be rejected - not HTTP)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'ftp://example.com/playlist.m3u'
+    })
+      ->status_is(422, 'Rejects FTP protocol even with .m3u')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/invalid.*format/i);
+
+    # Test HTTP URL without .m3u extension (should be rejected)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'https://example.com/file.txt'
+    })
+      ->status_is(422, 'Rejects HTTP URL without .m3u extension')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/must end with/i);
+
+    # Logout
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})
+      ->status_is(200);
+};
+
+subtest 'security - reject path traversal attempts' => sub {
+    my $admin_user = $ENV{ADMIN_USERNAME} || 'admin';
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set in environment';
+        return;
+    }
+
+    # Login
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
+        username => $admin_user,
+        password => $admin_pass
+    })
+      ->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
+
+    # Test path traversal with ..
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => '/uploads/../../../etc/passwd.m3u'
+    })
+      ->status_is(422, 'Rejects path with .. sequences')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/traversal|not allowed/i);
+
+    # Test path traversal with URL encoding
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => '/uploads/%2e%2e/secret.m3u'
+    })
+      ->status_is(422, 'Rejects URL-encoded path traversal')
+      ->json_is('/success' => 0);
+
+    # Test double slash
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => '//etc/passwd.m3u'
+    })
+      ->status_is(422, 'Rejects paths starting with //')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/invalid.*format/i);
+
+    # Logout
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})
+      ->status_is(200);
+};
+
+subtest 'security - reject SSRF attempts to localhost' => sub {
+    my $admin_user = $ENV{ADMIN_USERNAME} || 'admin';
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set in environment';
+        return;
+    }
+
+    # Login
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
+        username => $admin_user,
+        password => $admin_pass
+    })
+      ->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
+
+    # Test localhost
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://localhost/secret.m3u'
+    })
+      ->status_is(422, 'Rejects localhost')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/localhost|not allowed/i);
+
+    # Test 127.0.0.1
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://127.0.0.1/secret.m3u'
+    })
+      ->status_is(422, 'Rejects 127.0.0.1')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/localhost|not allowed/i);
+
+    # Test 127.1 (alternative localhost notation)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://127.1/secret.m3u'
+    })
+      ->status_is(422, 'Rejects 127.1')
+      ->json_is('/success' => 0);
+
+    # Logout
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})
+      ->status_is(200);
+};
+
+subtest 'security - reject SSRF attempts to private networks' => sub {
+    my $admin_user = $ENV{ADMIN_USERNAME} || 'admin';
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set in environment';
+        return;
+    }
+
+    # Login
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
+        username => $admin_user,
+        password => $admin_pass
+    })
+      ->status_is(200)->tx->res->json;
+
+    my $csrf_token = $login_response->{csrf_token};
+
+    # Test 10.0.0.0/8 (private network)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://10.0.0.1/internal.m3u'
+    })
+      ->status_is(422, 'Rejects 10.x.x.x network')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/private|not allowed/i);
+
+    # Test 192.168.0.0/16 (private network)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://192.168.1.1/router.m3u'
+    })
+      ->status_is(422, 'Rejects 192.168.x.x network')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/private|not allowed/i);
+
+    # Test 172.16.0.0/12 (private network)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://172.16.0.1/private.m3u'
+    })
+      ->status_is(422, 'Rejects 172.16-31.x.x network')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/private|not allowed/i);
+
+    # Test 169.254.0.0/16 (link-local)
+    $t->post_ok('/api/admin/radio/playlist' => {'X-CSRF-Token' => $csrf_token} => json => {
+        playlist_url => 'http://169.254.1.1/linklocal.m3u'
+    })
+      ->status_is(422, 'Rejects 169.254.x.x network')
+      ->json_is('/success' => 0)
+      ->json_like('/error', qr/link-local|not allowed/i);
+
+    # Logout
+    $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})
+      ->status_is(200);
+};
+
 done_testing();
