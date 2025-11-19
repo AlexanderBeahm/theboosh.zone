@@ -164,6 +164,92 @@ sub set_playlist_url {
     return $self->set_config('playlist_url', $url, $user_id);
 }
 
+=head2 get_total_duration
+
+Get the total duration of the playlist in seconds.
+
+    my $duration = $radio->get_total_duration();
+
+Returns the duration or undef if not set.
+
+=cut
+
+sub get_total_duration {
+    my ($self) = @_;
+
+    my $dbh = $self->_get_dbh();
+    return undef unless $dbh;
+
+    my $sth = $dbh->prepare(q{
+        SELECT total_duration
+        FROM radio_config
+        WHERE config_key = 'playlist_url'
+    });
+
+    $sth->execute();
+    my $row = $sth->fetchrow_hashref;
+
+    return $row ? $row->{total_duration} : undef;
+}
+
+=head2 set_total_duration
+
+Set the total duration of the playlist.
+
+    $radio->set_total_duration($duration_in_seconds);
+
+Returns 1 on success.
+
+=cut
+
+sub set_total_duration {
+    my ($self, $duration) = @_;
+
+    my $dbh = $self->_get_dbh();
+    return undef unless $dbh;
+
+    my $sth = $dbh->prepare(q{
+        UPDATE radio_config
+        SET total_duration = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE config_key = 'playlist_url'
+    });
+
+    $sth->execute($duration);
+
+    $self->_log_info("Radio total duration updated: " . ($duration // 'NULL'));
+
+    return 1;
+}
+
+=head2 get_playlist_metadata
+
+Get playlist metadata including URL, duration, and update time.
+
+    my $metadata = $radio->get_playlist_metadata();
+
+Returns hashref with: url, total_duration, updated_at, or undef if not configured.
+
+=cut
+
+sub get_playlist_metadata {
+    my ($self) = @_;
+
+    my $dbh = $self->_get_dbh();
+    return undef unless $dbh;
+
+    my $sth = $dbh->prepare(q{
+        SELECT config_value as url, total_duration, updated_at
+        FROM radio_config
+        WHERE config_key = 'playlist_url'
+    });
+
+    $sth->execute();
+    my $row = $sth->fetchrow_hashref;
+
+    return $row;
+}
+
 =head2 delete_config
 
 Delete a configuration entry.

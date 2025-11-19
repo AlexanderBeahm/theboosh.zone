@@ -362,10 +362,12 @@ sub startup {
 
     # Public radio routes
     $api->get('/radio/playlist')->to('Radio#get_playlist');
+    $api->get('/radio/sync-info')->to('Radio#get_sync_info');
 
     # Protected radio management routes
     $admin->get('/radio/config')->to('Radio#get_config');
     $admin->post('/radio/playlist')->to('Radio#update_playlist');
+    $admin->delete('/radio/playlist')->to('Radio#delete_playlist');
 
     # SPA fallback routing - catch all non-API routes and serve index.html
     # This allows Vue Router history mode to work correctly

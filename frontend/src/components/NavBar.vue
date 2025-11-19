@@ -91,6 +91,7 @@ onMounted(() => {
     box-shadow: var(--shadow-lg);
     position: relative;
     overflow: hidden;
+    z-index: 1000;
 }
 
 /* Subtle geometric grid pattern overlay */

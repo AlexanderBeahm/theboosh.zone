@@ -938,6 +938,52 @@
                     "400": { "$ref": "#/components/responses/BadRequest" },
                     "401": { "$ref": "#/components/responses/Unauthorized" }
                 }
+            },
+            "delete": {
+                "summary": "Delete Radio Playlist",
+                "description": "Delete the current radio playlist configuration (admin only)",
+                "operationId": "deleteRadioPlaylist",
+                "x-mojo-to": "Radio#delete_playlist",
+                "tags": ["Admin - Radio"],
+                "security": [{ "sessionAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Playlist deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": { "type": "boolean" },
+                                        "message": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/radio/sync-info": {
+            "get": {
+                "summary": "Get Radio Synchronization Info",
+                "description": "Get synchronization information for the radio stream, including server time and calculated playback position",
+                "operationId": "getRadioSyncInfo",
+                "x-mojo-to": "Radio#get_sync_info",
+                "tags": ["Radio"],
+                "responses": {
+                    "200": {
+                        "description": "Sync info retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RadioSyncInfoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     },
@@ -1288,6 +1334,58 @@
                     "config": {
                         "type": "array",
                         "items": { "$ref": "#/components/schemas/RadioConfig" }
+                    }
+                }
+            },
+            "RadioSyncInfoResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "sync_info": {
+                        "type": "object",
+                        "properties": {
+                            "configured": {
+                                "type": "boolean",
+                                "description": "Whether a playlist is configured"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "Message if not configured"
+                            },
+                            "server_time": {
+                                "type": "integer",
+                                "description": "Current server time (Unix epoch)"
+                            },
+                            "playlist_start_time": {
+                                "type": "integer",
+                                "description": "When playlist started playing (Unix epoch)"
+                            },
+                            "playlist_url": {
+                                "type": "string",
+                                "description": "URL of the playlist"
+                            },
+                            "total_duration": {
+                                "type": "integer",
+                                "description": "Total playlist duration in seconds (null for live streams)",
+                                "nullable": true
+                            },
+                            "elapsed_time": {
+                                "type": "integer",
+                                "description": "Elapsed time since playlist start in seconds"
+                            },
+                            "current_position": {
+                                "type": "number",
+                                "description": "Current position within current loop in seconds"
+                            },
+                            "current_track_index": {
+                                "type": "integer",
+                                "description": "Index of current track in playlist"
+                            },
+                            "is_hls": {
+                                "type": "boolean",
+                                "description": "Whether this is an HLS stream"
+                            }
+                        }
                     }
                 }
             }

@@ -272,6 +272,30 @@
         <div v-if="player.isLoading.value" class="loading-overlay">
             <div class="spinner" />
         </div>
+
+        <!-- Click to Listen Live Overlay -->
+        <div v-if="!hasStarted" class="listen-live-overlay">
+            <div class="listen-live-content">
+                <h1 class="listen-live-title">TheBoosh Radio</h1>
+                <p class="listen-live-subtitle">
+                    Synchronized streaming for all listeners
+                </p>
+                <button class="listen-live-button" @click="startListening">
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                    >
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <span>Click to Listen Live</span>
+                </button>
+                <p v-if="startError" class="listen-live-error">
+                    {{ startError }}
+                </p>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -282,6 +306,8 @@ import { useAudioPlayer } from "../composables/useAudioPlayer";
 
 const player = useAudioPlayer();
 const showPlaylist = ref(false);
+const hasStarted = ref(false);
+const startError = ref("");
 
 // Format time in MM:SS
 function formatTime(seconds) {
@@ -306,6 +332,27 @@ function selectTrack(index) {
     }
 }
 
+// Start listening with sync
+async function startListening() {
+    startError.value = "";
+
+    try {
+        // Load playlist with synchronization
+        const success = await player.loadPlaylistWithSync();
+
+        if (success) {
+            // Start playback
+            await player.play();
+            hasStarted.value = true;
+        } else {
+            startError.value = player.error.value || "Failed to load playlist";
+        }
+    } catch (err) {
+        console.error("Failed to start listening:", err);
+        startError.value = "Failed to start playback. Please try again.";
+    }
+}
+
 // Keyboard shortcuts
 function handleKeyPress(event) {
     // Ignore if typing in an input
@@ -313,6 +360,11 @@ function handleKeyPress(event) {
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA"
     ) {
+        return;
+    }
+
+    // Don't handle shortcuts if not started
+    if (!hasStarted.value) {
         return;
     }
 
@@ -351,9 +403,6 @@ onMounted(async () => {
     // Initialize player
     player.init();
 
-    // Load playlist
-    await player.loadPlaylist();
-
     // Add keyboard listener
     window.addEventListener("keydown", handleKeyPress);
 });
@@ -383,7 +432,7 @@ onUnmounted(() => {
 
 .player-overlay {
     position: relative;
-    z-index: 10;
+    z-index: 1;
     width: 100%;
     height: 100vh;
     display: flex;
@@ -713,6 +762,85 @@ onUnmounted(() => {
     to {
         transform: rotate(360deg);
     }
+}
+
+.listen-live-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.listen-live-overlay::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(31, 37, 39, 0.98);
+    backdrop-filter: blur(20px);
+    z-index: -1;
+}
+
+.listen-live-content {
+    text-align: center;
+    padding: var(--spacing-xl);
+    max-width: 500px;
+}
+
+.listen-live-title {
+    font-size: 3rem;
+    font-weight: 700;
+    background: var(--gradient-retro-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: var(--spacing-md);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.listen-live-subtitle {
+    font-size: 1.125rem;
+    color: var(--chrome-silver);
+    margin-bottom: var(--spacing-xl);
+}
+
+.listen-live-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    background: var(--gradient-retro-primary);
+    color: white;
+    border: 2px solid var(--primary-color);
+    border-radius: var(--radius-full);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    font-size: 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: 0 0 30px rgba(255, 105, 180, 0.5);
+}
+
+.listen-live-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 50px rgba(255, 105, 180, 0.8);
+}
+
+.listen-live-button:active {
+    transform: scale(0.98);
+}
+
+.listen-live-error {
+    margin-top: var(--spacing-lg);
+    color: var(--error-text);
+    font-size: 1rem;
 }
 
 .playlist-enter-active,

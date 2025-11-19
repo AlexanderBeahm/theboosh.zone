@@ -415,12 +415,15 @@ export function useAudioPlayer() {
     }
 
     function handleEnded() {
-        // Auto-advance to next track
+        // Auto-advance to next track, or loop back to beginning
         if (hasNext.value) {
             next();
         } else {
-            // End of playlist
-            isPlaying.value = false;
+            // End of playlist - loop back to the beginning
+            if (playlist.value.length > 0) {
+                loadTrack(0);
+                play();
+            }
         }
     }
 
@@ -484,6 +487,100 @@ export function useAudioPlayer() {
         setVolume(newVolume);
     });
 
+    /**
+     * Load playlist with synchronization
+     * Fetches sync info from server and loads at the correct position
+     */
+    async function loadPlaylistWithSync() {
+        isLoading.value = true;
+        error.value = "";
+
+        try {
+            // Fetch sync info from backend
+            const response = await axios.get("/api/radio/sync-info");
+
+            if (!response.data.success) {
+                error.value = "Failed to load sync info";
+                return false;
+            }
+
+            const syncInfo = response.data.sync_info;
+
+            if (!syncInfo.configured) {
+                error.value = syncInfo.message || "No playlist configured";
+                return false;
+            }
+
+            // Fetch the playlist
+            const playlistResponse = await axios.get("/api/radio/playlist", {
+                params: { parse: 1 },
+            });
+
+            if (
+                !playlistResponse.data.success ||
+                !playlistResponse.data.playlist
+            ) {
+                error.value = "Failed to load playlist";
+                return false;
+            }
+
+            playlistUrl.value = playlistResponse.data.playlist.url;
+
+            if (
+                playlistResponse.data.playlist.tracks &&
+                playlistResponse.data.playlist.tracks.length > 0
+            ) {
+                playlist.value = playlistResponse.data.playlist.tracks;
+
+                // Sync to calculated position
+                if (syncInfo.is_hls) {
+                    // For HLS streams, load and seek to position
+                    await loadTrack(0);
+                    if (syncInfo.current_position > 0 && audio.value) {
+                        audio.value.currentTime = syncInfo.current_position;
+                    }
+                } else if (
+                    syncInfo.total_duration &&
+                    syncInfo.current_track_index !== undefined
+                ) {
+                    // For regular playlists, load the correct track
+                    await loadTrack(syncInfo.current_track_index);
+                    if (syncInfo.current_position > 0 && audio.value) {
+                        audio.value.currentTime = syncInfo.current_position;
+                    }
+                } else {
+                    // Fallback: just load first track
+                    await loadTrack(0);
+                }
+
+                return true;
+            } else {
+                error.value = "No tracks in playlist";
+                return false;
+            }
+        } catch (err) {
+            console.error("Failed to load playlist with sync:", err);
+            error.value = "Failed to load synchronized playlist";
+            return false;
+        } finally {
+            isLoading.value = false;
+        }
+    }
+
+    /**
+     * Sync to a specific position in the playlist
+     * Used for initial sync and periodic re-sync
+     */
+    function syncToPosition(trackIndex, timeOffset) {
+        if (trackIndex !== currentIndex.value) {
+            loadTrack(trackIndex);
+        }
+
+        if (audio.value && timeOffset > 0) {
+            audio.value.currentTime = timeOffset;
+        }
+    }
+
     return {
         // Audio element
         audio,
@@ -508,6 +605,8 @@ export function useAudioPlayer() {
         // Methods
         init,
         loadPlaylist,
+        loadPlaylistWithSync,
+        syncToPosition,
         loadTrack,
         play,
         pause,

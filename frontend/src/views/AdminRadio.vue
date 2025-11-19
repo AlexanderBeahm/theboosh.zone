@@ -1,128 +1,125 @@
 <template>
-  <div class="admin-radio-page">
-    <div class="page-header">
-      <h1>Radio Configuration</h1>
-      <p class="page-description">
-        Configure the radio streaming playlist for your visitors
-      </p>
-    </div>
-
-    <div class="config-section">
-      <!-- Current Configuration Display -->
-      <div
-        v-if="currentPlaylistUrl && !isEditing"
-        class="current-config-card"
-      >
-        <h2>Current Playlist</h2>
-        <div class="config-display">
-          <div class="config-label">Playlist URL:</div>
-          <div class="config-value">{{ currentPlaylistUrl }}</div>
-        </div>
-        <button
-          class="btn-edit"
-          @click="startEditing"
-        >
-          Update Playlist URL
-        </button>
-      </div>
-
-      <!-- Configuration Form -->
-      <div
-        v-if="!currentPlaylistUrl || isEditing"
-        class="config-form-card"
-      >
-        <h2>{{ currentPlaylistUrl ? 'Update' : 'Set' }} Playlist URL</h2>
-
-        <form @submit.prevent="savePlaylistUrl">
-          <div class="form-group">
-            <label for="playlist-url">Playlist URL</label>
-            <input
-              id="playlist-url"
-              v-model="playlistUrl"
-              type="text"
-              placeholder="https://example.com/playlist.m3u or /uploads/playlist.m3u"
-              required
-              :disabled="isSaving"
-            >
-            <p class="help-text">
-              Enter a URL to a .m3u or .m3u8 playlist file. Can be an HTTP(S) URL or a local path starting with /.
+    <div class="admin-radio-page">
+        <div class="page-header">
+            <h1>Radio Configuration</h1>
+            <p class="page-description">
+                Configure the radio streaming playlist for your visitors
             </p>
-          </div>
-
-          <div
-            v-if="error"
-            class="error-message"
-          >
-            {{ error }}
-          </div>
-
-          <div class="form-actions">
-            <button
-              v-if="isEditing"
-              type="button"
-              class="btn-secondary"
-              :disabled="isSaving"
-              @click="cancelEditing"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="btn-primary"
-              :disabled="isSaving || !playlistUrl"
-            >
-              {{ isSaving ? 'Saving...' : 'Save Playlist URL' }}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Playlist Preview (if parse is successful) -->
-      <div
-        v-if="previewTracks.length > 0"
-        class="preview-card"
-      >
-        <h2>Playlist Preview</h2>
-        <div class="tracks-list">
-          <div
-            v-for="(track, index) in previewTracks"
-            :key="index"
-            class="track-item"
-          >
-            <div class="track-number">{{ index + 1 }}</div>
-            <div class="track-info">
-              <div class="track-title">{{ track.title }}</div>
-              <div class="track-artist">{{ track.artist }}</div>
-            </div>
-            <div
-              v-if="track.duration > 0"
-              class="track-duration"
-            >
-              {{ formatDuration(track.duration) }}
-            </div>
-          </div>
         </div>
-      </div>
-    </div>
 
-    <!-- Success Toast -->
-    <Transition name="toast">
-      <div
-        v-if="showSuccessToast"
-        class="success-toast"
-      >
-        {{ successMessage }}
-      </div>
-    </Transition>
-  </div>
+        <div class="config-section">
+            <!-- Current Configuration Display -->
+            <div
+                v-if="currentPlaylistUrl && !isEditing"
+                class="current-config-card"
+            >
+                <h2>Current Playlist</h2>
+                <div class="config-display">
+                    <div class="config-label">Playlist URL:</div>
+                    <div class="config-value">{{ currentPlaylistUrl }}</div>
+                </div>
+                <div class="button-group">
+                    <button class="btn-edit" @click="startEditing">
+                        Update Playlist URL
+                    </button>
+                    <button
+                        class="btn-delete"
+                        @click="confirmDelete"
+                        :disabled="isDeleting"
+                    >
+                        {{ isDeleting ? "Deleting..." : "Delete Playlist" }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuration Form -->
+            <div
+                v-if="!currentPlaylistUrl || isEditing"
+                class="config-form-card"
+            >
+                <h2>
+                    {{ currentPlaylistUrl ? "Update" : "Set" }} Playlist URL
+                </h2>
+
+                <form @submit.prevent="savePlaylistUrl">
+                    <div class="form-group">
+                        <label for="playlist-url">Playlist URL</label>
+                        <input
+                            id="playlist-url"
+                            v-model="playlistUrl"
+                            type="text"
+                            placeholder="https://example.com/playlist.m3u or /uploads/playlist.m3u"
+                            required
+                            :disabled="isSaving"
+                        />
+                        <p class="help-text">
+                            Enter a URL to a .m3u or .m3u8 playlist file. Can be
+                            an HTTP(S) URL or a local path starting with /.
+                        </p>
+                    </div>
+
+                    <div v-if="error" class="error-message">
+                        {{ error }}
+                    </div>
+
+                    <div class="form-actions">
+                        <button
+                            v-if="isEditing"
+                            type="button"
+                            class="btn-secondary"
+                            :disabled="isSaving"
+                            @click="cancelEditing"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            class="btn-primary"
+                            :disabled="isSaving || !playlistUrl"
+                        >
+                            {{ isSaving ? "Saving..." : "Save Playlist URL" }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Playlist Preview (if parse is successful) -->
+            <div v-if="previewTracks.length > 0" class="preview-card">
+                <h2>Playlist Preview</h2>
+                <div class="tracks-list">
+                    <div
+                        v-for="(track, index) in previewTracks"
+                        :key="index"
+                        class="track-item"
+                    >
+                        <div class="track-number">{{ index + 1 }}</div>
+                        <div class="track-info">
+                            <div class="track-title">{{ track.title }}</div>
+                            <div class="track-artist">{{ track.artist }}</div>
+                        </div>
+                        <div v-if="track.duration > 0" class="track-duration">
+                            {{ formatDuration(track.duration) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Toast -->
+        <Transition name="toast">
+            <div v-if="showSuccessToast" class="success-toast">
+                {{ successMessage }}
+            </div>
+        </Transition>
+    </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
-import { useAuth } from '../composables/useAuth';
-import { useCSRF } from '../composables/useCSRF';
+import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
+import axios from "axios";
+import { useAuth } from "../composables/useAuth";
+import { useCSRF } from "../composables/useCSRF";
 
 const router = useRouter();
 const { requireAuth } = useAuth();
@@ -132,23 +129,24 @@ const { getToken } = useCSRF();
 requireAuth(router);
 
 // State
-const currentPlaylistUrl = ref('');
-const playlistUrl = ref('');
+const currentPlaylistUrl = ref("");
+const playlistUrl = ref("");
 const isEditing = ref(false);
 const isSaving = ref(false);
-const error = ref('');
+const isDeleting = ref(false);
+const error = ref("");
 const showSuccessToast = ref(false);
-const successMessage = ref('');
+const successMessage = ref("");
 const previewTracks = ref([]);
 
 // Methods
 async function loadCurrentConfig() {
     try {
-        const response = await axios.get('/api/admin/radio/config');
+        const response = await axios.get("/api/admin/radio/config");
 
         if (response.data.success && response.data.config) {
             const playlistConfig = response.data.config.find(
-                c => c.config_key === 'playlist_url'
+                (c) => c.config_key === "playlist_url",
             );
 
             if (playlistConfig) {
@@ -161,22 +159,22 @@ async function loadCurrentConfig() {
             }
         }
     } catch (err) {
-        console.error('Failed to load radio configuration:', err);
-        error.value = 'Failed to load current configuration';
+        console.error("Failed to load radio configuration:", err);
+        error.value = "Failed to load current configuration";
     }
 }
 
 async function loadPlaylistPreview() {
     try {
-        const response = await axios.get('/api/radio/playlist', {
-            params: { parse: 1 }
+        const response = await axios.get("/api/radio/playlist", {
+            params: { parse: 1 },
         });
 
         if (response.data.success && response.data.playlist.tracks) {
             previewTracks.value = response.data.playlist.tracks.slice(0, 10); // Show first 10 tracks
         }
     } catch (err) {
-        console.error('Failed to load playlist preview:', err);
+        console.error("Failed to load playlist preview:", err);
         // Don't show error to user - preview is optional
     }
 }
@@ -184,40 +182,91 @@ async function loadPlaylistPreview() {
 function startEditing() {
     playlistUrl.value = currentPlaylistUrl.value;
     isEditing.value = true;
-    error.value = '';
+    error.value = "";
 }
 
 function cancelEditing() {
     isEditing.value = false;
-    playlistUrl.value = '';
-    error.value = '';
+    playlistUrl.value = "";
+    error.value = "";
+}
+
+function confirmDelete() {
+    if (
+        confirm(
+            "Are you sure you want to delete the current playlist? This cannot be undone.",
+        )
+    ) {
+        deletePlaylist();
+    }
+}
+
+async function deletePlaylist() {
+    isDeleting.value = true;
+    error.value = "";
+
+    try {
+        const csrfToken = await getToken();
+
+        const response = await axios.delete("/api/admin/radio/playlist", {
+            headers: {
+                "X-CSRF-Token": csrfToken,
+            },
+        });
+
+        if (response.data.success) {
+            // Clear state
+            currentPlaylistUrl.value = "";
+            playlistUrl.value = "";
+            previewTracks.value = [];
+
+            // Show success message
+            successMessage.value = "Playlist deleted successfully";
+            showSuccessToast.value = true;
+
+            setTimeout(() => {
+                showSuccessToast.value = false;
+            }, 3000);
+        } else {
+            error.value = response.data.message || "Failed to delete playlist";
+        }
+    } catch (err) {
+        console.error("Failed to delete playlist:", err);
+        if (err.response?.data?.message) {
+            error.value = err.response.data.message;
+        } else {
+            error.value = "Failed to delete playlist. Please try again.";
+        }
+    } finally {
+        isDeleting.value = false;
+    }
 }
 
 async function savePlaylistUrl() {
     if (!playlistUrl.value || isSaving.value) return;
 
     isSaving.value = true;
-    error.value = '';
+    error.value = "";
 
     try {
         const csrfToken = await getToken();
 
         const response = await axios.post(
-            '/api/admin/radio/playlist',
+            "/api/admin/radio/playlist",
             { playlist_url: playlistUrl.value },
             {
                 headers: {
-                    'X-CSRF-Token': csrfToken
-                }
-            }
+                    "X-CSRF-Token": csrfToken,
+                },
+            },
         );
 
         if (response.data.success) {
             currentPlaylistUrl.value = playlistUrl.value;
             isEditing.value = false;
-            playlistUrl.value = '';
+            playlistUrl.value = "";
 
-            successMessage.value = 'Playlist URL updated successfully!';
+            successMessage.value = "Playlist URL updated successfully!";
             showSuccessToast.value = true;
 
             setTimeout(() => {
@@ -228,12 +277,12 @@ async function savePlaylistUrl() {
             loadPlaylistPreview();
         }
     } catch (err) {
-        console.error('Failed to save playlist URL:', err);
+        console.error("Failed to save playlist URL:", err);
 
         if (err.response?.data?.error) {
             error.value = err.response.data.error;
         } else {
-            error.value = 'Failed to save playlist URL. Please try again.';
+            error.value = "Failed to save playlist URL. Please try again.";
         }
     } finally {
         isSaving.value = false;
@@ -241,11 +290,11 @@ async function savePlaylistUrl() {
 }
 
 function formatDuration(seconds) {
-    if (seconds < 0) return '';
+    if (seconds < 0) return "";
 
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 // Lifecycle
@@ -321,7 +370,7 @@ h2 {
 }
 
 .config-value {
-    font-family: 'Courier New', monospace;
+    font-family: "Courier New", monospace;
     color: var(--primary-color);
     word-break: break-all;
 }
@@ -380,9 +429,24 @@ h2 {
     justify-content: flex-end;
 }
 
+.button-group {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.button-group .btn-edit {
+    flex: 1;
+}
+
+.button-group .btn-delete {
+    flex: 0 0 auto;
+}
+
 .btn-primary,
 .btn-secondary,
-.btn-edit {
+.btn-edit,
+.btn-delete {
     padding: var(--spacing-md) var(--spacing-lg);
     border-radius: var(--radius-md);
     font-weight: 600;
@@ -422,12 +486,33 @@ h2 {
     background: var(--gradient-retro-primary);
     color: var(--light-text);
     border: 1px solid var(--primary-color);
+}
+
+.button-group .btn-edit {
     width: 100%;
 }
 
 .btn-edit:hover {
     transform: translateY(-2px);
     box-shadow: 0 0 20px rgba(255, 105, 180, 0.5);
+}
+
+.btn-delete {
+    background: var(--darker-bg);
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+}
+
+.btn-delete:hover:not(:disabled) {
+    background: #ff6b6b;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+}
+
+.btn-delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .tracks-list {
@@ -476,7 +561,7 @@ h2 {
 .track-duration {
     font-size: 0.875rem;
     color: var(--chrome-silver);
-    font-family: 'Courier New', monospace;
+    font-family: "Courier New", monospace;
 }
 
 .success-toast {
