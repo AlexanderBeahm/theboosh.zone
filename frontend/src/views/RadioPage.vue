@@ -30,189 +30,79 @@
                     </div>
                 </div>
 
-                <!-- Progress Bar -->
-                <div
-                    v-if="
-                        player.currentTrack.value && player.duration.value > 0
-                    "
-                    class="progress-section"
-                >
-                    <div class="progress-bar-container">
+                <!-- Bottom Controls: Volume and Playlist -->
+                <div class="bottom-controls">
+                    <div class="volume-section">
+                        <button
+                            class="control-button volume-button"
+                            @click="player.toggleMute"
+                        >
+                            <svg
+                                v-if="
+                                    !player.isMuted.value &&
+                                    player.volume.value > 50
+                                "
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+                                />
+                            </svg>
+                            <svg
+                                v-else-if="
+                                    !player.isMuted.value &&
+                                    player.volume.value > 0
+                                "
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
+                                />
+                            </svg>
+                            <svg
+                                v-else
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+                                />
+                            </svg>
+                        </button>
                         <input
+                            v-model.number="player.volume.value"
                             type="range"
                             min="0"
-                            :max="player.duration.value"
-                            :value="player.currentTime.value"
-                            class="progress-bar"
-                            @input="handleSeek"
-                        />
-                        <div
-                            class="progress-fill"
-                            :style="{ width: player.progress.value + '%' }"
+                            max="100"
+                            class="volume-slider"
                         />
                     </div>
-                    <div class="time-display">
-                        <span>{{ formatTime(player.currentTime.value) }}</span>
-                        <span>{{ formatTime(player.duration.value) }}</span>
-                    </div>
-                </div>
 
-                <!-- Playback Controls -->
-                <div class="controls-section">
+                    <!-- Playlist Toggle -->
                     <button
-                        class="control-button"
-                        :disabled="!player.hasPrevious.value"
-                        @click="player.previous"
+                        class="control-button playlist-toggle"
+                        @click="showPlaylist = !showPlaylist"
                     >
                         <svg
                             width="24"
                             height="24"
                             viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                        >
-                            <path
-                                d="M19 20L9 12L19 4V20Z"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                            <line
-                                x1="5"
-                                y1="19"
-                                x2="5"
-                                y2="5"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                            />
-                        </svg>
-                    </button>
-
-                    <button
-                        class="control-button play-button"
-                        :disabled="!player.currentTrack.value"
-                        @click="player.togglePlay"
-                    >
-                        <svg
-                            v-if="!player.isPlaying.value"
-                            width="32"
-                            height="32"
-                            viewBox="0 0 24 24"
                             fill="currentColor"
                         >
-                            <path d="M8 5v14l11-7z" />
-                        </svg>
-                        <svg
-                            v-else
-                            width="32"
-                            height="32"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                        </svg>
-                    </button>
-
-                    <button
-                        class="control-button"
-                        :disabled="!player.hasNext.value"
-                        @click="player.next"
-                    >
-                        <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                        >
                             <path
-                                d="M5 4L15 12L5 20V4Z"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                            />
-                            <line
-                                x1="19"
-                                y1="5"
-                                x2="19"
-                                y2="19"
-                                stroke-width="2"
-                                stroke-linecap="round"
+                                d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
                             />
                         </svg>
                     </button>
                 </div>
-
-                <!-- Volume Control -->
-                <div class="volume-section">
-                    <button
-                        class="control-button volume-button"
-                        @click="player.toggleMute"
-                    >
-                        <svg
-                            v-if="
-                                !player.isMuted.value &&
-                                player.volume.value > 50
-                            "
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path
-                                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
-                            />
-                        </svg>
-                        <svg
-                            v-else-if="
-                                !player.isMuted.value && player.volume.value > 0
-                            "
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path
-                                d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
-                            />
-                        </svg>
-                        <svg
-                            v-else
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                        >
-                            <path
-                                d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
-                            />
-                        </svg>
-                    </button>
-                    <input
-                        v-model.number="player.volume.value"
-                        type="range"
-                        min="0"
-                        max="100"
-                        class="volume-slider"
-                    />
-                </div>
-
-                <!-- Playlist Toggle -->
-                <button
-                    class="control-button playlist-toggle"
-                    @click="showPlaylist = !showPlaylist"
-                >
-                    <svg
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                    >
-                        <path
-                            d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
-                        />
-                    </svg>
-                </button>
             </div>
 
             <!-- Playlist Panel -->
@@ -242,7 +132,6 @@
                                 :class="{
                                     active: index === player.currentIndex.value,
                                 }"
-                                @click="selectTrack(index)"
                             >
                                 <div class="track-number">
                                     {{ index + 1 }}
@@ -318,12 +207,6 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-// Handle seek
-function handleSeek(event) {
-    const time = parseFloat(event.target.value);
-    player.seek(time);
-}
-
 // Select track from playlist
 function selectTrack(index) {
     player.loadTrack(index);
@@ -369,18 +252,6 @@ function handleKeyPress(event) {
     }
 
     switch (event.key) {
-        case " ":
-            event.preventDefault();
-            player.togglePlay();
-            break;
-        case "ArrowLeft":
-            event.preventDefault();
-            player.previous();
-            break;
-        case "ArrowRight":
-            event.preventDefault();
-            player.next();
-            break;
         case "ArrowUp":
             event.preventDefault();
             player.setVolume(Math.min(100, player.volume.value + 5));
@@ -415,9 +286,11 @@ onUnmounted(() => {
 
 <style scoped>
 .radio-page {
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
     width: 100%;
-    min-height: 100vh;
+    height: 100vh;
     background: var(--bg-color);
     overflow: hidden;
 }
@@ -438,14 +311,16 @@ onUnmounted(() => {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md);
+    padding-bottom: var(--spacing-lg);
+    box-sizing: border-box;
 }
 
 .player-controls {
     background: rgba(42, 47, 49, 0.95);
     border: 1px solid var(--primary-color);
     border-radius: var(--radius-lg);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-lg);
     box-shadow: 0 0 40px rgba(255, 105, 180, 0.4);
     backdrop-filter: blur(20px);
     min-width: 600px;
@@ -454,7 +329,7 @@ onUnmounted(() => {
 
 .track-info-section {
     text-align: center;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .station-name {
@@ -530,12 +405,11 @@ onUnmounted(() => {
     font-family: "Courier New", monospace;
 }
 
-.controls-section {
+.bottom-controls {
     display: flex;
-    gap: var(--spacing-md);
-    justify-content: center;
+    gap: var(--spacing-lg);
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-lg);
 }
 
 .control-button {
@@ -575,7 +449,7 @@ onUnmounted(() => {
     display: flex;
     gap: var(--spacing-md);
     align-items: center;
-    justify-content: center;
+    flex: 1;
 }
 
 .volume-button {
@@ -611,7 +485,7 @@ onUnmounted(() => {
 }
 
 .playlist-toggle {
-    margin-left: var(--spacing-md);
+    flex-shrink: 0;
 }
 
 .playlist-panel {
@@ -688,13 +562,6 @@ onUnmounted(() => {
     padding: var(--spacing-md);
     background: var(--darker-bg);
     border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.playlist-track:hover {
-    background: var(--light-bg);
-    transform: translateX(4px);
 }
 
 .playlist-track.active {
