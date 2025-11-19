@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue';
+import { ref, onUnmounted } from "vue";
 
 /**
  * Composable for creating abstract audio visualizations using Web Audio API
@@ -32,9 +32,9 @@ export function useAudioVisualizer() {
         minParticleSize: 2,
         maxParticleSize: 8,
         speed: 0.5,
-        colorPrimary: '#ff69b4',     // Hot pink
-        colorSecondary: '#b8bcc8',   // Chrome silver
-        colorBackground: '#1f2527'    // Dark bg
+        colorPrimary: "#ff69b4", // Hot pink
+        colorSecondary: "#b8bcc8", // Chrome silver
+        colorBackground: "#1f2527", // Dark bg
     };
 
     /**
@@ -42,13 +42,14 @@ export function useAudioVisualizer() {
      */
     function init(audioElement) {
         if (isInitialized.value) {
-            console.warn('Audio visualizer already initialized');
+            console.warn("Audio visualizer already initialized");
             return;
         }
 
         try {
             // Create audio context
-            audioContext.value = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext.value = new (window.AudioContext ||
+                window.webkitAudioContext)();
 
             // Create analyser node
             analyser.value = audioContext.value.createAnalyser();
@@ -60,7 +61,8 @@ export function useAudioVisualizer() {
             dataArray.value = new Uint8Array(bufferLength);
 
             // Create source from audio element
-            source.value = audioContext.value.createMediaElementSource(audioElement);
+            source.value =
+                audioContext.value.createMediaElementSource(audioElement);
 
             // Connect: source -> analyser -> destination
             source.value.connect(analyser.value);
@@ -73,7 +75,7 @@ export function useAudioVisualizer() {
 
             return true;
         } catch (err) {
-            console.error('Failed to initialize audio visualizer:', err);
+            console.error("Failed to initialize audio visualizer:", err);
             return false;
         }
     }
@@ -83,13 +85,13 @@ export function useAudioVisualizer() {
      */
     function setupCanvas(canvasElement) {
         canvas.value = canvasElement;
-        canvasContext.value = canvas.value.getContext('2d');
+        canvasContext.value = canvas.value.getContext("2d");
 
         // Set canvas size to match container
         resizeCanvas();
 
         // Handle window resize
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener("resize", resizeCanvas);
     }
 
     /**
@@ -115,9 +117,17 @@ export function useAudioVisualizer() {
                 y: Math.random(),
                 vx: (Math.random() - 0.5) * config.speed,
                 vy: (Math.random() - 0.5) * config.speed,
-                size: config.minParticleSize + Math.random() * (config.maxParticleSize - config.minParticleSize),
-                frequency: Math.floor(Math.random() * (analyser.value ? analyser.value.frequencyBinCount : 128)),
-                hue: Math.random() * 60 - 30 // Variation around primary color hue
+                size:
+                    config.minParticleSize +
+                    Math.random() *
+                        (config.maxParticleSize - config.minParticleSize),
+                frequency: Math.floor(
+                    Math.random() *
+                        (analyser.value
+                            ? analyser.value.frequencyBinCount
+                            : 128),
+                ),
+                hue: Math.random() * 60 - 30, // Variation around primary color hue
             });
         }
     }
@@ -155,18 +165,21 @@ export function useAudioVisualizer() {
         analyser.value.getByteFrequencyData(dataArray.value);
 
         // Calculate average amplitude for global effects
-        const average = dataArray.value.reduce((a, b) => a + b, 0) / dataArray.value.length;
+        const average =
+            dataArray.value.reduce((a, b) => a + b, 0) / dataArray.value.length;
         const normalizedAverage = average / 255;
 
         // Clear canvas with fade effect
         canvasContext.value.fillStyle = `${config.colorBackground}22`;
-        canvasContext.value.fillRect(0, 0, canvas.value.width, canvas.value.height);
+        canvasContext.value.fillRect(
+            0,
+            0,
+            canvas.value.width,
+            canvas.value.height,
+        );
 
         // Update and draw particles
         drawParticles(normalizedAverage);
-
-        // Draw frequency bars (subtle background effect)
-        drawFrequencyBars();
     }
 
     /**
@@ -177,7 +190,7 @@ export function useAudioVisualizer() {
         const width = canvas.value.width;
         const height = canvas.value.height;
 
-        particles.value.forEach(particle => {
+        particles.value.forEach((particle) => {
             // Get frequency data for this particle
             const frequencyValue = dataArray.value[particle.frequency] / 255;
 
@@ -196,16 +209,25 @@ export function useAudioVisualizer() {
             const y = particle.y * height;
 
             // Calculate size based on frequency and global amplitude
-            const size = particle.size * (1 + frequencyValue * 3) * (1 + globalAmplitude * 0.5);
+            const size =
+                particle.size *
+                (1 + frequencyValue * 3) *
+                (1 + globalAmplitude * 0.5);
 
             // Color based on frequency intensity
             const alpha = 0.3 + frequencyValue * 0.7;
             const primaryAmount = frequencyValue;
 
             // Blend between primary and secondary color
-            const r = Math.floor(255 * primaryAmount + 184 * (1 - primaryAmount));
-            const g = Math.floor(105 * primaryAmount + 188 * (1 - primaryAmount));
-            const b = Math.floor(180 * primaryAmount + 200 * (1 - primaryAmount));
+            const r = Math.floor(
+                255 * primaryAmount + 184 * (1 - primaryAmount),
+            );
+            const g = Math.floor(
+                105 * primaryAmount + 188 * (1 - primaryAmount),
+            );
+            const b = Math.floor(
+                180 * primaryAmount + 200 * (1 - primaryAmount),
+            );
 
             // Draw particle with glow
             ctx.shadowBlur = 20 + frequencyValue * 30;
@@ -217,13 +239,14 @@ export function useAudioVisualizer() {
             ctx.fill();
 
             // Draw connection lines to nearby particles (creates web effect)
-            particles.value.forEach(other => {
+            particles.value.forEach((other) => {
                 const dx = (other.x - particle.x) * width;
                 const dy = (other.y - particle.y) * height;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance < 100 && distance > 0) {
-                    const lineAlpha = (1 - distance / 100) * 0.2 * frequencyValue;
+                    const lineAlpha =
+                        (1 - distance / 100) * 0.2 * frequencyValue;
 
                     ctx.shadowBlur = 0;
                     ctx.beginPath();
@@ -240,46 +263,10 @@ export function useAudioVisualizer() {
     }
 
     /**
-     * Draw frequency bars as subtle background effect
-     */
-    function drawFrequencyBars() {
-        const ctx = canvasContext.value;
-        const width = canvas.value.width;
-        const height = canvas.value.height;
-
-        const barCount = 64; // Use subset of frequency data
-        const barWidth = width / barCount;
-
-        for (let i = 0; i < barCount; i++) {
-            const dataIndex = Math.floor(i * (dataArray.value.length / barCount));
-            const value = dataArray.value[dataIndex] / 255;
-            const barHeight = value * height * 0.3; // Max 30% of height
-
-            // Gradient from bottom (primary) to top (secondary)
-            const gradient = ctx.createLinearGradient(
-                0,
-                height - barHeight,
-                0,
-                height
-            );
-            gradient.addColorStop(0, `rgba(184, 188, 200, ${value * 0.1})`); // Silver
-            gradient.addColorStop(1, `rgba(255, 105, 180, ${value * 0.2})`); // Pink
-
-            ctx.fillStyle = gradient;
-            ctx.fillRect(
-                i * barWidth,
-                height - barHeight,
-                barWidth - 2,
-                barHeight
-            );
-        }
-    }
-
-    /**
      * Resume audio context (required by browser autoplay policies)
      */
     async function resumeContext() {
-        if (audioContext.value && audioContext.value.state === 'suspended') {
+        if (audioContext.value && audioContext.value.state === "suspended") {
             await audioContext.value.resume();
         }
     }
@@ -305,7 +292,7 @@ export function useAudioVisualizer() {
             audioContext.value = null;
         }
 
-        window.removeEventListener('resize', resizeCanvas);
+        window.removeEventListener("resize", resizeCanvas);
 
         isInitialized.value = false;
     }
@@ -323,6 +310,6 @@ export function useAudioVisualizer() {
         start,
         stop,
         resumeContext,
-        cleanup
+        cleanup,
     };
 }
