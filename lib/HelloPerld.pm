@@ -360,6 +360,13 @@ sub startup {
     $admin->put('/media/:id')->to('Media#update');
     $admin->delete('/media/:id')->to('Media#delete');
 
+    # Public radio routes
+    $api->get('/radio/playlist')->to('Radio#get_playlist');
+
+    # Protected radio management routes
+    $admin->get('/radio/config')->to('Radio#get_config');
+    $admin->post('/radio/playlist')->to('Radio#update_playlist');
+
     # SPA fallback routing - catch all non-API routes and serve index.html
     # This allows Vue Router history mode to work correctly
     # IMPORTANT: Define this AFTER all API/Swagger routes to ensure proper route priority
@@ -399,8 +406,8 @@ sub startup {
                 "style-src 'self' 'unsafe-inline'",             # Styles from same origin + inline (Vue.js components need this)
                 "img-src 'self' data:",                         # Images from same origin + data URLs (for base64 images)
                 "font-src 'self'",                              # Web fonts from same origin only
-                "connect-src 'self'",                           # AJAX/fetch only to same origin (API calls)
-                "media-src 'self'",                             # Audio/video from same origin only
+                "connect-src 'self' https:",                    # AJAX/fetch to same origin + HTTPS (for HLS streaming)
+                "media-src 'self' blob: https:",                # Audio/video from same origin, blob URLs (Web Audio API), and HTTPS sources
                 "object-src 'none'",                            # No plugins (Flash, Java applets, etc.)
                 "base-uri 'self'",                              # Restrict <base> tag to same origin
                 "form-action 'self'",                           # Forms can only submit to same origin

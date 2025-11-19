@@ -881,6 +881,56 @@ perl -I/usr/src/hello-perld/lib -MHelloPerld::Database::Postgres -e "..."
 
 ### Database Connection Best Practices
 
+**CRITICAL: Always use HelloPerld::Model::Base for new models!**
+
+All model classes MUST inherit from `HelloPerld::Model::Base` which provides:
+- Consistent database connection handling via `_get_dbh()`
+- Automatic config-based or default connection fallback
+- Built-in logging helpers (`_log_error()`, `_log_info()`)
+- Proper error handling and connection cleanup
+
+**Model Structure Pattern**:
+```perl
+package HelloPerld::Model::YourModel;
+
+use strict;
+use warnings;
+
+our $VERSION = '1.0.0';
+
+use parent 'HelloPerld::Model::Base';  # REQUIRED!
+
+# Your model methods here
+sub get_something {
+    my ($self, $param) = @_;
+    
+    my $dbh = $self->_get_dbh();  # Use this, NOT db_config->connect_db()
+    return undef unless $dbh;
+    
+    # ... database operations
+}
+```
+
+**Instantiation Pattern in Controllers**:
+```perl
+my $model = HelloPerld::Model::YourModel->new(
+    logger => $self->app->logger_instance,
+    db_config => $self->db_config
+);
+```
+
+**WRONG - Do NOT do this**:
+```perl
+# ❌ WRONG - Missing parent class
+package HelloPerld::Model::Bad;
+use Mojo::Base -base, -signatures;
+has 'db_config';
+
+# ❌ WRONG - Direct connect_db() call
+my $dbh = $self->db_config->connect_db();
+```
+
+**Additional Best Practices**:
 1. **Always disconnect after queries** to prevent "active statement handle" warnings
 2. **Use eval blocks** for error handling in database operations
 3. **Test connection before running migrations** (done in entrypoint script)
