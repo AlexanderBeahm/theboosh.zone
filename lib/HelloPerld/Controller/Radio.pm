@@ -145,6 +145,15 @@ Request body:
 =cut
 
 sub update_playlist ($self) {
+    # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     # Get user from session
     my $user_id = $self->session('admin_user_id');
 
@@ -203,7 +212,17 @@ sub update_playlist ($self) {
         $radio_model->set_playlist_url($playlist_url, $user_id);
 
         # Calculate and store total duration for sync
-        my $total_duration = $self->_calculate_playlist_duration($playlist_url);
+        # Wrap in eval to prevent duration calculation errors from failing the entire update
+        my $total_duration;
+        eval {
+            $total_duration = $self->_calculate_playlist_duration($playlist_url);
+        };
+
+        if ($@) {
+            $self->app->logger_instance->warn("Duration calculation failed: $@");
+            $total_duration = undef;
+        }
+
         if (defined $total_duration) {
             $radio_model->set_total_duration($total_duration);
             $self->app->logger_instance->info("Calculated playlist duration: $total_duration seconds");
@@ -241,6 +260,15 @@ Requires authentication.
 =cut
 
 sub delete_playlist ($self) {
+    # Note: Authentication is handled by the /admin route middleware
+
+    # CSRF protection
+    unless ($self->csrf_protect) {
+        return error_response($self, 'forbidden', 'CSRF validation failed',
+            code => 'SEC001'
+        );
+    }
+
     # Get user from session
     my $user_id = $self->session('admin_user_id');
 
