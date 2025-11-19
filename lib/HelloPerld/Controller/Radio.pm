@@ -501,11 +501,21 @@ sub _validate_playlist_url ($self, $url) {
         };
     } else {
         # Hostname - resolve to IP
-        my $packed_ip = gethostbyname($host);
-        unless ($packed_ip) {
+        # Use eval to catch any DNS resolution errors/timeouts
+        my $packed_ip;
+        eval {
+            local $SIG{ALRM} = sub { die "DNS timeout\n" };
+            alarm(3);  # 3 second timeout for DNS resolution
+            $packed_ip = gethostbyname($host);
+            alarm(0);
+        };
+        alarm(0);  # Ensure alarm is cleared
+
+        if ($@ || !$packed_ip) {
+            my $error_msg = $@ ? "DNS resolution timeout: $host" : "Cannot resolve hostname: $host";
             return {
                 valid => 0,
-                error => "Cannot resolve hostname: $host"
+                error => $error_msg
             };
         }
         $ip_addr = inet_ntoa($packed_ip);
