@@ -628,9 +628,9 @@ onUnmounted(() => {
 
 .loading-overlay {
     position: fixed;
-    top: var(--spacing-xl);
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     background: rgba(42, 47, 49, 0.95);
     border: 1px solid var(--primary-color);
     border-radius: var(--radius-lg);
@@ -780,6 +780,65 @@ onUnmounted(() => {
 
     .track-artist {
         font-size: 1rem;
+    }
+
+    /* Splash screen mobile fixes */
+    .listen-live-content {
+        max-width: 90%;
+        padding: var(--spacing-lg);
+    }
+
+    .listen-live-title {
+        font-size: 2rem;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .listen-live-subtitle {
+        font-size: 1rem;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .listen-live-button {
+        padding: var(--spacing-md) var(--spacing-lg);
+        font-size: 1.125rem;
+        gap: var(--spacing-sm);
+    }
+
+    .listen-live-button svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .listen-live-content {
+        max-width: 95%;
+        padding: var(--spacing-md);
+    }
+
+    .listen-live-title {
+        font-size: 1.5rem;
+        letter-spacing: 0.025em;
+        line-height: 1.2;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .listen-live-subtitle {
+        font-size: 0.875rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .listen-live-button {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 1rem;
+        gap: var(--spacing-xs);
+    }
+
+    .listen-live-button svg {
+        width: 18px;
+        height: 18px;
     }
 }
 </style>
