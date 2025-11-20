@@ -41,6 +41,17 @@ const routes = [
         meta: { requiresAuth: true },
     },
     {
+        path: "/admin/radio",
+        name: "AdminRadio",
+        component: () => import("../views/AdminRadio.vue"),
+        meta: { requiresAuth: true },
+    },
+    {
+        path: "/radio",
+        name: "Radio",
+        component: () => import("../views/RadioPage.vue"),
+    },
+    {
         path: "/:pathMatch(.*)*",
         name: "NotFound",
         component: () => import("../views/NotFoundPage.vue"),

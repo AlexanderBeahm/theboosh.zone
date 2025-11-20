@@ -1,1082 +1,1480 @@
 {
-  "openapi": "3.0.3",
-  "info": {
-    "title": "TheBoosh.Zone API",
-    "description": "API for Alex Beahm's personal portfolio and blog website, featuring article management, tagging system, and admin authentication.",
-    "version": "2.0.0",
-    "contact": {
-      "name": "Alex Beahm",
-      "email": "alexanderbeahm@gmail.com"
-    },
-    "license": {
-      "name": "MIT"
-    }
-  },
-  "servers": [
-    {
-      "url": "http://localhost:3000",
-      "description": "Local development server"
-    },
-    {
-      "url": "https://theboosh.zone",
-      "description": "Production server"
-    }
-  ],
-  "paths": {
-    "/health": {
-      "get": {
-        "summary": "Health Check Endpoint",
-        "description": "Returns the health status of the application.",
-        "operationId": "getHealthStatus",
-        "x-mojo-to": "Health#getHealthStatus",
-        "tags": ["Health"],
-        "responses": {
-          "200": {
-            "description": "Application is healthy",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/HealthResponse" }
-              }
-            }
-          },
-          "503": {
-            "description": "Service unavailable",
-            "content": {
-              "text/plain": {
-                "schema": { "type": "string", "example": "Service Unavailable" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/ready": {
-      "get": {
-        "summary": "Readiness Check Endpoint",
-        "description": "Returns the readiness status of the application, including database connectivity.",
-        "operationId": "getReadinessStatus",
-        "x-mojo-to": "Health#get_readiness_status",
-        "tags": ["Health"],
-        "responses": {
-          "200": {
-            "description": "Application is ready",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ReadinessResponse" }
-              }
-            }
-          },
-          "503": {
-            "description": "Application is not ready",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ReadinessResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/login": {
-      "post": {
-        "summary": "Admin Login",
-        "description": "Authenticate admin user and create session",
-        "operationId": "adminLogin",
-        "x-mojo-to": "Auth#login",
-        "tags": ["Authentication"],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/LoginRequest" }
-            }
-          }
+    "openapi": "3.0.3",
+    "info": {
+        "title": "TheBoosh.Zone API",
+        "description": "API for Alex Beahm's personal portfolio and blog website, featuring article management, tagging system, and admin authentication.",
+        "version": "2.0.0",
+        "contact": {
+            "name": "Alex Beahm",
+            "email": "alexanderbeahm@gmail.com"
         },
-        "responses": {
-          "200": {
-            "description": "Login successful",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "429": { "$ref": "#/components/responses/RateLimited" }
+        "license": {
+            "name": "MIT"
         }
-      }
     },
-    "/api/auth/logout": {
-      "post": {
-        "summary": "Admin Logout",
-        "description": "End admin session. Requires valid CSRF token in request body or X-CSRF-Token header.",
-        "operationId": "adminLogout",
-        "x-mojo-to": "Auth#logout",
-        "tags": ["Authentication"],
-        "security": [{ "sessionAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "Logout successful",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-              }
-            }
-          },
-          "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
-        }
-      }
-    },
-    "/api/auth/status": {
-      "get": {
-        "summary": "Authentication Status",
-        "description": "Check current authentication status",
-        "operationId": "authStatus",
-        "x-mojo-to": "Auth#status",
-        "tags": ["Authentication"],
-        "responses": {
-          "200": {
-            "description": "Authentication status",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthStatusResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/csrf-token": {
-      "get": {
-        "summary": "Get CSRF Token",
-        "description": "Get a fresh CSRF token for authenticated users to use with state-changing operations",
-        "operationId": "getCsrfToken",
-        "x-mojo-to": "Auth#csrf_token",
-        "tags": ["Authentication"],
-        "security": [{ "sessionAuth": [] }],
-        "responses": {
-          "200": {
-            "description": "CSRF token retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/CsrfTokenResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/api/auth/change-password": {
-      "post": {
-        "summary": "Change Admin Password",
-        "description": "Change the password for the authenticated admin user (requires CSRF token)",
-        "operationId": "changePassword",
-        "x-mojo-to": "Auth#change_password",
-        "tags": ["Authentication"],
-        "security": [{ "sessionAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/ChangePasswordRequest" }
-            }
-          }
+    "servers": [
+        {
+            "url": "http://localhost:3000",
+            "description": "Local development server"
         },
-        "responses": {
-          "200": {
-            "description": "Password changed successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
+        {
+            "url": "https://theboosh.zone",
+            "description": "Production server"
         }
-      }
-    },
-    "/api/articles": {
-      "get": {
-        "summary": "List Articles",
-        "description": "Retrieve published articles with pagination and filtering",
-        "operationId": "getArticles",
-        "x-mojo-to": "Articles#get_all",
-        "tags": ["Articles"],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Articles per page",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
-          },
-          {
-            "name": "tag",
-            "in": "query",
-            "description": "Filter by tag slug",
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Articles retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleListResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/articles/{slug}": {
-      "get": {
-        "summary": "Get Article by Slug",
-        "description": "Retrieve a single published article by slug",
-        "operationId": "getArticleBySlug",
-        "x-mojo-to": "Articles#get_by_slug",
-        "tags": ["Articles"],
-        "parameters": [
-          {
-            "name": "slug",
-            "in": "path",
-            "required": true,
-            "description": "Article slug",
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Article retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleResponse" }
-              }
-            }
-          },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/tags": {
-      "get": {
-        "summary": "List Tags",
-        "description": "Retrieve all tags with pagination",
-        "operationId": "getTags",
-        "x-mojo-to": "Tags#get_all",
-        "tags": ["Tags"],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Tags per page",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
-          },
-          {
-            "name": "order",
-            "in": "query",
-            "description": "Sort order",
-            "schema": { "type": "string", "enum": ["name", "usage"], "default": "name" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Tags retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/TagListResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tags/popular": {
-      "get": {
-        "summary": "Popular Tags",
-        "description": "Get most popular tags by usage",
-        "operationId": "getPopularTags",
-        "x-mojo-to": "Tags#get_popular",
-        "tags": ["Tags"],
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Number of tags to return",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 10 }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Popular tags retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/TagListResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/tags/search": {
-      "get": {
-        "summary": "Search Tags",
-        "description": "Search for tags by name",
-        "operationId": "searchTags",
-        "x-mojo-to": "Tags#search",
-        "tags": ["Tags"],
-        "parameters": [
-          {
-            "name": "q",
-            "in": "query",
-            "required": true,
-            "description": "Search query",
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Number of results",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Search results",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/TagSearchResponse" }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/admin/articles": {
-      "get": {
-        "summary": "List Articles (Admin)",
-        "description": "Retrieve all articles including unpublished (admin only)",
-        "operationId": "getArticlesAdmin",
-        "x-mojo-to": "Articles#get_all",
-        "tags": ["Admin - Articles"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
-          },
-          {
-            "name": "published",
-            "in": "query",
-            "description": "Filter by published status",
-            "schema": { "type": "boolean" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Articles retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleListResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      },
-      "post": {
-        "summary": "Create Article",
-        "description": "Create a new article (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
-        "operationId": "createArticle",
-        "x-mojo-to": "Articles#create",
-        "tags": ["Admin - Articles"],
-        "security": [{ "sessionAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/ArticleCreateRequest" }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Article created successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleResponse" }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/api/admin/articles/{id}": {
-      "get": {
-        "summary": "Get Article by ID (Admin)",
-        "description": "Retrieve article by ID including unpublished (admin only)",
-        "operationId": "getArticleByIdAdmin",
-        "x-mojo-to": "Articles#get_by_id",
-        "tags": ["Admin - Articles"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Article ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Article retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "put": {
-        "summary": "Update Article",
-        "description": "Update an existing article (admin only)",
-        "operationId": "updateArticle",
-        "x-mojo-to": "Articles#update",
-        "tags": ["Admin - Articles"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Article ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/ArticleUpdateRequest" }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Article updated successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ArticleResponse" }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "summary": "Delete Article",
-        "description": "Delete an article (admin only)",
-        "operationId": "deleteArticle",
-        "x-mojo-to": "Articles#delete",
-        "tags": ["Admin - Articles"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Article ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Article deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    },
-    "/api/admin/media/upload": {
-      "post": {
-        "summary": "Upload Media File",
-        "description": "Upload an image or media file (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
-        "operationId": "uploadMedia",
-        "x-mojo-to": "Media#upload",
-        "tags": ["Admin - Media"],
-        "security": [{ "sessionAuth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "required": ["file"],
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary",
-                    "description": "The file to upload"
-                  },
-                  "alt_text": {
-                    "type": "string",
-                    "description": "Alternative text for accessibility"
-                  },
-                  "caption": {
-                    "type": "string",
-                    "description": "Caption for the media"
-                  }
+    ],
+    "paths": {
+        "/health": {
+            "get": {
+                "summary": "Health Check Endpoint",
+                "description": "Returns the health status of the application.",
+                "operationId": "getHealthStatus",
+                "x-mojo-to": "Health#getHealthStatus",
+                "tags": ["Health"],
+                "responses": {
+                    "200": {
+                        "description": "Application is healthy",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service unavailable",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "Service Unavailable"
+                                }
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
         },
-        "responses": {
-          "200": {
-            "description": "File uploaded successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/MediaResponse" }
-              }
+        "/health/ready": {
+            "get": {
+                "summary": "Readiness Check Endpoint",
+                "description": "Returns the readiness status of the application, including database connectivity.",
+                "operationId": "getReadinessStatus",
+                "x-mojo-to": "Health#get_readiness_status",
+                "tags": ["Health"],
+                "responses": {
+                    "200": {
+                        "description": "Application is ready",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadinessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Application is not ready",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReadinessResponse"
+                                }
+                            }
+                        }
+                    }
+                }
             }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+        },
+        "/api/auth/login": {
+            "post": {
+                "summary": "Admin Login",
+                "description": "Authenticate admin user and create session",
+                "operationId": "adminLogin",
+                "x-mojo-to": "Auth#login",
+                "tags": ["Authentication"],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LoginRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "429": { "$ref": "#/components/responses/RateLimited" }
+                }
+            }
+        },
+        "/api/auth/logout": {
+            "post": {
+                "summary": "Admin Logout",
+                "description": "End admin session. Requires valid CSRF token in request body or X-CSRF-Token header.",
+                "operationId": "adminLogout",
+                "x-mojo-to": "Auth#logout",
+                "tags": ["Authentication"],
+                "security": [{ "sessionAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Logout successful",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
+                }
+            }
+        },
+        "/api/auth/status": {
+            "get": {
+                "summary": "Authentication Status",
+                "description": "Check current authentication status",
+                "operationId": "authStatus",
+                "x-mojo-to": "Auth#status",
+                "tags": ["Authentication"],
+                "responses": {
+                    "200": {
+                        "description": "Authentication status",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AuthStatusResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/csrf-token": {
+            "get": {
+                "summary": "Get CSRF Token",
+                "description": "Get a fresh CSRF token for authenticated users to use with state-changing operations",
+                "operationId": "getCsrfToken",
+                "x-mojo-to": "Auth#csrf_token",
+                "tags": ["Authentication"],
+                "security": [{ "sessionAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "CSRF token retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CsrfTokenResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/auth/change-password": {
+            "post": {
+                "summary": "Change Admin Password",
+                "description": "Change the password for the authenticated admin user (requires CSRF token)",
+                "operationId": "changePassword",
+                "x-mojo-to": "Auth#change_password",
+                "tags": ["Authentication"],
+                "security": [{ "sessionAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ChangePasswordRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Password changed successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "403": { "$ref": "#/components/responses/CsrfTokenInvalid" }
+                }
+            }
+        },
+        "/api/articles": {
+            "get": {
+                "summary": "List Articles",
+                "description": "Retrieve published articles with pagination and filtering",
+                "operationId": "getArticles",
+                "x-mojo-to": "Articles#get_all",
+                "tags": ["Articles"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Articles per page",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "tag",
+                        "in": "query",
+                        "description": "Filter by tag slug",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Articles retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/articles/{slug}": {
+            "get": {
+                "summary": "Get Article by Slug",
+                "description": "Retrieve a single published article by slug",
+                "operationId": "getArticleBySlug",
+                "x-mojo-to": "Articles#get_by_slug",
+                "tags": ["Articles"],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "description": "Article slug",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Article retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/api/tags": {
+            "get": {
+                "summary": "List Tags",
+                "description": "Retrieve all tags with pagination",
+                "operationId": "getTags",
+                "x-mojo-to": "Tags#get_all",
+                "tags": ["Tags"],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Tags per page",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 50
+                        }
+                    },
+                    {
+                        "name": "order",
+                        "in": "query",
+                        "description": "Sort order",
+                        "schema": {
+                            "type": "string",
+                            "enum": ["name", "usage"],
+                            "default": "name"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Tags retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TagListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tags/popular": {
+            "get": {
+                "summary": "Popular Tags",
+                "description": "Get most popular tags by usage",
+                "operationId": "getPopularTags",
+                "x-mojo-to": "Tags#get_popular",
+                "tags": ["Tags"],
+                "parameters": [
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of tags to return",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50,
+                            "default": 10
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Popular tags retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TagListResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/tags/search": {
+            "get": {
+                "summary": "Search Tags",
+                "description": "Search for tags by name",
+                "operationId": "searchTags",
+                "x-mojo-to": "Tags#search",
+                "tags": ["Tags"],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "description": "Search query",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Number of results",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50,
+                            "default": 20
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TagSearchResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/articles": {
+            "get": {
+                "summary": "List Articles (Admin)",
+                "description": "Retrieve all articles including unpublished (admin only)",
+                "operationId": "getArticlesAdmin",
+                "x-mojo-to": "Articles#get_all",
+                "tags": ["Admin - Articles"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "published",
+                        "in": "query",
+                        "description": "Filter by published status",
+                        "schema": { "type": "boolean" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Articles retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            },
+            "post": {
+                "summary": "Create Article",
+                "description": "Create a new article (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
+                "operationId": "createArticle",
+                "x-mojo-to": "Articles#create",
+                "tags": ["Admin - Articles"],
+                "security": [{ "sessionAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ArticleCreateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Article created successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/admin/articles/{id}": {
+            "get": {
+                "summary": "Get Article by ID (Admin)",
+                "description": "Retrieve article by ID including unpublished (admin only)",
+                "operationId": "getArticleByIdAdmin",
+                "x-mojo-to": "Articles#get_by_id",
+                "tags": ["Admin - Articles"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Article ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Article retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "put": {
+                "summary": "Update Article",
+                "description": "Update an existing article (admin only)",
+                "operationId": "updateArticle",
+                "x-mojo-to": "Articles#update",
+                "tags": ["Admin - Articles"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Article ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ArticleUpdateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Article updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ArticleResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "delete": {
+                "summary": "Delete Article",
+                "description": "Delete an article (admin only)",
+                "operationId": "deleteArticle",
+                "x-mojo-to": "Articles#delete",
+                "tags": ["Admin - Articles"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Article ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Article deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/api/admin/media/upload": {
+            "post": {
+                "summary": "Upload Media File",
+                "description": "Upload an image or media file (admin only). Requires valid CSRF token in request body or X-CSRF-Token header.",
+                "operationId": "uploadMedia",
+                "x-mojo-to": "Media#upload",
+                "tags": ["Admin - Media"],
+                "security": [{ "sessionAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["file"],
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "format": "binary",
+                                        "description": "The file to upload"
+                                    },
+                                    "alt_text": {
+                                        "type": "string",
+                                        "description": "Alternative text for accessibility"
+                                    },
+                                    "caption": {
+                                        "type": "string",
+                                        "description": "Caption for the media"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "File uploaded successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/admin/media": {
+            "get": {
+                "summary": "List Media Files",
+                "description": "Retrieve all uploaded media with pagination (admin only)",
+                "operationId": "getMedia",
+                "x-mojo-to": "Media#get_all",
+                "tags": ["Admin - Media"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "description": "Page number",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "default": 1
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "description": "Media items per page",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 20
+                        }
+                    },
+                    {
+                        "name": "mime_type",
+                        "in": "query",
+                        "description": "Filter by MIME type",
+                        "schema": { "type": "string" }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Search in filename, alt_text, or caption",
+                        "schema": { "type": "string" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/admin/media/{id}": {
+            "get": {
+                "summary": "Get Media by ID",
+                "description": "Retrieve a single media item by ID (admin only)",
+                "operationId": "getMediaById",
+                "x-mojo-to": "Media#get_by_id",
+                "tags": ["Admin - Media"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Media ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "put": {
+                "summary": "Update Media Metadata",
+                "description": "Update alt_text and caption for media (admin only)",
+                "operationId": "updateMedia",
+                "x-mojo-to": "Media#update",
+                "tags": ["Admin - Media"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Media ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "alt_text": { "type": "string" },
+                                    "caption": { "type": "string" }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Media updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/MediaResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            },
+            "delete": {
+                "summary": "Delete Media",
+                "description": "Delete a media file and its database record (admin only)",
+                "operationId": "deleteMedia",
+                "x-mojo-to": "Media#delete",
+                "tags": ["Admin - Media"],
+                "security": [{ "sessionAuth": [] }],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "description": "Media ID",
+                        "schema": { "type": "integer" }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SuccessResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" },
+                    "404": { "$ref": "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/api/radio/playlist": {
+            "get": {
+                "summary": "Get Radio Playlist",
+                "description": "Retrieve the current radio playlist URL and optionally parse tracks",
+                "operationId": "getRadioPlaylist",
+                "x-mojo-to": "Radio#get_playlist",
+                "tags": ["Radio"],
+                "parameters": [
+                    {
+                        "name": "parse",
+                        "in": "query",
+                        "description": "Whether to fetch and parse the .m3u file (0 or 1)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "enum": [0, 1],
+                            "default": 0
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Playlist retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PlaylistResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/admin/radio/config": {
+            "get": {
+                "summary": "Get Radio Configuration",
+                "description": "Retrieve radio configuration settings (admin only)",
+                "operationId": "getRadioConfig",
+                "x-mojo-to": "Radio#get_config",
+                "tags": ["Admin - Radio"],
+                "security": [{ "sessionAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Configuration retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RadioConfigResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/admin/radio/playlist": {
+            "post": {
+                "summary": "Update Radio Playlist",
+                "description": "Update the radio playlist URL (admin only). Requires valid CSRF token.",
+                "operationId": "updateRadioPlaylist",
+                "x-mojo-to": "Radio#update_playlist",
+                "tags": ["Admin - Radio"],
+                "security": [{ "sessionAuth": [] }],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["playlist_url"],
+                                "properties": {
+                                    "playlist_url": {
+                                        "type": "string",
+                                        "description": "URL to .m3u or .m3u8 playlist file (HTTP(S) or local path)"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Playlist URL updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": { "type": "boolean" },
+                                        "message": { "type": "string" },
+                                        "playlist_url": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": { "$ref": "#/components/responses/BadRequest" },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            },
+            "delete": {
+                "summary": "Delete Radio Playlist",
+                "description": "Delete the current radio playlist configuration (admin only)",
+                "operationId": "deleteRadioPlaylist",
+                "x-mojo-to": "Radio#delete_playlist",
+                "tags": ["Admin - Radio"],
+                "security": [{ "sessionAuth": [] }],
+                "responses": {
+                    "200": {
+                        "description": "Playlist deleted successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": { "type": "boolean" },
+                                        "message": { "type": "string" }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": { "$ref": "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/radio/sync-info": {
+            "get": {
+                "summary": "Get Radio Synchronization Info",
+                "description": "Get synchronization information for the radio stream, including server time and calculated playback position",
+                "operationId": "getRadioSyncInfo",
+                "x-mojo-to": "Radio#get_sync_info",
+                "tags": ["Radio"],
+                "responses": {
+                    "200": {
+                        "description": "Sync info retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/RadioSyncInfoResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-      }
     },
-    "/api/admin/media": {
-      "get": {
-        "summary": "List Media Files",
-        "description": "Retrieve all uploaded media with pagination (admin only)",
-        "operationId": "getMedia",
-        "x-mojo-to": "Media#get_all",
-        "tags": ["Admin - Media"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "description": "Page number",
-            "schema": { "type": "integer", "minimum": 1, "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "Media items per page",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
-          },
-          {
-            "name": "mime_type",
-            "in": "query",
-            "description": "Filter by MIME type",
-            "schema": { "type": "string" }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "description": "Search in filename, alt_text, or caption",
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Media retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/MediaListResponse" }
-              }
+    "components": {
+        "securitySchemes": {
+            "sessionAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "mojolicious"
             }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
-        }
-      }
-    },
-    "/api/admin/media/{id}": {
-      "get": {
-        "summary": "Get Media by ID",
-        "description": "Retrieve a single media item by ID (admin only)",
-        "operationId": "getMediaById",
-        "x-mojo-to": "Media#get_by_id",
-        "tags": ["Admin - Media"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Media ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Media retrieved successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/MediaResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "put": {
-        "summary": "Update Media Metadata",
-        "description": "Update alt_text and caption for media (admin only)",
-        "operationId": "updateMedia",
-        "x-mojo-to": "Media#update",
-        "tags": ["Admin - Media"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Media ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
+        },
+        "schemas": {
+            "HealthResponse": {
                 "type": "object",
                 "properties": {
-                  "alt_text": { "type": "string" },
-                  "caption": { "type": "string" }
+                    "status": {
+                        "type": "string",
+                        "enum": ["healthy", "unhealthy"]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
                 }
-              }
+            },
+            "ReadinessResponse": {
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": ["ready", "not_ready"]
+                    },
+                    "database": {
+                        "type": "string",
+                        "enum": ["connected", "unavailable"]
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                }
+            },
+            "LoginRequest": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                    "username": { "type": "string" },
+                    "password": { "type": "string" }
+                }
+            },
+            "AuthResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "integer" },
+                            "username": { "type": "string" },
+                            "email": { "type": "string" }
+                        }
+                    },
+                    "csrf_token": {
+                        "type": "string",
+                        "description": "CSRF token for use with subsequent authenticated requests"
+                    }
+                }
+            },
+            "AuthStatusResponse": {
+                "type": "object",
+                "properties": {
+                    "authenticated": { "type": "boolean" },
+                    "user": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "integer" },
+                            "username": { "type": "string" },
+                            "email": { "type": "string" }
+                        }
+                    },
+                    "csrf_token": {
+                        "type": "string",
+                        "description": "CSRF token for authenticated users (only present when authenticated=true)"
+                    }
+                }
+            },
+            "CsrfTokenResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "csrf_token": {
+                        "type": "string",
+                        "description": "Fresh CSRF token for use with state-changing operations"
+                    }
+                }
+            },
+            "ChangePasswordRequest": {
+                "type": "object",
+                "required": ["current_password", "new_password", "csrf_token"],
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "description": "Current password for verification"
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "description": "New password to set"
+                    },
+                    "csrf_token": {
+                        "type": "string",
+                        "description": "Valid CSRF token for request authentication"
+                    }
+                }
+            },
+            "Article": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer" },
+                    "title": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "content": { "type": "string" },
+                    "excerpt": { "type": "string" },
+                    "author": { "type": "string" },
+                    "published_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "date_added": { "type": "string", "format": "date-time" },
+                    "date_updated": { "type": "string", "format": "date-time" },
+                    "is_published": { "type": "boolean" },
+                    "meta_description": { "type": "string", "nullable": true },
+                    "featured_image": { "type": "string", "nullable": true },
+                    "tags": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Tag" }
+                    }
+                }
+            },
+            "ArticleCreateRequest": {
+                "type": "object",
+                "required": ["title", "content"],
+                "properties": {
+                    "title": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "content": { "type": "string" },
+                    "excerpt": { "type": "string" },
+                    "author": { "type": "string" },
+                    "is_published": { "type": "boolean" },
+                    "meta_description": { "type": "string" },
+                    "featured_image": { "type": "string" },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
+            "ArticleUpdateRequest": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "content": { "type": "string" },
+                    "excerpt": { "type": "string" },
+                    "author": { "type": "string" },
+                    "is_published": { "type": "boolean" },
+                    "meta_description": { "type": "string" },
+                    "featured_image": { "type": "string" },
+                    "tags": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
+            "ArticleResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "article": { "$ref": "#/components/schemas/Article" }
+                }
+            },
+            "ArticleListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "articles": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Article" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                }
+            },
+            "Tag": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer" },
+                    "name": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "usage_count": { "type": "integer" },
+                    "date_added": { "type": "string", "format": "date-time" }
+                }
+            },
+            "TagListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "tags": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Tag" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                }
+            },
+            "TagSearchResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "tags": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Tag" }
+                    },
+                    "search_query": { "type": "string" }
+                }
+            },
+            "Pagination": {
+                "type": "object",
+                "properties": {
+                    "current_page": { "type": "integer" },
+                    "total_pages": { "type": "integer" },
+                    "total_count": { "type": "integer" },
+                    "per_page": { "type": "integer" },
+                    "has_next": { "type": "boolean" },
+                    "has_prev": { "type": "boolean" }
+                }
+            },
+            "SuccessResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                }
+            },
+            "ErrorResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "error": { "type": "string" }
+                }
+            },
+            "Media": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "integer" },
+                    "filename": { "type": "string" },
+                    "original_filename": { "type": "string" },
+                    "filepath": { "type": "string" },
+                    "url": { "type": "string" },
+                    "mime_type": { "type": "string" },
+                    "file_size": { "type": "integer" },
+                    "width": { "type": "integer", "nullable": true },
+                    "height": { "type": "integer", "nullable": true },
+                    "uploaded_by": { "type": "integer", "nullable": true },
+                    "created_at": { "type": "string", "format": "date-time" },
+                    "alt_text": { "type": "string", "nullable": true },
+                    "caption": { "type": "string", "nullable": true }
+                }
+            },
+            "MediaResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "media": { "$ref": "#/components/schemas/Media" }
+                }
+            },
+            "MediaListResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "media": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/Media" }
+                    },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                }
+            },
+            "PlaylistTrack": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string", "description": "Track title" },
+                    "artist": {
+                        "type": "string",
+                        "description": "Artist name"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Audio file URL"
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "description": "Track duration in seconds (-1 if unknown)"
+                    }
+                }
+            },
+            "PlaylistResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "playlist": {
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "Playlist URL"
+                            },
+                            "tracks": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/PlaylistTrack"
+                                },
+                                "description": "Parsed tracks (only present if parse=1)"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "Optional status message"
+                            },
+                            "error": {
+                                "type": "string",
+                                "description": "Optional error message if parsing failed"
+                            }
+                        }
+                    }
+                }
+            },
+            "RadioConfig": {
+                "type": "object",
+                "properties": {
+                    "config_key": { "type": "string" },
+                    "config_value": { "type": "string" },
+                    "description": { "type": "string" },
+                    "updated_by": { "type": "integer" },
+                    "updated_at": { "type": "string", "format": "date-time" }
+                }
+            },
+            "RadioConfigResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "config": {
+                        "type": "array",
+                        "items": { "$ref": "#/components/schemas/RadioConfig" }
+                    }
+                }
+            },
+            "RadioSyncInfoResponse": {
+                "type": "object",
+                "properties": {
+                    "success": { "type": "boolean" },
+                    "sync_info": {
+                        "type": "object",
+                        "properties": {
+                            "configured": {
+                                "type": "boolean",
+                                "description": "Whether a playlist is configured"
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "Message if not configured"
+                            },
+                            "server_time": {
+                                "type": "integer",
+                                "description": "Current server time (Unix epoch)"
+                            },
+                            "playlist_start_time": {
+                                "type": "integer",
+                                "description": "When playlist started playing (Unix epoch)"
+                            },
+                            "playlist_url": {
+                                "type": "string",
+                                "description": "URL of the playlist"
+                            },
+                            "total_duration": {
+                                "type": "integer",
+                                "description": "Total playlist duration in seconds (null for live streams)",
+                                "nullable": true
+                            },
+                            "elapsed_time": {
+                                "type": "integer",
+                                "description": "Elapsed time since playlist start in seconds"
+                            },
+                            "current_position": {
+                                "type": "number",
+                                "description": "Current position within current loop in seconds"
+                            },
+                            "current_track_index": {
+                                "type": "integer",
+                                "description": "Index of current track in playlist"
+                            },
+                            "is_hls": {
+                                "type": "boolean",
+                                "description": "Whether this is an HLS stream"
+                            }
+                        }
+                    }
+                }
             }
-          }
         },
         "responses": {
-          "200": {
-            "description": "Media updated successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/MediaResponse" }
-              }
+            "BadRequest": {
+                "description": "Bad request",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "Unauthorized": {
+                "description": "Unauthorized",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "RateLimited": {
+                "description": "Too many requests",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "CsrfTokenInvalid": {
+                "description": "CSRF token is missing, invalid, or expired",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ErrorResponse"
+                        }
+                    }
+                }
             }
-          },
-          "400": { "$ref": "#/components/responses/BadRequest" },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
         }
-      },
-      "delete": {
-        "summary": "Delete Media",
-        "description": "Delete a media file and its database record (admin only)",
-        "operationId": "deleteMedia",
-        "x-mojo-to": "Media#delete",
-        "tags": ["Admin - Media"],
-        "security": [{ "sessionAuth": [] }],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Media ID",
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Media deleted successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/SuccessResponse" }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      }
-    }
-  },
-  "components": {
-    "securitySchemes": {
-      "sessionAuth": {
-        "type": "apiKey",
-        "in": "cookie",
-        "name": "mojolicious"
-      }
     },
-    "schemas": {
-      "HealthResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": ["healthy", "unhealthy"]
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          }
+    "tags": [
+        {
+            "name": "Health",
+            "description": "Health check operations"
+        },
+        {
+            "name": "Authentication",
+            "description": "Admin authentication operations"
+        },
+        {
+            "name": "Articles",
+            "description": "Public article operations"
+        },
+        {
+            "name": "Tags",
+            "description": "Public tag operations"
+        },
+        {
+            "name": "Admin - Articles",
+            "description": "Admin article management operations"
+        },
+        {
+            "name": "Admin - Media",
+            "description": "Admin media file management operations"
+        },
+        {
+            "name": "Radio",
+            "description": "Public radio streaming operations"
+        },
+        {
+            "name": "Admin - Radio",
+            "description": "Admin radio configuration operations"
         }
-      },
-      "ReadinessResponse": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": ["ready", "not_ready"]
-          },
-          "database": {
-            "type": "string",
-            "enum": ["connected", "unavailable"]
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "LoginRequest": {
-        "type": "object",
-        "required": ["username", "password"],
-        "properties": {
-          "username": { "type": "string" },
-          "password": { "type": "string" }
-        }
-      },
-      "AuthResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "user": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "integer" },
-              "username": { "type": "string" },
-              "email": { "type": "string" }
-            }
-          },
-          "csrf_token": {
-            "type": "string",
-            "description": "CSRF token for use with subsequent authenticated requests"
-          }
-        }
-      },
-      "AuthStatusResponse": {
-        "type": "object",
-        "properties": {
-          "authenticated": { "type": "boolean" },
-          "user": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "integer" },
-              "username": { "type": "string" },
-              "email": { "type": "string" }
-            }
-          },
-          "csrf_token": {
-            "type": "string",
-            "description": "CSRF token for authenticated users (only present when authenticated=true)"
-          }
-        }
-      },
-      "CsrfTokenResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "csrf_token": {
-            "type": "string",
-            "description": "Fresh CSRF token for use with state-changing operations"
-          }
-        }
-      },
-      "ChangePasswordRequest": {
-        "type": "object",
-        "required": ["current_password", "new_password", "csrf_token"],
-        "properties": {
-          "current_password": {
-            "type": "string",
-            "description": "Current password for verification"
-          },
-          "new_password": {
-            "type": "string",
-            "description": "New password to set"
-          },
-          "csrf_token": {
-            "type": "string",
-            "description": "Valid CSRF token for request authentication"
-          }
-        }
-      },
-      "Article": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "title": { "type": "string" },
-          "slug": { "type": "string" },
-          "content": { "type": "string" },
-          "excerpt": { "type": "string" },
-          "author": { "type": "string" },
-          "published_at": { "type": "string", "format": "date-time", "nullable": true },
-          "date_added": { "type": "string", "format": "date-time" },
-          "date_updated": { "type": "string", "format": "date-time" },
-          "is_published": { "type": "boolean" },
-          "meta_description": { "type": "string", "nullable": true },
-          "featured_image": { "type": "string", "nullable": true },
-          "tags": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Tag" }
-          }
-        }
-      },
-      "ArticleCreateRequest": {
-        "type": "object",
-        "required": ["title", "content"],
-        "properties": {
-          "title": { "type": "string" },
-          "slug": { "type": "string" },
-          "content": { "type": "string" },
-          "excerpt": { "type": "string" },
-          "author": { "type": "string" },
-          "is_published": { "type": "boolean" },
-          "meta_description": { "type": "string" },
-          "featured_image": { "type": "string" },
-          "tags": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        }
-      },
-      "ArticleUpdateRequest": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string" },
-          "slug": { "type": "string" },
-          "content": { "type": "string" },
-          "excerpt": { "type": "string" },
-          "author": { "type": "string" },
-          "is_published": { "type": "boolean" },
-          "meta_description": { "type": "string" },
-          "featured_image": { "type": "string" },
-          "tags": {
-            "type": "array",
-            "items": { "type": "string" }
-          }
-        }
-      },
-      "ArticleResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "article": { "$ref": "#/components/schemas/Article" }
-        }
-      },
-      "ArticleListResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "articles": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Article" }
-          },
-          "pagination": { "$ref": "#/components/schemas/Pagination" }
-        }
-      },
-      "Tag": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "slug": { "type": "string" },
-          "usage_count": { "type": "integer" },
-          "date_added": { "type": "string", "format": "date-time" }
-        }
-      },
-      "TagListResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "tags": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Tag" }
-          },
-          "pagination": { "$ref": "#/components/schemas/Pagination" }
-        }
-      },
-      "TagSearchResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "tags": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Tag" }
-          },
-          "search_query": { "type": "string" }
-        }
-      },
-      "Pagination": {
-        "type": "object",
-        "properties": {
-          "current_page": { "type": "integer" },
-          "total_pages": { "type": "integer" },
-          "total_count": { "type": "integer" },
-          "per_page": { "type": "integer" },
-          "has_next": { "type": "boolean" },
-          "has_prev": { "type": "boolean" }
-        }
-      },
-      "SuccessResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "message": { "type": "string" }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "error": { "type": "string" }
-        }
-      },
-      "Media": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "filename": { "type": "string" },
-          "original_filename": { "type": "string" },
-          "filepath": { "type": "string" },
-          "url": { "type": "string" },
-          "mime_type": { "type": "string" },
-          "file_size": { "type": "integer" },
-          "width": { "type": "integer", "nullable": true },
-          "height": { "type": "integer", "nullable": true },
-          "uploaded_by": { "type": "integer", "nullable": true },
-          "created_at": { "type": "string", "format": "date-time" },
-          "alt_text": { "type": "string", "nullable": true },
-          "caption": { "type": "string", "nullable": true }
-        }
-      },
-      "MediaResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "media": { "$ref": "#/components/schemas/Media" }
-        }
-      },
-      "MediaListResponse": {
-        "type": "object",
-        "properties": {
-          "success": { "type": "boolean" },
-          "media": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/Media" }
-          },
-          "pagination": { "$ref": "#/components/schemas/Pagination" }
-        }
-      }
-    },
-    "responses": {
-      "BadRequest": {
-        "description": "Bad request",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-          }
-        }
-      },
-      "Unauthorized": {
-        "description": "Unauthorized",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-          }
-        }
-      },
-      "NotFound": {
-        "description": "Not found",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-          }
-        }
-      },
-      "RateLimited": {
-        "description": "Too many requests",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-          }
-        }
-      },
-      "CsrfTokenInvalid": {
-        "description": "CSRF token is missing, invalid, or expired",
-        "content": {
-          "application/json": {
-            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
-          }
-        }
-      }
-    }
-  },
-  "tags": [
-    {
-      "name": "Health",
-      "description": "Health check operations"
-    },
-    {
-      "name": "Authentication",
-      "description": "Admin authentication operations"
-    },
-    {
-      "name": "Articles",
-      "description": "Public article operations"
-    },
-    {
-      "name": "Tags",
-      "description": "Public tag operations"
-    },
-    {
-      "name": "Admin - Articles",
-      "description": "Admin article management operations"
-    },
-    {
-      "name": "Admin - Media",
-      "description": "Admin media file management operations"
-    }
-  ]
+    ]
 }

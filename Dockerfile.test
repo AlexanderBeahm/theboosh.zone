@@ -2,7 +2,7 @@
 FROM node:lts-alpine AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 COPY frontend/ ./
 RUN npm run build:test
 
@@ -12,7 +12,7 @@ WORKDIR /usr/src/hello-perld
 
 # Install test dependencies
 COPY Makefile.PL cpanfile* /usr/src/hello-perld/
-RUN cpanm --installdeps .
+RUN cpanm --installdeps --notest .
 
 # Copy application files
 COPY . /usr/src/hello-perld
