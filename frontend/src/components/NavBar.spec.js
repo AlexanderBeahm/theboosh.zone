@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/* global Event, KeyboardEvent */
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createRouter, createMemoryHistory } from "vue-router";
 import { ref } from "vue";
@@ -50,6 +51,11 @@ describe("NavBar", () => {
                     component: { template: "<div>ARTICLES</div>" },
                 },
                 {
+                    path: "/radio",
+                    name: "RADIO",
+                    component: { template: "<div>RADIO</div>" },
+                },
+                {
                     path: "/admin",
                     name: "ADMIN",
                     component: { template: "<div>ADMIN</div>" },
@@ -58,6 +64,16 @@ describe("NavBar", () => {
                     path: "/admin/login",
                     name: "ADMIN_LOGIN",
                     component: { template: "<div>LOGIN</div>" },
+                },
+                {
+                    path: "/admin/media",
+                    name: "ADMIN_MEDIA",
+                    component: { template: "<div>MEDIA</div>" },
+                },
+                {
+                    path: "/admin/radio",
+                    name: "ADMIN_RADIO",
+                    component: { template: "<div>RADIO CONFIG</div>" },
                 },
             ],
         });
@@ -76,6 +92,17 @@ describe("NavBar", () => {
             user: ref(null),
             isChecking: ref(false),
         });
+
+        // Reset window innerWidth to desktop by default
+        Object.defineProperty(window, "innerWidth", {
+            writable: true,
+            configurable: true,
+            value: 1024,
+        });
+    });
+
+    afterEach(() => {
+        vi.clearAllMocks();
     });
 
     describe("Basic Navigation", () => {
@@ -359,6 +386,717 @@ describe("NavBar", () => {
             expect(swaggerLink.attributes("aria-label")).toContain(
                 "API documentation",
             );
+        });
+    });
+
+    describe("Mobile Detection", () => {
+        it("detects mobile viewport on mount when width <= 768px", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            expect(wrapper.vm.isMobile).toBe(true);
+            wrapper.unmount();
+        });
+
+        it("detects desktop viewport on mount when width > 768px", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 1024,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            expect(wrapper.vm.isMobile).toBe(false);
+            wrapper.unmount();
+        });
+
+        it("updates mobile state on window resize", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 1024,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+            expect(wrapper.vm.isMobile).toBe(false);
+
+            // Simulate resize to mobile
+            window.innerWidth = 375;
+            window.dispatchEvent(new Event("resize"));
+            await flushPromises();
+
+            expect(wrapper.vm.isMobile).toBe(true);
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu when resizing from mobile to desktop", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            // Open mobile menu
+            wrapper.vm.isMobileMenuOpen = true;
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            // Resize to desktop
+            window.innerWidth = 1024;
+            window.dispatchEvent(new Event("resize"));
+            await flushPromises();
+
+            expect(wrapper.vm.isMobile).toBe(false);
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+            wrapper.unmount();
+        });
+    });
+
+    describe("Hamburger Menu - Rendering", () => {
+        it("shows hamburger button on mobile viewport", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            expect(hamburgerButton.exists()).toBe(true);
+            wrapper.unmount();
+        });
+
+        it("hides hamburger button on desktop viewport", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 1024,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            expect(hamburgerButton.exists()).toBe(false);
+            wrapper.unmount();
+        });
+
+        it("shows mobile logo on mobile viewport", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const mobileLogo = wrapper.find(".mobile-logo");
+            expect(mobileLogo.exists()).toBe(true);
+            expect(mobileLogo.text()).toBe("THEBOOSH.ZONE");
+            wrapper.unmount();
+        });
+
+        it("hides desktop nav-links on mobile viewport", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const navLinks = wrapper.find(".nav-links");
+            expect(navLinks.exists()).toBe(false);
+            wrapper.unmount();
+        });
+    });
+
+    describe("Hamburger Menu - Accessibility", () => {
+        it("has proper aria-label on hamburger button", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            expect(hamburgerButton.attributes("aria-label")).toBe(
+                "Toggle navigation menu",
+            );
+            wrapper.unmount();
+        });
+
+        it("has aria-expanded='false' when menu is closed", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            expect(hamburgerButton.attributes("aria-expanded")).toBe("false");
+            wrapper.unmount();
+        });
+
+        it("has aria-expanded='true' when menu is open", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            expect(hamburgerButton.attributes("aria-expanded")).toBe("true");
+            wrapper.unmount();
+        });
+
+        it("has aria-controls linking to mobile menu", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            expect(hamburgerButton.attributes("aria-controls")).toBe(
+                "mobile-nav-menu",
+            );
+            wrapper.unmount();
+        });
+
+        it("mobile menu has correct id attribute", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            const mobileMenu = wrapper.find("#mobile-nav-menu");
+            expect(mobileMenu.exists()).toBe(true);
+            wrapper.unmount();
+        });
+
+        it("mobile menu has aria-label", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            const mobileMenu = wrapper.find("#mobile-nav-menu");
+            expect(mobileMenu.attributes("aria-label")).toBe(
+                "Mobile navigation",
+            );
+            wrapper.unmount();
+        });
+    });
+
+    describe("Mobile Menu - Functionality", () => {
+        it("opens mobile menu when hamburger button is clicked", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu when hamburger button is clicked again", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+
+        it("displays all navigation links in mobile menu", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            config.enableSwagger = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            const mobileMenu = wrapper.find("#mobile-nav-menu");
+            expect(mobileMenu.text()).toContain("ABOUT");
+            expect(mobileMenu.text()).toContain("ARTICLES");
+            expect(mobileMenu.text()).toContain("RADIO");
+            expect(mobileMenu.text()).toContain("SWAGGER");
+
+            wrapper.unmount();
+        });
+
+        it("displays admin links in mobile menu when authenticated", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            mockIsAuthenticated.value = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            const mobileMenu = wrapper.find("#mobile-nav-menu");
+            expect(mobileMenu.text()).toContain("ADMIN");
+            expect(mobileMenu.text()).toContain("MEDIA");
+            expect(mobileMenu.text()).toContain("RADIO CONFIG");
+
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu when clicking on a link", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            const aboutLink = wrapper.find('#mobile-nav-menu a[href="/about"]');
+            await aboutLink.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu when clicking on backdrop", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            const backdrop = wrapper.find(".mobile-menu-backdrop");
+            await backdrop.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu when pressing Escape key", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            // Simulate Escape key press
+            const escapeEvent = new KeyboardEvent("keydown", { key: "Escape" });
+            document.dispatchEvent(escapeEvent);
+            await flushPromises();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+
+        it("closes mobile menu on route change", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            // Navigate to another route
+            await router.push("/about");
+            await flushPromises();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+
+        it("logout button remains visible in navbar on mobile when authenticated", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            mockIsAuthenticated.value = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const logoutButton = wrapper.find(".logout-button");
+            expect(logoutButton.exists()).toBe(true);
+            expect(logoutButton.text()).toBe("LOGOUT");
+
+            wrapper.unmount();
+        });
+
+        it("logout button closes mobile menu when clicked", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            mockIsAuthenticated.value = true;
+
+            await router.push("/");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            const logoutButton = wrapper.find(".logout-button");
+            await logoutButton.trigger("click");
+            await flushPromises();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+            expect(mockLogout).toHaveBeenCalledWith("/admin/login");
+
+            wrapper.unmount();
+        });
+
+        it("mobile logo closes menu when clicked", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/about");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+            expect(wrapper.vm.isMobileMenuOpen).toBe(true);
+
+            const mobileLogo = wrapper.find(".mobile-logo");
+            await mobileLogo.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            expect(wrapper.vm.isMobileMenuOpen).toBe(false);
+
+            wrapper.unmount();
+        });
+    });
+
+    describe("Mobile Menu - Active Route Highlighting", () => {
+        it("highlights active route in mobile menu", async () => {
+            Object.defineProperty(window, "innerWidth", {
+                writable: true,
+                configurable: true,
+                value: 375,
+            });
+
+            await router.push("/about");
+            await router.isReady();
+
+            const wrapper = mount(NavBar, {
+                global: { plugins: [router] },
+                attachTo: document.body,
+            });
+
+            await flushPromises();
+
+            const hamburgerButton = wrapper.find(".hamburger-button");
+            await hamburgerButton.trigger("click");
+            await wrapper.vm.$nextTick();
+
+            const aboutLink = wrapper.find('#mobile-nav-menu a[href="/about"]');
+            expect(aboutLink.classes()).toContain("active");
+
+            wrapper.unmount();
         });
     });
 });
