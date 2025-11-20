@@ -188,6 +188,7 @@
       class="listen-live-overlay"
     >
       <div class="listen-live-content">
+        <HeroBurst size="large" />
         <h1 class="listen-live-title">
           TheBoosh.Zone Radio
         </h1>
@@ -222,6 +223,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import AudioVisualizer from "../components/AudioVisualizer.vue";
+import HeroBurst from "../components/HeroBurst.vue";
 import { useAudioPlayer } from "../composables/useAudioPlayer";
 
 const player = useAudioPlayer();
@@ -628,9 +630,9 @@ onUnmounted(() => {
 
 .loading-overlay {
     position: fixed;
-    top: var(--spacing-xl);
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     background: rgba(42, 47, 49, 0.95);
     border: 1px solid var(--primary-color);
     border-radius: var(--radius-lg);
@@ -650,6 +652,19 @@ onUnmounted(() => {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes textGlow {
+    from {
+        text-shadow:
+            0 0 clamp(15px, 1.5vw, 20px) rgba(184, 188, 200, 0.3),
+            0 0 clamp(30px, 3vw, 40px) rgba(255, 105, 180, 0.2);
+    }
+    to {
+        text-shadow:
+            0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.5),
+            0 0 clamp(45px, 4.5vw, 60px) rgba(255, 105, 180, 0.4);
     }
 }
 
@@ -681,24 +696,58 @@ onUnmounted(() => {
     text-align: center;
     padding: var(--spacing-xl);
     max-width: 75%;
+    position: relative;
 }
 
 .listen-live-title {
-    font-size: 3rem;
+    font-size: clamp(2rem, 4vw + 1rem, 3.5rem);
     font-weight: 700;
-    background: var(--gradient-retro-primary);
+    background: var(--gradient-retro-secondary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin-bottom: var(--spacing-md);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: clamp(0.02em, 0.05em, 0.08em);
+    text-shadow: 0 0 clamp(20px, 2vw, 30px) rgba(184, 188, 200, 0.3);
+    animation: textGlow 4s ease-in-out infinite alternate;
+    position: relative;
+    z-index: 2;
+    -webkit-text-stroke: clamp(1px, 0.15vw, 2px) black;
 }
 
 .listen-live-subtitle {
-    font-size: 1.125rem;
-    color: var(--chrome-silver);
+    font-size: clamp(1rem, 2vw + 0.5rem, 1.125rem);
+    color: var(--text-secondary);
     margin-bottom: var(--spacing-xl);
+    position: relative;
+    z-index: 2;
+    line-height: 1.6;
+    text-shadow:
+        1px 1px 0 #000,
+        -1px 1px 0 #000,
+        1px -1px 0 #000,
+        -1px -1px 0 #000,
+        0px 1px 0 #000,
+        0px -1px 0 #000,
+        -1px 0px 0 #000,
+        1px 0px 0 #000,
+        2px 2px 0 #000,
+        -2px 2px 0 #000,
+        2px -2px 0 #000,
+        -2px -2px 0 #000,
+        0px 2px 0 #000,
+        0px -2px 0 #000,
+        -2px 0px 0 #000,
+        2px 0px 0 #000,
+        1px 2px 0 #000,
+        -1px 2px 0 #000,
+        1px -2px 0 #000,
+        -1px -2px 0 #000,
+        2px 1px 0 #000,
+        -2px 1px 0 #000,
+        2px -1px 0 #000,
+        -2px -1px 0 #000;
 }
 
 .listen-live-button {
@@ -715,6 +764,8 @@ onUnmounted(() => {
     cursor: pointer;
     transition: all var(--transition-base);
     box-shadow: 0 0 30px rgba(255, 105, 180, 0.5);
+    position: relative;
+    z-index: 2;
 }
 
 .listen-live-button:hover {
@@ -730,6 +781,8 @@ onUnmounted(() => {
     margin-top: var(--spacing-lg);
     color: var(--error-text);
     font-size: 1rem;
+    position: relative;
+    z-index: 2;
 }
 
 .playlist-enter-active,
@@ -780,6 +833,65 @@ onUnmounted(() => {
 
     .track-artist {
         font-size: 1rem;
+    }
+
+    /* Splash screen mobile fixes */
+    .listen-live-content {
+        max-width: 90%;
+        padding: var(--spacing-lg);
+    }
+
+    .listen-live-title {
+        font-size: 2rem;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .listen-live-subtitle {
+        font-size: 1rem;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .listen-live-button {
+        padding: var(--spacing-md) var(--spacing-lg);
+        font-size: 1.125rem;
+        gap: var(--spacing-sm);
+    }
+
+    .listen-live-button svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    .listen-live-content {
+        max-width: 95%;
+        padding: var(--spacing-md);
+    }
+
+    .listen-live-title {
+        font-size: 1.5rem;
+        letter-spacing: 0.025em;
+        line-height: 1.2;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .listen-live-subtitle {
+        font-size: 0.875rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .listen-live-button {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 1rem;
+        gap: var(--spacing-xs);
+    }
+
+    .listen-live-button svg {
+        width: 18px;
+        height: 18px;
     }
 }
 </style>
