@@ -83,9 +83,14 @@ watch(
             if (success && canvasRef.value) {
                 setupCanvas(canvasRef.value);
                 if (props.isPlaying) {
-                    resumeContext().then(() => {
-                        start();
-                    });
+                    resumeContext()
+                        .then(() => {
+                            start();
+                        })
+                        .catch((err) => {
+                            //eslint-disable-next-line no-console
+                            console.warn("Failed to start visualizer:", err);
+                        });
                 }
             }
         }
@@ -100,9 +105,14 @@ watch(
         if (!isInitialized.value) return;
 
         if (playing) {
-            resumeContext().then(() => {
-                start();
-            });
+            resumeContext()
+                .then(() => {
+                    start();
+                })
+                .catch((err) => {
+                    //eslint-disable-next-line no-console
+                    console.warn("Failed to start visualizer:", err);
+                });
         } else {
             stop();
         }

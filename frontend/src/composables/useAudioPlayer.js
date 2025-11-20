@@ -36,6 +36,9 @@ export function useAudioPlayer() {
     // Error state
     const error = ref("");
 
+    // Track loading abort controller to prevent race conditions
+    const loadAbortController = ref(null);
+
     // Computed
     const currentTrack = computed(() => {
         if (
@@ -210,6 +213,17 @@ export function useAudioPlayer() {
             return Promise.resolve();
         }
 
+        // Abort any in-flight track load to prevent race conditions
+        if (loadAbortController.value) {
+            loadAbortController.value.aborted = true;
+        }
+
+        // Create new abort controller for this load operation
+        loadAbortController.value = {
+            aborted: false,
+        };
+        const currentLoad = loadAbortController.value;
+
         const track = playlist.value[index];
         currentIndex.value = index;
 
@@ -232,12 +246,34 @@ export function useAudioPlayer() {
         return new Promise((resolve, reject) => {
             // Set up one-time event listeners for when media is ready
             const onCanPlay = () => {
+                // Check if this load was aborted
+                if (currentLoad.aborted) {
+                    cleanup();
+                    // Destroy HLS instance if it was created for this aborted load
+                    if (hls.value) {
+                        hls.value.destroy();
+                        hls.value = null;
+                    }
+                    reject(new Error("Load aborted"));
+                    return;
+                }
                 isLoading.value = false;
                 cleanup();
                 resolve();
             };
 
             const onError = () => {
+                // Check if this load was aborted
+                if (currentLoad.aborted) {
+                    cleanup();
+                    // Destroy HLS instance if it was created for this aborted load
+                    if (hls.value) {
+                        hls.value.destroy();
+                        hls.value = null;
+                    }
+                    reject(new Error("Load aborted"));
+                    return;
+                }
                 error.value = "Failed to load track";
                 isLoading.value = false;
                 cleanup();
@@ -489,6 +525,12 @@ export function useAudioPlayer() {
      * Cleanup
      */
     function cleanup() {
+        // Clear pending timeUpdateTimer to prevent memory leaks
+        if (timeUpdateTimer) {
+            clearTimeout(timeUpdateTimer);
+            timeUpdateTimer = null;
+        }
+
         if (audio.value) {
             pause();
             audio.value.removeEventListener(
