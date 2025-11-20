@@ -125,7 +125,7 @@ describe("RadioPage", () => {
         });
 
         expect(wrapper.find(".station-name").text()).toContain(
-            "TheBoosh Radio",
+            "TheBoosh.Zone Radio",
         );
     });
 
