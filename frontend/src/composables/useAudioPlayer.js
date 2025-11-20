@@ -249,6 +249,12 @@ export function useAudioPlayer() {
                 // Check if this load was aborted
                 if (currentLoad.aborted) {
                     cleanup();
+                    // Destroy HLS instance if it was created for this aborted load
+                    if (hls.value) {
+                        hls.value.destroy();
+                        hls.value = null;
+                    }
+                    reject(new Error("Load aborted"));
                     return;
                 }
                 isLoading.value = false;
@@ -260,6 +266,12 @@ export function useAudioPlayer() {
                 // Check if this load was aborted
                 if (currentLoad.aborted) {
                     cleanup();
+                    // Destroy HLS instance if it was created for this aborted load
+                    if (hls.value) {
+                        hls.value.destroy();
+                        hls.value = null;
+                    }
+                    reject(new Error("Load aborted"));
                     return;
                 }
                 error.value = "Failed to load track";
