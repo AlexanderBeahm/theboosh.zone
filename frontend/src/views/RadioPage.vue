@@ -14,7 +14,7 @@
         <!-- Track Info -->
         <div class="track-info-section">
           <h2 class="station-name">
-            TheBoosh Radio
+            TheBoosh.Zone Radio
           </h2>
           <div
             v-if="player.currentTrack.value"
@@ -680,7 +680,7 @@ onUnmounted(() => {
 .listen-live-content {
     text-align: center;
     padding: var(--spacing-xl);
-    max-width: 500px;
+    max-width: 75%;
 }
 
 .listen-live-title {

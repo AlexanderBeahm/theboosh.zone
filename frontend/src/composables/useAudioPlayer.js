@@ -411,7 +411,7 @@ export function useAudioPlayer() {
         navigator.mediaSession.metadata = new window.MediaMetadata({
             title: currentTrack.value.title,
             artist: currentTrack.value.artist,
-            album: "TheBoosh Radio",
+            album: "TheBoosh.Zone Radio",
         });
 
         // Set up action handlers
