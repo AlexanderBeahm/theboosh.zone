@@ -29,6 +29,9 @@ TheBoosh.Zone is a full-featured personal website and blog platform showcasing m
 - **Responsive Design**: Mobile-first Vue 3 single-page application
 - **Monitoring**: Prometheus metrics and Grafana dashboards for performance tracking
 - **DevContainer Support**: Integrated development environment with VSCode
+- **Audio Player**: Lazy-initialized player with browser autoplay policy compliance
+- **State Management**: Singleton pattern with consistent play/pause controls
+- **Buffering Indicators**: Visual feedback during audio loading states
 
 ### Architecture
 - **Backend**: Mojolicious Perl framework with RESTful API design
@@ -407,6 +410,38 @@ theboosh.zone/
    - Search and filter media files
    - Edit metadata or delete files
 
+### Using the Radio Player
+
+The site features a synchronized radio player that streams audio across all users:
+
+1. **Starting Playback:**
+   - Navigate to the `/visualizer` page or any page with the radio widget
+   - Click the "Listen Live" button
+   - Audio begins playing at the synchronized position
+
+2. **Playback Controls:**
+   - **Play/Pause**: Click the play button to resume or pause button to stop
+   - **Volume**: Use the volume slider to adjust audio level
+   - **Mute**: Click the volume icon to mute/unmute
+   - **Playlist**: View the full playlist by clicking the playlist button
+
+3. **Radio Widget:**
+   - Floating widget appears on all pages (except Visualizer)
+   - Minimizable for less intrusive listening
+   - Draggable to reposition
+   - Persists playback when navigating between pages
+
+4. **Important Notes:**
+   - **Browser Autoplay Policy**: You must click to start playback - autoplay on page load is blocked by browsers for security
+   - **Synchronized Streaming**: All users hear the same audio at the same time
+   - **Buffering Indicator**: Spinner shows when audio is loading
+   - **Resume After Refresh**: Click "Listen Live" again after page refresh - playback doesn't auto-resume
+
+5. **Admin Configuration:**
+   - Upload M3U or M3U8 playlists via admin interface
+   - Playlists automatically sync across all users
+   - Supports both regular audio files and HLS streams
+
 ### API Usage
 
 The API follows RESTful conventions and is documented in OpenAPI format.
@@ -698,6 +733,28 @@ docker compose ps
 
 # Check logs
 docker compose logs db
+```
+
+**Radio doesn't auto-play on page load:**
+- This is by design - browsers block autoplay until user interaction
+- Click the "Listen Live" button to start playback
+- Playback requires explicit user action for security reasons
+
+**Radio button disappeared after refresh:**
+- Fixed in latest version
+- Button now shows when audio is not playing, regardless of user history
+- If issue persists, clear browser cache and localStorage:
+  ```javascript
+  // In browser console
+  localStorage.clear();
+  location.reload();
+  ```
+
+**Audio won't play after clicking "Listen Live":**
+- Check browser console for errors
+- Verify playlist is configured in admin interface
+- Ensure CORS is properly configured for media files
+- Try refreshing the page once
 
 # Verify connection settings in .env
 ```
