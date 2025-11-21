@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createRouter, createMemoryHistory } from "vue-router";
-import { ref } from "vue";
-import RadioPage from "./RadioPage.vue";
+import { ref, reactive } from "vue";
+import VisualizerPage from "./VisualizerPage.vue";
 
 // Create a mock player factory function
 const createMockPlayer = (overrides = {}) => ({
@@ -23,6 +23,7 @@ const createMockPlayer = (overrides = {}) => ({
     volume: ref(70),
     currentTime: ref(0),
     duration: ref(0),
+    progress: ref(0),
     currentTrack: ref(null),
     playlist: ref([]),
     currentIndex: ref(0),
@@ -32,10 +33,21 @@ const createMockPlayer = (overrides = {}) => ({
     ...overrides,
 });
 
-// Mock the audio player composable
+// Mock the radio store
 let mockPlayer = createMockPlayer();
-vi.mock("../composables/useAudioPlayer", () => ({
-    useAudioPlayer: () => mockPlayer,
+let mockUserState = reactive({
+    hasListened: false, // Changed to false so Listen Live overlay shows by default
+    hasUserInteracted: false,
+    savedUserVolume: 70,
+});
+const mockRestoreUserVolume = vi.fn();
+
+vi.mock("../composables/useRadioStore", () => ({
+    useRadioStore: () => ({
+        player: mockPlayer,
+        userState: mockUserState,
+        restoreUserVolume: mockRestoreUserVolume,
+    }),
 }));
 
 // Mock AudioVisualizer component
@@ -47,7 +59,7 @@ vi.mock("../components/AudioVisualizer.vue", () => ({
     },
 }));
 
-describe("RadioPage", () => {
+describe("VisualizerPage", () => {
     let router;
     let wrapper;
 
@@ -55,13 +67,18 @@ describe("RadioPage", () => {
         // Reset mock player before each test
         mockPlayer = createMockPlayer();
 
+        // Reset mock user state
+        mockUserState.hasListened = false;
+        mockUserState.hasUserInteracted = false;
+        mockUserState.savedUserVolume = 70;
+
         router = createRouter({
             history: createMemoryHistory(),
             routes: [
                 {
-                    path: "/radio",
-                    name: "Radio",
-                    component: RadioPage,
+                    path: "/visualizer",
+                    name: "Visualizer",
+                    component: VisualizerPage,
                 },
             ],
         });
@@ -75,22 +92,22 @@ describe("RadioPage", () => {
         }
     });
 
-    it("renders the radio page", async () => {
-        await router.push("/radio");
+    it("renders the visualizer page", async () => {
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
-        expect(wrapper.find(".radio-page").exists()).toBe(true);
+        expect(wrapper.find(".visualizer-page").exists()).toBe(true);
     });
 
     it("shows 'Listen Live' overlay initially", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -102,14 +119,24 @@ describe("RadioPage", () => {
         mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(true);
         mockPlayer.play = vi.fn().mockResolvedValue(true);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
         const listenButton = wrapper.find(".listen-live-button");
+
+        // Simulate the state changes that happen when clicking Listen Live
+        mockRestoreUserVolume.mockImplementation(() => {
+            mockUserState.hasListened = true;
+        });
+        mockPlayer.play.mockImplementation(() => {
+            mockPlayer.isPlaying.value = true;
+            return Promise.resolve();
+        });
+
         await listenButton.trigger("click");
         await flushPromises();
 
@@ -117,15 +144,15 @@ describe("RadioPage", () => {
     });
 
     it("displays station name", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
         expect(wrapper.find(".station-name").text()).toContain(
-            "TheBoosh.Zone Radio",
+            "TheBoosh.Zone Visualizer",
         );
     });
 
@@ -139,11 +166,12 @@ describe("RadioPage", () => {
         mockPlayer.currentTrack = ref(mockTrack);
         mockPlayer.isPlaying = ref(true);
         mockPlayer.isPaused = ref(false);
+        mockUserState.hasListened = true; // Hide overlay to see track info
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -152,10 +180,10 @@ describe("RadioPage", () => {
     });
 
     it("formats time correctly", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -169,10 +197,10 @@ describe("RadioPage", () => {
     });
 
     it("shows volume controls", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -181,15 +209,80 @@ describe("RadioPage", () => {
         expect(wrapper.find(".volume-button").exists()).toBe(true);
     });
 
+    it("displays progress bar when track is playing with duration", async () => {
+        const mockTrack = {
+            title: "Test Song",
+            artist: "Test Artist",
+            url: "https://example.com/song.mp3",
+        };
+
+        mockPlayer.currentTrack = ref(mockTrack);
+        mockPlayer.duration = ref(180);
+        mockPlayer.currentTime = ref(90);
+        mockPlayer.progress = ref(50);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(true);
+        expect(wrapper.find(".progress-bar-container").exists()).toBe(true);
+        expect(wrapper.find(".progress-fill").exists()).toBe(true);
+        expect(wrapper.find(".progress-fill").attributes("style")).toContain(
+            "width: 50%",
+        );
+    });
+
+    it("hides progress bar when no track is playing", async () => {
+        mockPlayer.currentTrack = ref(null);
+        mockPlayer.duration = ref(0);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(false);
+    });
+
+    it("hides progress bar when duration is zero", async () => {
+        const mockTrack = {
+            title: "Test Song",
+            artist: "Test Artist",
+            url: "https://example.com/song.mp3",
+        };
+
+        mockPlayer.currentTrack = ref(mockTrack);
+        mockPlayer.duration = ref(0);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(false);
+    });
+
     it("displays loading message when loading", async () => {
         mockPlayer.isLoading = ref(true);
         mockPlayer.currentTrack = ref(null);
         mockPlayer.error = ref(null);
+        mockUserState.hasListened = true; // Hide overlay to see loading message
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -199,11 +292,12 @@ describe("RadioPage", () => {
     it("displays error message when error occurs", async () => {
         mockPlayer.error = ref("Failed to load audio");
         mockPlayer.currentTrack = ref(null);
+        mockUserState.hasListened = true; // Hide overlay to see error message
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -217,44 +311,49 @@ describe("RadioPage", () => {
         mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(true);
         mockPlayer.play = vi.fn().mockResolvedValue(true);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
         const listenButton = wrapper.find(".listen-live-button");
+
+        // Simulate the state change that happens when restoreUserVolume is called
+        mockRestoreUserVolume.mockImplementation(() => {
+            mockUserState.hasListened = true;
+        });
+
         await listenButton.trigger("click");
         await flushPromises();
 
-        expect(mockPlayer.loadPlaylistWithSync).toHaveBeenCalled();
+        expect(mockRestoreUserVolume).toHaveBeenCalled();
         expect(mockPlayer.play).toHaveBeenCalled();
     });
 
     it("shows error when starting listening fails", async () => {
-        mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(false);
         mockPlayer.error = ref("No playlist configured");
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
-        const listenButton = wrapper.find(".listen-live-button");
-        await listenButton.trigger("click");
-        await flushPromises();
-
+        // Error should be visible on the Listen Live overlay before clicking
         expect(wrapper.find(".listen-live-error").exists()).toBe(true);
+        expect(wrapper.find(".listen-live-error").text()).toContain(
+            "No playlist configured",
+        );
     });
 
     it("has visualizer container", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -262,10 +361,10 @@ describe("RadioPage", () => {
     });
 
     it("has playlist toggle button", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -273,10 +372,10 @@ describe("RadioPage", () => {
     });
 
     it("shows playlist panel when toggle is clicked", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -293,10 +392,10 @@ describe("RadioPage", () => {
     });
 
     it("keyboard controls are present", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -305,19 +404,24 @@ describe("RadioPage", () => {
     });
 
     it("cleans up on unmount", async () => {
-        const mockCleanup = vi.fn();
-        mockPlayer.cleanup = mockCleanup;
-
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
+        // Add keyboard event listener spy
+        const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
         wrapper.unmount();
 
-        // Cleanup should be called when component unmounts
-        expect(mockCleanup).toHaveBeenCalled();
+        // Should remove keyboard event listener when component unmounts
+        expect(removeEventListenerSpy).toHaveBeenCalledWith(
+            "keydown",
+            expect.any(Function),
+        );
+
+        removeEventListenerSpy.mockRestore();
     });
 });

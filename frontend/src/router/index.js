@@ -47,9 +47,9 @@ const routes = [
         meta: { requiresAuth: true },
     },
     {
-        path: "/radio",
-        name: "Radio",
-        component: () => import("../views/RadioPage.vue"),
+        path: "/visualizer",
+        name: "Visualizer",
+        component: () => import("../views/VisualizerPage.vue"),
     },
     {
         path: "/:pathMatch(.*)*",

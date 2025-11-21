@@ -1,5 +1,5 @@
 <template>
-  <div class="radio-page">
+  <div class="visualizer-page">
     <!-- Visualizer (full-page background) -->
     <div class="visualizer-container">
       <AudioVisualizer
@@ -14,7 +14,7 @@
         <!-- Track Info -->
         <div class="track-info-section">
           <h2 class="station-name">
-            TheBoosh.Zone Radio
+            TheBoosh.Zone Visualizer
           </h2>
           <div
             v-if="player.currentTrack.value"
@@ -41,8 +41,66 @@
           </div>
         </div>
 
-        <!-- Bottom Controls: Volume and Playlist -->
+        <!-- Progress Bar -->
+        <div
+          v-if="
+            player.currentTrack.value && player.duration.value > 0
+          "
+          class="progress-section"
+        >
+          <div class="progress-bar-container">
+            <div
+              class="progress-fill"
+              :style="{ width: player.progress.value + '%' }"
+            />
+          </div>
+        </div>
+
+        <!-- Bottom Controls: Play/Pause, Volume and Playlist -->
         <div class="bottom-controls">
+          <!-- Play/Pause Button -->
+          <button
+            v-if="player.isPlaying.value"
+            class="control-button play-pause-button"
+            title="Pause"
+            @click="player.pause"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <rect
+                x="6"
+                y="4"
+                width="4"
+                height="16"
+              />
+              <rect
+                x="14"
+                y="4"
+                width="4"
+                height="16"
+              />
+            </svg>
+          </button>
+          <button
+            v-else
+            class="control-button play-pause-button"
+            title="Play"
+            @click="startListening"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+
           <div class="volume-section">
             <button
               class="control-button volume-button"
@@ -89,11 +147,14 @@
               </svg>
             </button>
             <input
-              v-model.number="player.volume.value"
               type="range"
               min="0"
               max="100"
               class="volume-slider"
+              :value="player.volume.value"
+              @input="
+                (e) => player.setVolume(Number(e.target.value))
+              "
             >
           </div>
 
@@ -133,7 +194,7 @@
           </div>
           <div class="playlist-content">
             <div
-              v-if="player.playlist.value.length === 0"
+              v-if="player.playlist.length === 0"
               class="empty-playlist"
             >
               No tracks loaded
@@ -149,6 +210,7 @@
                 :class="{
                   active: index === player.currentIndex.value,
                 }"
+                @click="loadTrack(index)"
               >
                 <div class="track-number">
                   {{ index + 1 }}
@@ -182,9 +244,9 @@
       <div class="spinner" />
     </div>
 
-    <!-- Click to Listen Live Overlay -->
+    <!-- Click to Listen Live Overlay - shown when not playing -->
     <div
-      v-if="!hasStarted"
+      v-if="!player.isPlaying.value"
       class="listen-live-overlay"
     >
       <div class="listen-live-content">
@@ -210,10 +272,10 @@
           <span>Click to Listen Live</span>
         </button>
         <p
-          v-if="startError"
+          v-if="player.error.value"
           class="listen-live-error"
         >
-          {{ startError }}
+          {{ player.error.value }}
         </p>
       </div>
     </div>
@@ -224,12 +286,12 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import AudioVisualizer from "../components/AudioVisualizer.vue";
 import HeroBurst from "../components/HeroBurst.vue";
-import { useAudioPlayer } from "../composables/useAudioPlayer";
+import { useRadioStore } from "../composables/useRadioStore";
 
-const player = useAudioPlayer();
+// Use shared radio store instead of local player instance
+const { player, restoreUserVolume } = useRadioStore();
+
 const showPlaylist = ref(false);
-const hasStarted = ref(false);
-const startError = ref("");
 
 // Format time in MM:SS
 function formatTime(seconds) {
@@ -240,23 +302,25 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-// Start listening with sync
-async function startListening() {
-    startError.value = "";
+// Handle Listen Live - restores volume on first interaction
+function startListening() {
+    // Restore user's saved volume and mark as listened
+    // This will update userState.hasListened reactively
+    restoreUserVolume();
 
-    try {
-        // Load playlist with synchronization
-        const success = await player.loadPlaylistWithSync();
+    // Ensure playing
+    if (!player.isPlaying.value) {
+        player.play().catch(() => {
+            // Ignore play errors - user can try again
+        });
+    }
+}
 
-        if (success) {
-            // Start playback
-            await player.play();
-            hasStarted.value = true;
-        } else {
-            startError.value = player.error.value || "Failed to load playlist";
-        }
-    } catch {
-        startError.value = "Failed to start playback. Please try again.";
+// Load a specific track from the playlist
+async function loadTrack(index) {
+    await player.loadTrack(index);
+    if (player.isPlaying.value) {
+        await player.play();
     }
 }
 
@@ -267,11 +331,6 @@ function handleKeyPress(event) {
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA"
     ) {
-        return;
-    }
-
-    // Don't handle shortcuts if not started
-    if (!hasStarted.value) {
         return;
     }
 
@@ -294,22 +353,20 @@ function handleKeyPress(event) {
 }
 
 // Lifecycle
-onMounted(async () => {
-    // Initialize player
-    player.init();
-
+onMounted(() => {
+    // Player is already initialized by the store, no need to init again
     // Add keyboard listener
     window.addEventListener("keydown", handleKeyPress);
 });
 
 onUnmounted(() => {
     window.removeEventListener("keydown", handleKeyPress);
-    player.cleanup();
+    // Don't cleanup player - it's shared globally
 });
 </script>
 
 <style scoped>
-.radio-page {
+.visualizer-page {
     position: fixed;
     top: 0;
     left: 0;
@@ -586,6 +643,13 @@ onUnmounted(() => {
     padding: var(--spacing-md);
     background: var(--darker-bg);
     border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.playlist-track:hover {
+    background: rgba(255, 105, 180, 0.1);
+    transform: translateX(4px);
 }
 
 .playlist-track.active {

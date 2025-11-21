@@ -8,15 +8,17 @@ import { ref, onUnmounted } from "vue";
  * - Abstract particle-based visualization
  * - Retro-futuristic styling (pink/silver theme)
  * - Performance optimized with RequestAnimationFrame
+ * - Singleton pattern to prevent duplicate MediaElementSource creation
  */
-export function useAudioVisualizer() {
-    // Audio context and analyzer
-    const audioContext = ref(null);
-    const analyser = ref(null);
-    const dataArray = ref(null);
-    const source = ref(null);
 
-    // Canvas and rendering
+// Singleton state - shared across all instances
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let source = null;
+
+export function useAudioVisualizer() {
+    // Canvas and rendering (instance-specific)
     const canvas = ref(null);
     const canvasContext = ref(null);
     const animationId = ref(null);
@@ -42,30 +44,39 @@ export function useAudioVisualizer() {
      */
     function init(audioElement) {
         if (isInitialized.value) {
-            return;
+            return true;
+        }
+
+        if (!audioElement) {
+            return false;
         }
 
         try {
-            // Create audio context
-            audioContext.value = new (window.AudioContext ||
-                window.webkitAudioContext)();
+            // Create audio context if it doesn't exist (singleton)
+            if (!audioContext) {
+                audioContext = new (window.AudioContext ||
+                    window.webkitAudioContext)();
+            }
 
-            // Create analyser node
-            analyser.value = audioContext.value.createAnalyser();
-            analyser.value.fftSize = config.fftSize;
-            analyser.value.smoothingTimeConstant = 0.8;
+            // Create analyser node (singleton)
+            if (!analyser) {
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = config.fftSize;
+                analyser.smoothingTimeConstant = 0.8;
+            }
 
             // Create buffer for frequency data
-            const bufferLength = analyser.value.frequencyBinCount;
-            dataArray.value = new Uint8Array(bufferLength);
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
 
-            // Create source from audio element
-            source.value =
-                audioContext.value.createMediaElementSource(audioElement);
+            // Create source from audio element (only once, singleton)
+            if (!source) {
+                source = audioContext.createMediaElementSource(audioElement);
 
-            // Connect: source -> analyser -> destination
-            source.value.connect(analyser.value);
-            analyser.value.connect(audioContext.value.destination);
+                // Connect: source -> analyser -> destination (only once)
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+            }
 
             // Initialize particles
             initParticles();
@@ -73,7 +84,9 @@ export function useAudioVisualizer() {
             isInitialized.value = true;
 
             return true;
-        } catch {
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error("Failed to initialize visualizer:", error);
             return false;
         }
     }
@@ -82,6 +95,10 @@ export function useAudioVisualizer() {
      * Set up canvas for rendering
      */
     function setupCanvas(canvasElement) {
+        if (!canvasElement) {
+            return false;
+        }
+
         canvas.value = canvasElement;
         canvasContext.value = canvas.value.getContext("2d");
 
@@ -90,6 +107,8 @@ export function useAudioVisualizer() {
 
         // Handle window resize
         window.addEventListener("resize", resizeCanvas);
+
+        return true;
     }
 
     /**
@@ -121,9 +140,7 @@ export function useAudioVisualizer() {
                         (config.maxParticleSize - config.minParticleSize),
                 frequency: Math.floor(
                     Math.random() *
-                        (analyser.value
-                            ? analyser.value.frequencyBinCount
-                            : 128),
+                        (analyser ? analyser.frequencyBinCount : 128),
                 ),
                 hue: Math.random() * 60 - 30, // Variation around primary color hue
             });
@@ -134,7 +151,13 @@ export function useAudioVisualizer() {
      * Start animation loop
      */
     function start() {
-        if (!canvasContext.value || animationId.value) return;
+        if (!canvasContext.value) {
+            return;
+        }
+
+        if (animationId.value) {
+            return;
+        }
 
         animate();
     }
@@ -155,16 +178,15 @@ export function useAudioVisualizer() {
     function animate() {
         animationId.value = window.requestAnimationFrame(animate);
 
-        if (!analyser.value || !canvasContext.value || !canvas.value) {
+        if (!analyser || !canvasContext.value || !canvas.value) {
             return;
         }
 
         // Get frequency data
-        analyser.value.getByteFrequencyData(dataArray.value);
+        analyser.getByteFrequencyData(dataArray);
 
         // Calculate average amplitude for global effects
-        const average =
-            dataArray.value.reduce((a, b) => a + b, 0) / dataArray.value.length;
+        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
         const normalizedAverage = average / 255;
 
         // Clear canvas with fade effect
@@ -190,7 +212,7 @@ export function useAudioVisualizer() {
 
         particles.value.forEach((particle) => {
             // Get frequency data for this particle
-            const frequencyValue = dataArray.value[particle.frequency] / 255;
+            const frequencyValue = dataArray[particle.frequency] / 255;
 
             // Update position
             particle.x += particle.vx * 0.001;
@@ -264,32 +286,20 @@ export function useAudioVisualizer() {
      * Resume audio context (required by browser autoplay policies)
      */
     async function resumeContext() {
-        if (audioContext.value && audioContext.value.state === "suspended") {
-            await audioContext.value.resume();
+        if (audioContext && audioContext.state === "suspended") {
+            await audioContext.resume();
         }
     }
 
     /**
-     * Cleanup
+     * Cleanup - but keep audio context and source alive for reuse
      */
     function cleanup() {
         stop();
 
-        if (source.value) {
-            source.value.disconnect();
-            source.value = null;
-        }
-
-        if (analyser.value) {
-            analyser.value.disconnect();
-            analyser.value = null;
-        }
-
-        if (audioContext.value) {
-            audioContext.value.close();
-            audioContext.value = null;
-        }
-
+        // Don't disconnect anything or null out references
+        // The audio element, source, and context are shared and need to persist
+        // Just stop the animation and mark as not initialized
         window.removeEventListener("resize", resizeCanvas);
 
         isInitialized.value = false;

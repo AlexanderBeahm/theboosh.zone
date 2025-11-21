@@ -66,29 +66,44 @@ export function useAudioPlayer() {
 
     /**
      * Initialize audio element and load saved preferences
+     * Returns a promise that resolves when audio element is ready
      */
     function init() {
-        audio.value = new window.Audio();
-        audio.value.crossOrigin = "anonymous"; // Enable CORS for Web Audio API
+        return new Promise((resolve) => {
+            // Clean up existing audio element if any
+            if (audio.value) {
+                audio.value.pause();
+                cleanup();
+            }
 
-        // Load saved volume
-        const savedVolume = localStorage.getItem("radio_volume");
-        if (savedVolume !== null) {
-            volume.value = parseInt(savedVolume, 10);
-        }
-        setVolume(volume.value);
+            audio.value = new window.Audio();
+            audio.value.crossOrigin = "anonymous"; // Enable CORS for Web Audio API
+            audio.value.preload = "metadata"; // Preload metadata for better initialization
 
-        // Set up event listeners
-        audio.value.addEventListener("loadedmetadata", handleLoadedMetadata);
-        audio.value.addEventListener("timeupdate", handleTimeUpdate);
-        audio.value.addEventListener("ended", handleEnded);
-        audio.value.addEventListener("play", handlePlay);
-        audio.value.addEventListener("pause", handlePause);
-        audio.value.addEventListener("error", handleError);
-        audio.value.addEventListener("canplay", handleCanPlay);
-        audio.value.addEventListener("waiting", handleWaiting);
+            // Load saved volume
+            const savedVolume = localStorage.getItem("radio_volume");
+            if (savedVolume !== null) {
+                volume.value = parseInt(savedVolume, 10);
+            }
+            setVolume(volume.value);
 
-        return audio.value;
+            // Set up event listeners
+            audio.value.addEventListener(
+                "loadedmetadata",
+                handleLoadedMetadata,
+            );
+            audio.value.addEventListener("timeupdate", handleTimeUpdate);
+            audio.value.addEventListener("ended", handleEnded);
+            audio.value.addEventListener("play", handlePlay);
+            audio.value.addEventListener("pause", handlePause);
+            audio.value.addEventListener("error", handleError);
+            audio.value.addEventListener("canplay", handleCanPlay);
+            audio.value.addEventListener("waiting", handleWaiting);
+
+            // Resolve immediately - audio element is ready for use
+            // Track loading will handle async readiness
+            resolve(audio.value);
+        });
     }
 
     /**
@@ -349,7 +364,9 @@ export function useAudioPlayer() {
      * Play current track
      */
     async function play() {
-        if (!audio.value || !currentTrack.value) return;
+        if (!audio.value || !currentTrack.value) {
+            return;
+        }
 
         try {
             await audio.value.play();
