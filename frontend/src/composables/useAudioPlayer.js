@@ -351,9 +351,17 @@ export function useAudioPlayer() {
     async function play() {
         if (!audio.value || !currentTrack.value) return;
 
+        console.log(
+            "play() called, audio element exists:",
+            !!audio.value,
+            "currentTrack:",
+            currentTrack.value?.title,
+        );
         try {
             await audio.value.play();
+            console.log("play() succeeded");
         } catch (err) {
+            console.error("play() failed:", err);
             error.value = `Playback failed: ${err.message || "Unknown error"}`;
         }
     }
@@ -363,6 +371,7 @@ export function useAudioPlayer() {
      */
     function pause() {
         if (!audio.value) return;
+        console.log("pause() called");
         audio.value.pause();
     }
 

@@ -1,43 +1,33 @@
 <template>
-  <div class="audio-visualizer">
-    <canvas
-      ref="canvasRef"
-      class="visualizer-canvas"
-    />
-    <div
-      v-if="!isInitialized"
-      class="visualizer-placeholder"
-    >
-      <div class="pulse-icon">
-        <svg
-          width="100"
-          height="100"
-          viewBox="0 0 100 100"
-        >
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            stroke="currentColor"
-            stroke-width="2"
-            fill="none"
-            class="pulse-circle"
-          />
-          <path
-            d="M 30 50 L 40 50 L 45 30 L 50 70 L 55 40 L 60 50 L 70 50"
-            stroke="currentColor"
-            stroke-width="2"
-            fill="none"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </div>
-      <p class="placeholder-text">
-        {{ placeholderText }}
-      </p>
+    <div class="audio-visualizer">
+        <canvas ref="canvasRef" class="visualizer-canvas" />
+        <div v-if="!isInitialized" class="visualizer-placeholder">
+            <div class="pulse-icon">
+                <svg width="100" height="100" viewBox="0 0 100 100">
+                    <circle
+                        cx="50"
+                        cy="50"
+                        r="40"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                        class="pulse-circle"
+                    />
+                    <path
+                        d="M 30 50 L 40 50 L 45 30 L 50 70 L 55 40 L 60 50 L 70 50"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </div>
+            <p class="placeholder-text">
+                {{ placeholderText }}
+            </p>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
@@ -77,12 +67,28 @@ const placeholderText = computed(() => {
 // Initialize when audio element is available
 watch(
     () => props.audioElement,
-    (newAudio) => {
+    (newAudio, oldAudio) => {
+        console.log("AudioVisualizer: audio element changed", {
+            newAudio: !!newAudio,
+            oldAudio: !!oldAudio,
+            isInitialized: isInitialized.value,
+            hasCanvas: !!canvasRef.value,
+        });
+
         if (newAudio && !isInitialized.value) {
+            console.log("AudioVisualizer: attempting to initialize");
             const success = init(newAudio);
+
             if (success && canvasRef.value) {
+                console.log(
+                    "AudioVisualizer: init successful, setting up canvas",
+                );
                 setupCanvas(canvasRef.value);
+
                 if (props.isPlaying) {
+                    console.log(
+                        "AudioVisualizer: audio is playing, starting animation",
+                    );
                     resumeContext()
                         .then(() => {
                             start();
@@ -91,7 +97,13 @@ watch(
                             //eslint-disable-next-line no-console
                             console.warn("Failed to start visualizer:", err);
                         });
+                } else {
+                    console.log("AudioVisualizer: audio not playing yet");
                 }
+            } else if (!success) {
+                console.error("AudioVisualizer: initialization failed");
+            } else if (!canvasRef.value) {
+                console.warn("AudioVisualizer: no canvas ref available");
             }
         }
     },
@@ -102,9 +114,22 @@ watch(
 watch(
     () => props.isPlaying,
     (playing) => {
-        if (!isInitialized.value) return;
+        console.log("AudioVisualizer: playback state changed", {
+            playing,
+            isInitialized: isInitialized.value,
+        });
+
+        if (!isInitialized.value) {
+            console.log(
+                "AudioVisualizer: not initialized, skipping playback state change",
+            );
+            return;
+        }
 
         if (playing) {
+            console.log(
+                "AudioVisualizer: resuming context and starting animation",
+            );
             resumeContext()
                 .then(() => {
                     start();
@@ -114,15 +139,59 @@ watch(
                     console.warn("Failed to start visualizer:", err);
                 });
         } else {
+            console.log("AudioVisualizer: stopping animation");
             stop();
         }
     },
 );
 
 onMounted(() => {
-    if (canvasRef.value && props.audioElement && !isInitialized.value) {
-        init(props.audioElement);
+    console.log("AudioVisualizer: component mounted", {
+        hasCanvas: !!canvasRef.value,
+        hasAudio: !!props.audioElement,
+        isInitialized: isInitialized.value,
+    });
+
+    // Setup canvas if initialized but canvas wasn't set up yet
+    if (isInitialized.value && canvasRef.value) {
+        console.log(
+            "AudioVisualizer: visualizer initialized but canvas needs setup",
+        );
         setupCanvas(canvasRef.value);
+
+        // If audio is already playing, start the animation
+        if (props.isPlaying) {
+            console.log(
+                "AudioVisualizer: audio already playing, starting animation",
+            );
+            resumeContext()
+                .then(() => {
+                    start();
+                })
+                .catch((err) => {
+                    console.warn("Failed to start visualizer:", err);
+                });
+        }
+    } else if (canvasRef.value && props.audioElement && !isInitialized.value) {
+        console.log("AudioVisualizer: initializing on mount");
+        const success = init(props.audioElement);
+        if (success) {
+            setupCanvas(canvasRef.value);
+
+            // If audio is already playing, start the animation
+            if (props.isPlaying) {
+                console.log(
+                    "AudioVisualizer: audio already playing, starting animation",
+                );
+                resumeContext()
+                    .then(() => {
+                        start();
+                    })
+                    .catch((err) => {
+                        console.warn("Failed to start visualizer:", err);
+                    });
+            }
+        }
     }
 });
 </script>

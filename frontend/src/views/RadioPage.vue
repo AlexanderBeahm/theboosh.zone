@@ -1,235 +1,207 @@
 <template>
-  <div class="radio-page">
-    <!-- Visualizer (full-page background) -->
-    <div class="visualizer-container">
-      <AudioVisualizer
-        :audio-element="player.audio.value"
-        :is-playing="player.isPlaying.value"
-      />
-    </div>
-
-    <!-- Player Controls (overlaid) -->
-    <div class="player-overlay">
-      <div class="player-controls">
-        <!-- Track Info -->
-        <div class="track-info-section">
-          <h2 class="station-name">
-            TheBoosh.Zone Radio
-          </h2>
-          <div
-            v-if="player.currentTrack.value"
-            class="track-info"
-          >
-            <div class="track-title">
-              {{ player.currentTrack.value.title }}
-            </div>
-            <div class="track-artist">
-              {{ player.currentTrack.value.artist }}
-            </div>
-          </div>
-          <div
-            v-else-if="player.error.value"
-            class="error-message"
-          >
-            {{ player.error.value }}
-          </div>
-          <div
-            v-else
-            class="loading-message"
-          >
-            Loading playlist...
-          </div>
+    <div class="radio-page">
+        <!-- Visualizer (full-page background) -->
+        <div class="visualizer-container">
+            <AudioVisualizer
+                :audio-element="player.audio.value"
+                :is-playing="player.isPlaying.value"
+            />
         </div>
 
-        <!-- Bottom Controls: Volume and Playlist -->
-        <div class="bottom-controls">
-          <div class="volume-section">
-            <button
-              class="control-button volume-button"
-              @click="player.toggleMute"
-            >
-              <svg
-                v-if="
-                  !player.isMuted.value &&
-                    player.volume.value > 50
-                "
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
-                />
-              </svg>
-              <svg
-                v-else-if="
-                  !player.isMuted.value &&
-                    player.volume.value > 0
-                "
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
-                />
-              </svg>
-              <svg
-                v-else
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path
-                  d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
-                />
-              </svg>
-            </button>
-            <input
-              v-model.number="player.volume.value"
-              type="range"
-              min="0"
-              max="100"
-              class="volume-slider"
-            >
-          </div>
+        <!-- Player Controls (overlaid) -->
+        <div class="player-overlay">
+            <div class="player-controls">
+                <!-- Track Info -->
+                <div class="track-info-section">
+                    <h2 class="station-name">TheBoosh.Zone Radio</h2>
+                    <div v-if="player.currentTrack.value" class="track-info">
+                        <div class="track-title">
+                            {{ player.currentTrack.value.title }}
+                        </div>
+                        <div class="track-artist">
+                            {{ player.currentTrack.value.artist }}
+                        </div>
+                    </div>
+                    <div v-else-if="player.error.value" class="error-message">
+                        {{ player.error.value }}
+                    </div>
+                    <div v-else class="loading-message">
+                        Loading playlist...
+                    </div>
+                </div>
 
-          <!-- Playlist Toggle -->
-          <button
-            class="control-button playlist-toggle"
-            @click="showPlaylist = !showPlaylist"
-          >
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path
-                d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
+                <!-- Bottom Controls: Volume and Playlist -->
+                <div class="bottom-controls">
+                    <div class="volume-section">
+                        <button
+                            class="control-button volume-button"
+                            @click="player.toggleMute"
+                        >
+                            <svg
+                                v-if="
+                                    !player.isMuted.value &&
+                                    player.volume.value > 50
+                                "
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+                                />
+                            </svg>
+                            <svg
+                                v-else-if="
+                                    !player.isMuted.value &&
+                                    player.volume.value > 0
+                                "
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
+                                />
+                            </svg>
+                            <svg
+                                v-else
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                            >
+                                <path
+                                    d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+                                />
+                            </svg>
+                        </button>
+                        <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            class="volume-slider"
+                            :value="player.volume.value"
+                            @input="
+                                (e) => player.setVolume(Number(e.target.value))
+                            "
+                        />
+                    </div>
 
-      <!-- Playlist Panel -->
-      <Transition name="playlist">
-        <div
-          v-if="showPlaylist"
-          class="playlist-panel"
-        >
-          <div class="playlist-header">
-            <h3>Playlist</h3>
-            <button
-              class="close-button"
-              @click="showPlaylist = false"
-            >
-              ✕
-            </button>
-          </div>
-          <div class="playlist-content">
-            <div
-              v-if="player.playlist.value.length === 0"
-              class="empty-playlist"
-            >
-              No tracks loaded
+                    <!-- Playlist Toggle -->
+                    <button
+                        class="control-button playlist-toggle"
+                        @click="showPlaylist = !showPlaylist"
+                    >
+                        <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                        >
+                            <path
+                                d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"
+                            />
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <div
-              v-else
-              class="playlist-tracks"
-            >
-              <div
-                v-for="(track, index) in player.playlist.value"
-                :key="index"
-                class="playlist-track"
-                :class="{
-                  active: index === player.currentIndex.value,
-                }"
-              >
-                <div class="track-number">
-                  {{ index + 1 }}
+
+            <!-- Playlist Panel -->
+            <Transition name="playlist">
+                <div v-if="showPlaylist" class="playlist-panel">
+                    <div class="playlist-header">
+                        <h3>Playlist</h3>
+                        <button
+                            class="close-button"
+                            @click="showPlaylist = false"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                    <div class="playlist-content">
+                        <div
+                            v-if="player.playlist.length === 0"
+                            class="empty-playlist"
+                        >
+                            No tracks loaded
+                        </div>
+                        <div v-else class="playlist-tracks">
+                            <div
+                                v-for="(track, index) in player.playlist.value"
+                                :key="index"
+                                class="playlist-track"
+                                :class="{
+                                    active: index === player.currentIndex.value,
+                                }"
+                            >
+                                <div class="track-number">
+                                    {{ index + 1 }}
+                                </div>
+                                <div class="track-details">
+                                    <div class="playlist-track-title">
+                                        {{ track.title }}
+                                    </div>
+                                    <div class="playlist-track-artist">
+                                        {{ track.artist }}
+                                    </div>
+                                </div>
+                                <div
+                                    v-if="track.duration > 0"
+                                    class="track-duration"
+                                >
+                                    {{ formatTime(track.duration) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="track-details">
-                  <div class="playlist-track-title">
-                    {{ track.title }}
-                  </div>
-                  <div class="playlist-track-artist">
-                    {{ track.artist }}
-                  </div>
-                </div>
-                <div
-                  v-if="track.duration > 0"
-                  class="track-duration"
-                >
-                  {{ formatTime(track.duration) }}
-                </div>
-              </div>
-            </div>
-          </div>
+            </Transition>
         </div>
-      </Transition>
-    </div>
 
-    <!-- Loading Indicator -->
-    <div
-      v-if="player.isLoading.value"
-      class="loading-overlay"
-    >
-      <div class="spinner" />
-    </div>
+        <!-- Loading Indicator -->
+        <div v-if="player.isLoading.value" class="loading-overlay">
+            <div class="spinner" />
+        </div>
 
-    <!-- Click to Listen Live Overlay -->
-    <div
-      v-if="!hasStarted"
-      class="listen-live-overlay"
-    >
-      <div class="listen-live-content">
-        <HeroBurst size="large" />
-        <h1 class="listen-live-title">
-          TheBoosh.Zone Radio
-        </h1>
-        <p class="listen-live-subtitle">
-          Synchronized streaming for all listeners
-        </p>
-        <button
-          class="listen-live-button"
-          @click="startListening"
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M8 5v14l11-7z" />
-          </svg>
-          <span>Click to Listen Live</span>
-        </button>
-        <p
-          v-if="startError"
-          class="listen-live-error"
-        >
-          {{ startError }}
-        </p>
-      </div>
+        <!-- Click to Listen Live Overlay - shown when user hasn't listened yet -->
+        <div v-if="!userState.hasListened" class="listen-live-overlay">
+            <div class="listen-live-content">
+                <HeroBurst size="large" />
+                <h1 class="listen-live-title">TheBoosh.Zone Radio</h1>
+                <p class="listen-live-subtitle">
+                    Synchronized streaming for all listeners
+                </p>
+                <button class="listen-live-button" @click="startListening">
+                    <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                    >
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <span>Click to Listen Live</span>
+                </button>
+                <p v-if="player.error.value" class="listen-live-error">
+                    {{ player.error.value }}
+                </p>
+            </div>
+        </div>
     </div>
-  </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
 import AudioVisualizer from "../components/AudioVisualizer.vue";
 import HeroBurst from "../components/HeroBurst.vue";
-import { useAudioPlayer } from "../composables/useAudioPlayer";
+import { useRadioStore } from "../composables/useRadioStore";
 
-const player = useAudioPlayer();
+// Use shared radio store instead of local player instance
+const { player, userState, restoreUserVolume } = useRadioStore();
+
 const showPlaylist = ref(false);
-const hasStarted = ref(false);
-const startError = ref("");
 
 // Format time in MM:SS
 function formatTime(seconds) {
@@ -240,23 +212,15 @@ function formatTime(seconds) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-// Start listening with sync
-async function startListening() {
-    startError.value = "";
+// Handle Listen Live - restores volume on first interaction
+function startListening() {
+    // Restore user's saved volume and mark as listened
+    // This will update userState.hasListened reactively
+    restoreUserVolume();
 
-    try {
-        // Load playlist with synchronization
-        const success = await player.loadPlaylistWithSync();
-
-        if (success) {
-            // Start playback
-            await player.play();
-            hasStarted.value = true;
-        } else {
-            startError.value = player.error.value || "Failed to load playlist";
-        }
-    } catch {
-        startError.value = "Failed to start playback. Please try again.";
+    // Ensure playing
+    if (!player.isPlaying.value) {
+        player.play();
     }
 }
 
@@ -267,11 +231,6 @@ function handleKeyPress(event) {
         event.target.tagName === "INPUT" ||
         event.target.tagName === "TEXTAREA"
     ) {
-        return;
-    }
-
-    // Don't handle shortcuts if not started
-    if (!hasStarted.value) {
         return;
     }
 
@@ -294,17 +253,15 @@ function handleKeyPress(event) {
 }
 
 // Lifecycle
-onMounted(async () => {
-    // Initialize player
-    player.init();
-
+onMounted(() => {
+    // Player is already initialized by the store, no need to init again
     // Add keyboard listener
     window.addEventListener("keydown", handleKeyPress);
 });
 
 onUnmounted(() => {
     window.removeEventListener("keydown", handleKeyPress);
-    player.cleanup();
+    // Don't cleanup player - it's shared globally
 });
 </script>
 
