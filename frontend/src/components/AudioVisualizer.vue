@@ -1,33 +1,43 @@
 <template>
-    <div class="audio-visualizer">
-        <canvas ref="canvasRef" class="visualizer-canvas" />
-        <div v-if="!isInitialized" class="visualizer-placeholder">
-            <div class="pulse-icon">
-                <svg width="100" height="100" viewBox="0 0 100 100">
-                    <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        fill="none"
-                        class="pulse-circle"
-                    />
-                    <path
-                        d="M 30 50 L 40 50 L 45 30 L 50 70 L 55 40 L 60 50 L 70 50"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        fill="none"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    />
-                </svg>
-            </div>
-            <p class="placeholder-text">
-                {{ placeholderText }}
-            </p>
-        </div>
+  <div class="audio-visualizer">
+    <canvas
+      ref="canvasRef"
+      class="visualizer-canvas"
+    />
+    <div
+      v-if="!isInitialized"
+      class="visualizer-placeholder"
+    >
+      <div class="pulse-icon">
+        <svg
+          width="100"
+          height="100"
+          viewBox="0 0 100 100"
+        >
+          <circle
+            cx="50"
+            cy="50"
+            r="40"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            class="pulse-circle"
+          />
+          <path
+            d="M 30 50 L 40 50 L 45 30 L 50 70 L 55 40 L 60 50 L 70 50"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </div>
+      <p class="placeholder-text">
+        {{ placeholderText }}
+      </p>
     </div>
+  </div>
 </template>
 
 <script setup>

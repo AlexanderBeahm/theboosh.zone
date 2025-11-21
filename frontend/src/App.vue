@@ -1,13 +1,13 @@
 <template>
-    <div id="app">
-        <NavBar />
-        <ErrorBoundary>
-            <router-view />
-        </ErrorBoundary>
+  <div id="app">
+    <NavBar />
+    <ErrorBoundary>
+      <router-view />
+    </ErrorBoundary>
 
-        <!-- Global Radio Widget -->
-        <RadioWidget />
-    </div>
+    <!-- Global Radio Widget -->
+    <RadioWidget />
+  </div>
 </template>
 
 <script setup>

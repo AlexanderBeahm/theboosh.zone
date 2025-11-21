@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createRouter, createMemoryHistory } from "vue-router";
 import { ref } from "vue";
-import RadioPage from "./RadioPage.vue";
+import VisualizerPage from "./VisualizerPage.vue";
 
 // Create a mock player factory function
 const createMockPlayer = (overrides = {}) => ({
@@ -47,7 +47,7 @@ vi.mock("../components/AudioVisualizer.vue", () => ({
     },
 }));
 
-describe("RadioPage", () => {
+describe("VisualizerPage", () => {
     let router;
     let wrapper;
 
@@ -59,9 +59,9 @@ describe("RadioPage", () => {
             history: createMemoryHistory(),
             routes: [
                 {
-                    path: "/radio",
-                    name: "Radio",
-                    component: RadioPage,
+                    path: "/visualizer",
+                    name: "Visualizer",
+                    component: VisualizerPage,
                 },
             ],
         });
@@ -75,22 +75,22 @@ describe("RadioPage", () => {
         }
     });
 
-    it("renders the radio page", async () => {
-        await router.push("/radio");
+    it("renders the visualizer page", async () => {
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
-        expect(wrapper.find(".radio-page").exists()).toBe(true);
+        expect(wrapper.find(".visualizer-page").exists()).toBe(true);
     });
 
     it("shows 'Listen Live' overlay initially", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -102,10 +102,10 @@ describe("RadioPage", () => {
         mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(true);
         mockPlayer.play = vi.fn().mockResolvedValue(true);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -117,15 +117,15 @@ describe("RadioPage", () => {
     });
 
     it("displays station name", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
         expect(wrapper.find(".station-name").text()).toContain(
-            "TheBoosh.Zone Radio",
+            "TheBoosh.Zone Visualizer",
         );
     });
 
@@ -140,10 +140,10 @@ describe("RadioPage", () => {
         mockPlayer.isPlaying = ref(true);
         mockPlayer.isPaused = ref(false);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -152,10 +152,10 @@ describe("RadioPage", () => {
     });
 
     it("formats time correctly", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -169,10 +169,10 @@ describe("RadioPage", () => {
     });
 
     it("shows volume controls", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -186,10 +186,10 @@ describe("RadioPage", () => {
         mockPlayer.currentTrack = ref(null);
         mockPlayer.error = ref(null);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -200,10 +200,10 @@ describe("RadioPage", () => {
         mockPlayer.error = ref("Failed to load audio");
         mockPlayer.currentTrack = ref(null);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -217,10 +217,10 @@ describe("RadioPage", () => {
         mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(true);
         mockPlayer.play = vi.fn().mockResolvedValue(true);
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -236,10 +236,10 @@ describe("RadioPage", () => {
         mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(false);
         mockPlayer.error = ref("No playlist configured");
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -251,10 +251,10 @@ describe("RadioPage", () => {
     });
 
     it("has visualizer container", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -262,10 +262,10 @@ describe("RadioPage", () => {
     });
 
     it("has playlist toggle button", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -273,10 +273,10 @@ describe("RadioPage", () => {
     });
 
     it("shows playlist panel when toggle is clicked", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -293,10 +293,10 @@ describe("RadioPage", () => {
     });
 
     it("keyboard controls are present", async () => {
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
@@ -308,10 +308,10 @@ describe("RadioPage", () => {
         const mockCleanup = vi.fn();
         mockPlayer.cleanup = mockCleanup;
 
-        await router.push("/radio");
+        await router.push("/visualizer");
         await router.isReady();
 
-        wrapper = mount(RadioPage, {
+        wrapper = mount(VisualizerPage, {
             global: { plugins: [router] },
         });
 
