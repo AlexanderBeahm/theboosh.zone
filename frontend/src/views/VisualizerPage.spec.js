@@ -23,6 +23,7 @@ const createMockPlayer = (overrides = {}) => ({
     volume: ref(70),
     currentTime: ref(0),
     duration: ref(0),
+    progress: ref(0),
     currentTrack: ref(null),
     playlist: ref([]),
     currentIndex: ref(0),
@@ -202,6 +203,70 @@ describe("VisualizerPage", () => {
         expect(wrapper.find(".volume-section").exists()).toBe(true);
         expect(wrapper.find(".volume-slider").exists()).toBe(true);
         expect(wrapper.find(".volume-button").exists()).toBe(true);
+    });
+
+    it("displays progress bar when track is playing with duration", async () => {
+        const mockTrack = {
+            title: "Test Song",
+            artist: "Test Artist",
+            url: "https://example.com/song.mp3",
+        };
+
+        mockPlayer.currentTrack = ref(mockTrack);
+        mockPlayer.duration = ref(180);
+        mockPlayer.currentTime = ref(90);
+        mockPlayer.progress = ref(50);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(true);
+        expect(wrapper.find(".progress-bar-container").exists()).toBe(true);
+        expect(wrapper.find(".progress-fill").exists()).toBe(true);
+        expect(wrapper.find(".progress-fill").attributes("style")).toContain(
+            "width: 50%",
+        );
+    });
+
+    it("hides progress bar when no track is playing", async () => {
+        mockPlayer.currentTrack = ref(null);
+        mockPlayer.duration = ref(0);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(false);
+    });
+
+    it("hides progress bar when duration is zero", async () => {
+        const mockTrack = {
+            title: "Test Song",
+            artist: "Test Artist",
+            url: "https://example.com/song.mp3",
+        };
+
+        mockPlayer.currentTrack = ref(mockTrack);
+        mockPlayer.duration = ref(0);
+        mockUserState.hasListened = true;
+
+        await router.push("/visualizer");
+        await router.isReady();
+
+        wrapper = mount(VisualizerPage, {
+            global: { plugins: [router] },
+        });
+
+        expect(wrapper.find(".progress-section").exists()).toBe(false);
     });
 
     it("displays loading message when loading", async () => {

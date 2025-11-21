@@ -41,6 +41,21 @@
           </div>
         </div>
 
+        <!-- Progress Bar -->
+        <div
+          v-if="
+            player.currentTrack.value && player.duration.value > 0
+          "
+          class="progress-section"
+        >
+          <div class="progress-bar-container">
+            <div
+              class="progress-fill"
+              :style="{ width: player.progress.value + '%' }"
+            />
+          </div>
+        </div>
+
         <!-- Bottom Controls: Volume and Playlist -->
         <div class="bottom-controls">
           <div class="volume-section">
