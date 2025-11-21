@@ -16,7 +16,7 @@
           }
           : {}
       "
-      @mousedown="!isMobile ? startDrag : null"
+      @mousedown="handleMouseDown"
     >
       <!-- Widget Header -->
       <div class="widget-header">
@@ -491,6 +491,13 @@ async function loadTrack(index) {
     await player.loadTrack(index);
     if (player.isPlaying.value) {
         await player.play();
+    }
+}
+
+// Handle mouse down - only start drag if not on mobile
+function handleMouseDown(event) {
+    if (!isMobile.value) {
+        startDrag(event);
     }
 }
 
