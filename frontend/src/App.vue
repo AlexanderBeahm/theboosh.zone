@@ -1,13 +1,13 @@
 <template>
-    <div id="app">
-        <NavBar />
-        <ErrorBoundary>
-            <router-view />
-        </ErrorBoundary>
+  <div id="app">
+    <NavBar />
+    <ErrorBoundary>
+      <router-view />
+    </ErrorBoundary>
 
-        <!-- Global Radio Widget -->
-        <RadioWidget />
-    </div>
+    <!-- Global Radio Widget -->
+    <RadioWidget />
+  </div>
 </template>
 
 <script setup>
@@ -26,10 +26,6 @@ onMounted(async () => {
 
     try {
         // Ensure audio element is initialized before proceeding
-        console.log(
-            "[App] Audio element exists:",
-            !!radioStore.player.audio.value,
-        );
         if (!radioStore.player.audio.value) {
             await radioStore.player.init();
         }
@@ -50,20 +46,12 @@ onMounted(async () => {
 
         // Load and sync playlist
         await radioStore.player.loadPlaylistWithSync();
-        console.log(
-            "[App] currentTrack:",
-            radioStore.player.currentTrack.value,
-        );
 
         // Note: Auto-play is blocked by browser policy until user interaction
         // Both new and returning users must click to start playback
         // The RadioWidget "Listen Live" button or Visualizer page will handle playback
-        console.log(
-            "[App] Radio ready, waiting for user interaction to start playback",
-        );
-    } catch (err) {
-        // Log error for debugging but don't show to user
-        // Radio can still be started manually via UI
+    } catch {
+        // Radio can still be started manually via UI if initialization fails
     }
 });
 </script>

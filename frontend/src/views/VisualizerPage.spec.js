@@ -128,9 +128,13 @@ describe("VisualizerPage", () => {
 
         const listenButton = wrapper.find(".listen-live-button");
 
-        // Simulate the state change that happens when restoreUserVolume is called
+        // Simulate the state changes that happen when clicking Listen Live
         mockRestoreUserVolume.mockImplementation(() => {
             mockUserState.hasListened = true;
+        });
+        mockPlayer.play.mockImplementation(() => {
+            mockPlayer.isPlaying.value = true;
+            return Promise.resolve();
         });
 
         await listenButton.trigger("click");
