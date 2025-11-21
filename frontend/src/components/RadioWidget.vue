@@ -6,12 +6,17 @@
       :class="{
         'is-minimized': widgetState.isMinimized,
         'is-dragging': isDragging,
+        'is-mobile': isMobile,
       }"
-      :style="{
-        left: position.x + 'px',
-        top: position.y + 'px',
-      }"
-      @mousedown="startDrag"
+      :style="
+        !isMobile
+          ? {
+            left: position.x + 'px',
+            top: position.y + 'px',
+          }
+          : {}
+      "
+      @mousedown="!isMobile ? startDrag : null"
     >
       <!-- Widget Header -->
       <div class="widget-header">
@@ -418,6 +423,12 @@ const {
 
 // Local state
 const showPlaylist = ref(false);
+const isMobile = ref(false);
+
+// Check if device is mobile
+function checkMobile() {
+    isMobile.value = window.innerWidth <= 768;
+}
 
 // Draggable behavior
 const { position, isDragging, startDrag, setPosition } = useDraggable({
@@ -509,12 +520,15 @@ function handleKeyPress(event) {
     }
 }
 
-// Setup keyboard shortcuts
+// Setup keyboard shortcuts and mobile detection
 onMounted(() => {
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
     document.addEventListener("keydown", handleKeyPress);
 });
 
 onUnmounted(() => {
+    window.removeEventListener("resize", checkMobile);
     document.removeEventListener("keydown", handleKeyPress);
 });
 </script>
@@ -981,11 +995,59 @@ onUnmounted(() => {
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
-    .radio-widget {
+    .radio-widget.is-mobile {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+        border-bottom: none;
+        z-index: 999;
+        max-width: 100%;
+    }
+
+    .radio-widget.is-mobile .widget-header {
+        cursor: default;
+        padding: 10px 16px;
+    }
+
+    .radio-widget.is-mobile .widget-body {
+        padding: 12px 16px;
+    }
+
+    .radio-widget.is-mobile .widget-player-controls {
+        gap: 8px;
+    }
+
+    .radio-widget.is-mobile .play-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .radio-widget.is-mobile .mute-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .radio-widget.is-mobile .volume-slider {
+        flex: 0.8;
+    }
+
+    .radio-widget.is-mobile .widget-playlist-panel {
+        max-height: 60vh;
+        bottom: 100%;
+        margin-bottom: 0;
+        border-radius: var(--radius-lg, 12px) var(--radius-lg, 12px) 0 0;
+    }
+
+    /* Non-mobile styles (when widget is draggable) */
+    .radio-widget:not(.is-mobile) {
         width: 280px;
     }
 
-    .widget-playlist-panel {
+    .radio-widget:not(.is-mobile) .widget-playlist-panel {
         max-height: 250px;
     }
 }
