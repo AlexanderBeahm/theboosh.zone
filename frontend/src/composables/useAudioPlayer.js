@@ -66,29 +66,44 @@ export function useAudioPlayer() {
 
     /**
      * Initialize audio element and load saved preferences
+     * Returns a promise that resolves when audio element is ready
      */
     function init() {
-        audio.value = new window.Audio();
-        audio.value.crossOrigin = "anonymous"; // Enable CORS for Web Audio API
+        return new Promise((resolve) => {
+            // Clean up existing audio element if any
+            if (audio.value) {
+                audio.value.pause();
+                cleanup();
+            }
 
-        // Load saved volume
-        const savedVolume = localStorage.getItem("radio_volume");
-        if (savedVolume !== null) {
-            volume.value = parseInt(savedVolume, 10);
-        }
-        setVolume(volume.value);
+            audio.value = new window.Audio();
+            audio.value.crossOrigin = "anonymous"; // Enable CORS for Web Audio API
+            audio.value.preload = "metadata"; // Preload metadata for better initialization
 
-        // Set up event listeners
-        audio.value.addEventListener("loadedmetadata", handleLoadedMetadata);
-        audio.value.addEventListener("timeupdate", handleTimeUpdate);
-        audio.value.addEventListener("ended", handleEnded);
-        audio.value.addEventListener("play", handlePlay);
-        audio.value.addEventListener("pause", handlePause);
-        audio.value.addEventListener("error", handleError);
-        audio.value.addEventListener("canplay", handleCanPlay);
-        audio.value.addEventListener("waiting", handleWaiting);
+            // Load saved volume
+            const savedVolume = localStorage.getItem("radio_volume");
+            if (savedVolume !== null) {
+                volume.value = parseInt(savedVolume, 10);
+            }
+            setVolume(volume.value);
 
-        return audio.value;
+            // Set up event listeners
+            audio.value.addEventListener(
+                "loadedmetadata",
+                handleLoadedMetadata,
+            );
+            audio.value.addEventListener("timeupdate", handleTimeUpdate);
+            audio.value.addEventListener("ended", handleEnded);
+            audio.value.addEventListener("play", handlePlay);
+            audio.value.addEventListener("pause", handlePause);
+            audio.value.addEventListener("error", handleError);
+            audio.value.addEventListener("canplay", handleCanPlay);
+            audio.value.addEventListener("waiting", handleWaiting);
+
+            // Resolve immediately - audio element is ready for use
+            // Track loading will handle async readiness
+            resolve(audio.value);
+        });
     }
 
     /**
@@ -210,6 +225,10 @@ export function useAudioPlayer() {
      */
     function loadTrack(index) {
         if (!audio.value || index < 0 || index >= playlist.value.length) {
+                hasAudio: !!audio.value,
+                index,
+                playlistLength: playlist.value.length,
+            });
             return Promise.resolve();
         }
 
@@ -246,6 +265,10 @@ export function useAudioPlayer() {
         return new Promise((resolve, reject) => {
             // Set up one-time event listeners for when media is ready
             const onCanPlay = () => {
+                console.log(
+                    "[AudioPlayer] onCanPlay fired, readyState:",
+                    audio.value?.readyState,
+                );
                 // Check if this load was aborted
                 if (currentLoad.aborted) {
                     cleanup();
@@ -349,7 +372,13 @@ export function useAudioPlayer() {
      * Play current track
      */
     async function play() {
-        if (!audio.value || !currentTrack.value) return;
+        if (!audio.value || !currentTrack.value) {
+            console.log(
+                "[AudioPlayer] play() aborted - missing audio or track",
+            );
+            return;
+        }
+
 
         try {
             await audio.value.play();
@@ -508,12 +537,20 @@ export function useAudioPlayer() {
     }
 
     function handleError() {
+        console.log(
+            "[AudioPlayer] handleError event fired, error:",
+            audio.value?.error,
+        );
         error.value = "Failed to load audio track";
         isLoading.value = false;
         isPlaying.value = false;
     }
 
     function handleCanPlay() {
+        console.log(
+            "[AudioPlayer] handleCanPlay event fired, readyState:",
+            audio.value?.readyState,
+        );
         isLoading.value = false;
     }
 
@@ -596,6 +633,10 @@ export function useAudioPlayer() {
             const playlistResponse = await axios.get("/api/radio/playlist", {
                 params: { parse: 1 },
             });
+            console.log(
+                "[AudioPlayer] Playlist response:",
+                playlistResponse.data,
+            );
 
             if (
                 !playlistResponse.data.success ||
@@ -612,9 +653,18 @@ export function useAudioPlayer() {
                 playlistResponse.data.playlist.tracks.length > 0
             ) {
                 playlist.value = playlistResponse.data.playlist.tracks;
+                console.log(
+                    "[AudioPlayer] Playlist loaded with",
+                    playlist.value.length,
+                    "tracks",
+                );
 
                 // Sync to calculated position
                 if (syncInfo.is_hls) {
+                    console.log(
+                        "[AudioPlayer] Loading HLS stream at position:",
+                        syncInfo.current_position,
+                    );
                     // For HLS streams, load and seek to position
                     await loadTrack(0);
                     if (syncInfo.current_position > 0 && audio.value) {
@@ -624,6 +674,12 @@ export function useAudioPlayer() {
                     syncInfo.total_duration &&
                     syncInfo.current_track_index !== undefined
                 ) {
+                    console.log(
+                        "[AudioPlayer] Loading track index:",
+                        syncInfo.current_track_index,
+                        "at position:",
+                        syncInfo.current_position,
+                    );
                     // For regular playlists, load the correct track
                     await loadTrack(syncInfo.current_track_index);
                     if (syncInfo.current_position > 0 && audio.value) {
@@ -634,6 +690,10 @@ export function useAudioPlayer() {
                     await loadTrack(0);
                 }
 
+                console.log(
+                    "[AudioPlayer] Track loaded, isLoading:",
+                    isLoading.value,
+                );
                 return true;
             } else {
                 error.value = "No tracks in playlist";
@@ -644,6 +704,10 @@ export function useAudioPlayer() {
             return false;
         } finally {
             isLoading.value = false;
+            console.log(
+                "[AudioPlayer] loadPlaylistWithSync() complete, isLoading:",
+                isLoading.value,
+            );
         }
     }
 

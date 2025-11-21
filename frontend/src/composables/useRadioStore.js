@@ -144,12 +144,12 @@ export function useRadioStore() {
     // Initialize player instance only once
     if (!playerInstance) {
         playerInstance = useAudioPlayer();
-        playerInstance.init();
 
         // Load saved minimized state
         widgetState.isMinimized = loadMinimizedState();
 
-        // Note: Radio initialization happens in App.vue onMounted
+        // Note: Audio element initialization happens lazily in App.vue onMounted
+        // or on first user interaction to ensure proper timing
     }
 
     return {
