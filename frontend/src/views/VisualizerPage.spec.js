@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createRouter, createMemoryHistory } from "vue-router";
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 import VisualizerPage from "./VisualizerPage.vue";
 
 // Create a mock player factory function
@@ -32,10 +32,21 @@ const createMockPlayer = (overrides = {}) => ({
     ...overrides,
 });
 
-// Mock the audio player composable
+// Mock the radio store
 let mockPlayer = createMockPlayer();
-vi.mock("../composables/useAudioPlayer", () => ({
-    useAudioPlayer: () => mockPlayer,
+let mockUserState = reactive({
+    hasListened: false, // Changed to false so Listen Live overlay shows by default
+    hasUserInteracted: false,
+    savedUserVolume: 70,
+});
+const mockRestoreUserVolume = vi.fn();
+
+vi.mock("../composables/useRadioStore", () => ({
+    useRadioStore: () => ({
+        player: mockPlayer,
+        userState: mockUserState,
+        restoreUserVolume: mockRestoreUserVolume,
+    }),
 }));
 
 // Mock AudioVisualizer component
@@ -54,6 +65,11 @@ describe("VisualizerPage", () => {
     beforeEach(() => {
         // Reset mock player before each test
         mockPlayer = createMockPlayer();
+
+        // Reset mock user state
+        mockUserState.hasListened = false;
+        mockUserState.hasUserInteracted = false;
+        mockUserState.savedUserVolume = 70;
 
         router = createRouter({
             history: createMemoryHistory(),
@@ -110,6 +126,12 @@ describe("VisualizerPage", () => {
         });
 
         const listenButton = wrapper.find(".listen-live-button");
+
+        // Simulate the state change that happens when restoreUserVolume is called
+        mockRestoreUserVolume.mockImplementation(() => {
+            mockUserState.hasListened = true;
+        });
+
         await listenButton.trigger("click");
         await flushPromises();
 
@@ -139,6 +161,7 @@ describe("VisualizerPage", () => {
         mockPlayer.currentTrack = ref(mockTrack);
         mockPlayer.isPlaying = ref(true);
         mockPlayer.isPaused = ref(false);
+        mockUserState.hasListened = true; // Hide overlay to see track info
 
         await router.push("/visualizer");
         await router.isReady();
@@ -185,6 +208,7 @@ describe("VisualizerPage", () => {
         mockPlayer.isLoading = ref(true);
         mockPlayer.currentTrack = ref(null);
         mockPlayer.error = ref(null);
+        mockUserState.hasListened = true; // Hide overlay to see loading message
 
         await router.push("/visualizer");
         await router.isReady();
@@ -199,6 +223,7 @@ describe("VisualizerPage", () => {
     it("displays error message when error occurs", async () => {
         mockPlayer.error = ref("Failed to load audio");
         mockPlayer.currentTrack = ref(null);
+        mockUserState.hasListened = true; // Hide overlay to see error message
 
         await router.push("/visualizer");
         await router.isReady();
@@ -225,15 +250,20 @@ describe("VisualizerPage", () => {
         });
 
         const listenButton = wrapper.find(".listen-live-button");
+
+        // Simulate the state change that happens when restoreUserVolume is called
+        mockRestoreUserVolume.mockImplementation(() => {
+            mockUserState.hasListened = true;
+        });
+
         await listenButton.trigger("click");
         await flushPromises();
 
-        expect(mockPlayer.loadPlaylistWithSync).toHaveBeenCalled();
+        expect(mockRestoreUserVolume).toHaveBeenCalled();
         expect(mockPlayer.play).toHaveBeenCalled();
     });
 
     it("shows error when starting listening fails", async () => {
-        mockPlayer.loadPlaylistWithSync = vi.fn().mockResolvedValue(false);
         mockPlayer.error = ref("No playlist configured");
 
         await router.push("/visualizer");
@@ -243,11 +273,11 @@ describe("VisualizerPage", () => {
             global: { plugins: [router] },
         });
 
-        const listenButton = wrapper.find(".listen-live-button");
-        await listenButton.trigger("click");
-        await flushPromises();
-
+        // Error should be visible on the Listen Live overlay before clicking
         expect(wrapper.find(".listen-live-error").exists()).toBe(true);
+        expect(wrapper.find(".listen-live-error").text()).toContain(
+            "No playlist configured",
+        );
     });
 
     it("has visualizer container", async () => {
@@ -305,9 +335,6 @@ describe("VisualizerPage", () => {
     });
 
     it("cleans up on unmount", async () => {
-        const mockCleanup = vi.fn();
-        mockPlayer.cleanup = mockCleanup;
-
         await router.push("/visualizer");
         await router.isReady();
 
@@ -315,9 +342,17 @@ describe("VisualizerPage", () => {
             global: { plugins: [router] },
         });
 
+        // Add keyboard event listener spy
+        const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
+
         wrapper.unmount();
 
-        // Cleanup should be called when component unmounts
-        expect(mockCleanup).toHaveBeenCalled();
+        // Should remove keyboard event listener when component unmounts
+        expect(removeEventListenerSpy).toHaveBeenCalledWith(
+            "keydown",
+            expect.any(Function),
+        );
+
+        removeEventListenerSpy.mockRestore();
     });
 });

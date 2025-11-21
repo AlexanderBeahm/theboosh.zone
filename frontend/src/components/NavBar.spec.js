@@ -51,9 +51,9 @@ describe("NavBar", () => {
                     component: { template: "<div>ARTICLES</div>" },
                 },
                 {
-                    path: "/radio",
-                    name: "RADIO",
-                    component: { template: "<div>RADIO</div>" },
+                    path: "/visualizer",
+                    name: "Visualizer",
+                    component: { template: "<div>VISUALIZER</div>" },
                 },
                 {
                     path: "/admin",
@@ -817,7 +817,7 @@ describe("NavBar", () => {
             const mobileMenu = wrapper.find("#mobile-nav-menu");
             expect(mobileMenu.text()).toContain("ABOUT");
             expect(mobileMenu.text()).toContain("ARTICLES");
-            expect(mobileMenu.text()).toContain("RADIO");
+            expect(mobileMenu.text()).toContain("VISUALIZER");
             expect(mobileMenu.text()).toContain("SWAGGER");
 
             wrapper.unmount();

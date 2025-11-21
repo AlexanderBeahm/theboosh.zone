@@ -50,8 +50,8 @@ function loadPosition() {
             );
             return { x, y };
         }
-    } catch (e) {
-        console.warn("Failed to load widget position:", e);
+    } catch {
+        // Silently fail and use default position
     }
 
     // Default position: bottom-right corner
@@ -67,8 +67,8 @@ function loadPosition() {
 function savePosition(x, y) {
     try {
         localStorage.setItem("radio_widget_position", JSON.stringify({ x, y }));
-    } catch (e) {
-        console.warn("Failed to save widget position:", e);
+    } catch {
+        // Silently fail
     }
 }
 
@@ -79,8 +79,7 @@ function loadMinimizedState() {
     try {
         const saved = localStorage.getItem("radio_widget_minimized");
         return saved === "true";
-    } catch (e) {
-        console.warn("Failed to load widget minimized state:", e);
+    } catch {
         return false;
     }
 }
@@ -92,8 +91,7 @@ function loadHasListened() {
     try {
         const saved = localStorage.getItem("radio_has_listened");
         return saved === "true";
-    } catch (e) {
-        console.warn("Failed to load hasListened state:", e);
+    } catch {
         return false;
     }
 }
@@ -104,8 +102,8 @@ function loadHasListened() {
 function saveHasListened(listened) {
     try {
         localStorage.setItem("radio_has_listened", listened.toString());
-    } catch (e) {
-        console.warn("Failed to save hasListened state:", e);
+    } catch {
+        // Silently fail
     }
 }
 
@@ -115,33 +113,8 @@ function saveHasListened(listened) {
 function saveMinimizedState(isMinimized) {
     try {
         localStorage.setItem("radio_widget_minimized", isMinimized.toString());
-    } catch (e) {
-        console.warn("Failed to save widget minimized state:", e);
-    }
-}
-
-/**
- * Initialize radio by loading and syncing playlist
- * Audio is loaded but starts muted (volume 0)
- */
-async function initializeRadio() {
-    if (!playerInstance) return;
-
-    try {
-        // Save the user's preferred volume before muting
-        userState.savedUserVolume = playerInstance.volume;
-
-        // Set volume to 0 (muted) before loading
-        playerInstance.setVolume(0);
-
-        // Load playlist with sync
-        await playerInstance.loadPlaylistWithSync();
-
-        // Start playback (will be muted)
-        await playerInstance.play();
-    } catch (error) {
-        console.warn("Failed to initialize radio:", error);
-        // Silently fail - user can manually start later
+    } catch {
+        // Silently fail
     }
 }
 
@@ -160,12 +133,6 @@ function restoreUserVolume() {
             ? parseInt(saved, 10)
             : userState.savedUserVolume;
 
-        console.log(
-            "Restoring volume:",
-            volumeToRestore,
-            "from localStorage:",
-            saved,
-        );
         playerInstance.setVolume(volumeToRestore);
     }
 }

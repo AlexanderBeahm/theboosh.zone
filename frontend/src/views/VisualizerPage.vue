@@ -1,5 +1,5 @@
 <template>
-  <div class="radio-page">
+  <div class="visualizer-page">
     <!-- Visualizer (full-page background) -->
     <div class="visualizer-container">
       <AudioVisualizer
@@ -14,7 +14,7 @@
         <!-- Track Info -->
         <div class="track-info-section">
           <h2 class="station-name">
-            TheBoosh.Zone Radio
+            TheBoosh.Zone Visualizer
           </h2>
           <div
             v-if="player.currentTrack.value"
@@ -306,7 +306,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.radio-page {
+.visualizer-page {
     position: fixed;
     top: 0;
     left: 0;

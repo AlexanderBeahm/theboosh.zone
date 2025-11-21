@@ -47,8 +47,8 @@ onMounted(async () => {
         if (hasListened) {
             await radioStore.player.play();
         }
-    } catch (error) {
-        console.warn("Failed to initialize radio:", error);
+    } catch {
+        // Silently fail - radio can be started manually
     }
 });
 </script>

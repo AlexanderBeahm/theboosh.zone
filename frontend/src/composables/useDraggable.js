@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onUnmounted } from "vue";
 
 /**
  * Composable for making elements draggable
@@ -21,7 +21,7 @@ export function useDraggable(options = {}) {
         initialX = 0,
         initialY = 0,
         onDragEnd = null,
-        bounds = 'viewport', // 'viewport' or 'parent' or null for no bounds
+        bounds = "viewport", // 'viewport' or 'parent' or null for no bounds
     } = options;
 
     const position = ref({ x: initialX, y: initialY });
@@ -39,10 +39,10 @@ export function useDraggable(options = {}) {
     function startDrag(event) {
         // Prevent drag on form elements
         if (
-            event.target.tagName === 'INPUT' ||
-            event.target.tagName === 'BUTTON' ||
-            event.target.tagName === 'TEXTAREA' ||
-            event.target.tagName === 'SELECT'
+            event.target.tagName === "INPUT" ||
+            event.target.tagName === "BUTTON" ||
+            event.target.tagName === "TEXTAREA" ||
+            event.target.tagName === "SELECT"
         ) {
             return;
         }
@@ -60,12 +60,12 @@ export function useDraggable(options = {}) {
         event.preventDefault();
 
         // Add event listeners
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
 
         // Add dragging class for styling
         if (dragElement) {
-            dragElement.classList.add('is-dragging');
+            dragElement.classList.add("is-dragging");
         }
     }
 
@@ -82,7 +82,7 @@ export function useDraggable(options = {}) {
         let newY = elementStartY + deltaY;
 
         // Apply bounds if specified
-        if (bounds === 'viewport' && dragElement) {
+        if (bounds === "viewport" && dragElement) {
             const rect = dragElement.getBoundingClientRect();
             const viewportWidth = window.innerWidth;
             const viewportHeight = window.innerHeight;
@@ -90,9 +90,14 @@ export function useDraggable(options = {}) {
             // Keep element within viewport bounds
             newX = Math.max(0, Math.min(newX, viewportWidth - rect.width));
             newY = Math.max(0, Math.min(newY, viewportHeight - rect.height));
-        } else if (bounds === 'parent' && dragElement && dragElement.parentElement) {
+        } else if (
+            bounds === "parent" &&
+            dragElement &&
+            dragElement.parentElement
+        ) {
             const rect = dragElement.getBoundingClientRect();
-            const parentRect = dragElement.parentElement.getBoundingClientRect();
+            const parentRect =
+                dragElement.parentElement.getBoundingClientRect();
 
             // Keep element within parent bounds
             newX = Math.max(0, Math.min(newX, parentRect.width - rect.width));
@@ -111,12 +116,12 @@ export function useDraggable(options = {}) {
         isDragging.value = false;
 
         // Remove event listeners
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
 
         // Remove dragging class
         if (dragElement) {
-            dragElement.classList.remove('is-dragging');
+            dragElement.classList.remove("is-dragging");
         }
 
         // Call onDragEnd callback
@@ -138,8 +143,8 @@ export function useDraggable(options = {}) {
      * Cleanup event listeners on unmount
      */
     onUnmounted(() => {
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
     });
 
     return {

@@ -77,43 +77,22 @@ const placeholderText = computed(() => {
 // Initialize when audio element is available
 watch(
     () => props.audioElement,
-    (newAudio, oldAudio) => {
-        console.log("AudioVisualizer: audio element changed", {
-            newAudio: !!newAudio,
-            oldAudio: !!oldAudio,
-            isInitialized: isInitialized.value,
-            hasCanvas: !!canvasRef.value,
-        });
-
+    (newAudio) => {
         if (newAudio && !isInitialized.value) {
-            console.log("AudioVisualizer: attempting to initialize");
             const success = init(newAudio);
 
             if (success && canvasRef.value) {
-                console.log(
-                    "AudioVisualizer: init successful, setting up canvas",
-                );
                 setupCanvas(canvasRef.value);
 
                 if (props.isPlaying) {
-                    console.log(
-                        "AudioVisualizer: audio is playing, starting animation",
-                    );
                     resumeContext()
                         .then(() => {
                             start();
                         })
-                        .catch((err) => {
-                            //eslint-disable-next-line no-console
-                            console.warn("Failed to start visualizer:", err);
+                        .catch(() => {
+                            // Silently fail - browser may block autoplay
                         });
-                } else {
-                    console.log("AudioVisualizer: audio not playing yet");
                 }
-            } else if (!success) {
-                console.error("AudioVisualizer: initialization failed");
-            } else if (!canvasRef.value) {
-                console.warn("AudioVisualizer: no canvas ref available");
             }
         }
     },
@@ -124,81 +103,52 @@ watch(
 watch(
     () => props.isPlaying,
     (playing) => {
-        console.log("AudioVisualizer: playback state changed", {
-            playing,
-            isInitialized: isInitialized.value,
-        });
-
         if (!isInitialized.value) {
-            console.log(
-                "AudioVisualizer: not initialized, skipping playback state change",
-            );
             return;
         }
 
         if (playing) {
-            console.log(
-                "AudioVisualizer: resuming context and starting animation",
-            );
             resumeContext()
                 .then(() => {
                     start();
                 })
-                .catch((err) => {
-                    //eslint-disable-next-line no-console
-                    console.warn("Failed to start visualizer:", err);
+                .catch(() => {
+                    // Silently fail - browser may block autoplay
                 });
         } else {
-            console.log("AudioVisualizer: stopping animation");
             stop();
         }
     },
 );
 
 onMounted(() => {
-    console.log("AudioVisualizer: component mounted", {
-        hasCanvas: !!canvasRef.value,
-        hasAudio: !!props.audioElement,
-        isInitialized: isInitialized.value,
-    });
-
     // Setup canvas if initialized but canvas wasn't set up yet
     if (isInitialized.value && canvasRef.value) {
-        console.log(
-            "AudioVisualizer: visualizer initialized but canvas needs setup",
-        );
         setupCanvas(canvasRef.value);
 
         // If audio is already playing, start the animation
         if (props.isPlaying) {
-            console.log(
-                "AudioVisualizer: audio already playing, starting animation",
-            );
             resumeContext()
                 .then(() => {
                     start();
                 })
-                .catch((err) => {
-                    console.warn("Failed to start visualizer:", err);
+                .catch(() => {
+                    // Silently fail
                 });
         }
     } else if (canvasRef.value && props.audioElement && !isInitialized.value) {
-        console.log("AudioVisualizer: initializing on mount");
         const success = init(props.audioElement);
         if (success) {
             setupCanvas(canvasRef.value);
 
             // If audio is already playing, start the animation
             if (props.isPlaying) {
-                console.log(
-                    "AudioVisualizer: audio already playing, starting animation",
-                );
                 resumeContext()
                     .then(() => {
                         start();
                     })
-                    .catch((err) => {
-                        console.warn("Failed to start visualizer:", err);
+                    .catch(() => {
+                        // Silently fail
                     });
             }
         }

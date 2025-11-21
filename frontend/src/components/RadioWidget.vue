@@ -413,32 +413,21 @@ function formatTime(seconds) {
 
 // Handle Listen Live button - first time user clicks to start radio
 function handleListenLive() {
-    console.log("handleListenLive called");
-
     // Restore user's saved volume and mark as listened
     // This will update userState.hasListened reactively
     restoreUserVolume();
-
-    console.log("Radio unmuted, hasListened set to true");
 }
 
 // Handle mute toggle - toggle between muted and unmuted
 function handleMuteToggle() {
-    console.log(
-        "handleMuteToggle called, current volume:",
-        player.volume.value,
-    );
-
     if (player.volume.value === 0) {
         // Unmute - restore to saved volume
         const saved = localStorage.getItem("radio_saved_volume");
         const volumeToRestore = saved ? parseInt(saved, 10) : 70;
         player.setVolume(volumeToRestore);
-        console.log("Unmuted to volume:", volumeToRestore);
     } else {
         // Mute
         player.setVolume(0);
-        console.log("Muted");
     }
 }
 

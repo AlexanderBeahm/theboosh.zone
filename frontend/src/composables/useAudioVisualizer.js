@@ -44,27 +44,18 @@ export function useAudioVisualizer() {
      */
     function init(audioElement) {
         if (isInitialized.value) {
-            console.log("Visualizer already initialized, skipping");
             return true;
         }
 
         if (!audioElement) {
-            console.warn(
-                "Cannot initialize visualizer: no audio element provided",
-            );
             return false;
         }
 
         try {
-            console.log("Initializing audio visualizer...");
-
             // Create audio context if it doesn't exist (singleton)
             if (!audioContext) {
                 audioContext = new (window.AudioContext ||
                     window.webkitAudioContext)();
-                console.log("Created new AudioContext");
-            } else {
-                console.log("Reusing existing AudioContext");
             }
 
             // Create analyser node (singleton)
@@ -72,9 +63,6 @@ export function useAudioVisualizer() {
                 analyser = audioContext.createAnalyser();
                 analyser.fftSize = config.fftSize;
                 analyser.smoothingTimeConstant = 0.8;
-                console.log("Created new AnalyserNode");
-            } else {
-                console.log("Reusing existing AnalyserNode");
             }
 
             // Create buffer for frequency data
@@ -83,27 +71,21 @@ export function useAudioVisualizer() {
 
             // Create source from audio element (only once, singleton)
             if (!source) {
-                console.log("Creating MediaElementSource from audio element");
                 source = audioContext.createMediaElementSource(audioElement);
 
                 // Connect: source -> analyser -> destination (only once)
                 source.connect(analyser);
                 analyser.connect(audioContext.destination);
-                console.log(
-                    "Connected audio graph: source -> analyser -> destination",
-                );
-            } else {
-                console.log("Reusing existing MediaElementSource");
             }
 
             // Initialize particles
             initParticles();
 
             isInitialized.value = true;
-            console.log("Visualizer initialized successfully");
 
             return true;
         } catch (error) {
+            // eslint-disable-next-line no-console
             console.error("Failed to initialize visualizer:", error);
             return false;
         }
@@ -114,11 +96,9 @@ export function useAudioVisualizer() {
      */
     function setupCanvas(canvasElement) {
         if (!canvasElement) {
-            console.warn("Cannot setup canvas: no canvas element provided");
             return false;
         }
 
-        console.log("Setting up canvas for visualizer");
         canvas.value = canvasElement;
         canvasContext.value = canvas.value.getContext("2d");
 
@@ -128,12 +108,6 @@ export function useAudioVisualizer() {
         // Handle window resize
         window.addEventListener("resize", resizeCanvas);
 
-        console.log(
-            "Canvas setup complete:",
-            canvas.value.width,
-            "x",
-            canvas.value.height,
-        );
         return true;
     }
 
@@ -178,18 +152,13 @@ export function useAudioVisualizer() {
      */
     function start() {
         if (!canvasContext.value) {
-            console.warn(
-                "Cannot start visualizer: canvas context not available",
-            );
             return;
         }
 
         if (animationId.value) {
-            console.log("Visualizer already running");
             return;
         }
 
-        console.log("Starting visualizer animation");
         animate();
     }
 
@@ -198,7 +167,6 @@ export function useAudioVisualizer() {
      */
     function stop() {
         if (animationId.value) {
-            console.log("Stopping visualizer animation");
             window.cancelAnimationFrame(animationId.value);
             animationId.value = null;
         }
