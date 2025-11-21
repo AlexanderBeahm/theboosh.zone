@@ -54,10 +54,10 @@
         ARTICLES
       </router-link>
       <router-link
-        to="/radio"
-        :class="{ active: $route.path === '/radio' }"
+        to="/visualizer"
+        :class="{ active: $route.path === '/visualizer' }"
       >
-        RADIO
+        VISUALIZER
       </router-link>
       <a
         v-if="config.enableSwagger"
@@ -128,11 +128,11 @@
         ARTICLES
       </router-link>
       <router-link
-        to="/radio"
-        :class="{ active: $route.path === '/radio' }"
+        to="/visualizer"
+        :class="{ active: $route.path === '/visualizer' }"
         @click="closeMobileMenu"
       >
-        RADIO
+        VISUALIZER
       </router-link>
       <a
         v-if="config.enableSwagger"

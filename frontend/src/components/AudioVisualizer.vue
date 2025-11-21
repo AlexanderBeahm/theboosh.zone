@@ -80,16 +80,17 @@ watch(
     (newAudio) => {
         if (newAudio && !isInitialized.value) {
             const success = init(newAudio);
+
             if (success && canvasRef.value) {
                 setupCanvas(canvasRef.value);
+
                 if (props.isPlaying) {
                     resumeContext()
                         .then(() => {
                             start();
                         })
-                        .catch((err) => {
-                            //eslint-disable-next-line no-console
-                            console.warn("Failed to start visualizer:", err);
+                        .catch(() => {
+                            // Silently fail - browser may block autoplay
                         });
                 }
             }
@@ -102,16 +103,17 @@ watch(
 watch(
     () => props.isPlaying,
     (playing) => {
-        if (!isInitialized.value) return;
+        if (!isInitialized.value) {
+            return;
+        }
 
         if (playing) {
             resumeContext()
                 .then(() => {
                     start();
                 })
-                .catch((err) => {
-                    //eslint-disable-next-line no-console
-                    console.warn("Failed to start visualizer:", err);
+                .catch(() => {
+                    // Silently fail - browser may block autoplay
                 });
         } else {
             stop();
@@ -120,9 +122,36 @@ watch(
 );
 
 onMounted(() => {
-    if (canvasRef.value && props.audioElement && !isInitialized.value) {
-        init(props.audioElement);
+    // Setup canvas if initialized but canvas wasn't set up yet
+    if (isInitialized.value && canvasRef.value) {
         setupCanvas(canvasRef.value);
+
+        // If audio is already playing, start the animation
+        if (props.isPlaying) {
+            resumeContext()
+                .then(() => {
+                    start();
+                })
+                .catch(() => {
+                    // Silently fail
+                });
+        }
+    } else if (canvasRef.value && props.audioElement && !isInitialized.value) {
+        const success = init(props.audioElement);
+        if (success) {
+            setupCanvas(canvasRef.value);
+
+            // If audio is already playing, start the animation
+            if (props.isPlaying) {
+                resumeContext()
+                    .then(() => {
+                        start();
+                    })
+                    .catch(() => {
+                        // Silently fail
+                    });
+            }
+        }
     }
 });
 </script>

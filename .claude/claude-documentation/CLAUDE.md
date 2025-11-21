@@ -407,6 +407,8 @@ User ID 1000 is the default non-root user in the Docker container (appuser)
 
 ### Frontend Security & Composables
 - `frontend/src/composables/useCSRF.js` - CSRF token management with axios interceptors
+- `frontend/src/composables/useAudioPlayer.js` - Audio player state management and playback
+- `frontend/src/composables/useRadioStore.js` - Global radio singleton store
 
 ### Backend Controllers
 - `lib/HelloPerld.pm` - Main application with route definitions
@@ -931,6 +933,167 @@ Admin (requires session auth + CSRF):
 - CORS errors: Configure S3 bucket or use CloudFront
 - Playback issues: Check CSP headers allow media-src and connect-src
 
+### Radio Player Architecture & State Management
+
+**Overview**: The radio player uses a singleton pattern with lazy initialization to handle browser autoplay policies and maintain consistent state across components.
+
+**Initialization Lifecycle**:
+1. `useRadioStore()` creates singleton `useAudioPlayer()` instance (no init yet)
+2. `App.vue` `onMounted` → `await nextTick()` → ensures Vue render cycle complete
+3. Audio element initialized: `await radioStore.player.init()`
+4. Playlist loaded and synced: `await radioStore.player.loadPlaylistWithSync()`
+5. Audio ready but **not playing** (respects browser autoplay policy)
+6. User interaction required to start playback
+
+**Key Architectural Decisions**:
+
+*Lazy Initialization Pattern*:
+```javascript
+// useRadioStore.js - Store creation
+if (!playerInstance) {
+    playerInstance = useAudioPlayer();
+    // Note: init() NOT called here - done lazily in App.vue
+}
+
+// App.vue - onMounted
+if (!radioStore.player.audio.value) {
+    await radioStore.player.init(); // Lazy initialization
+}
+```
+
+*Browser Autoplay Policy Compliance*:
+- **Never** attempt auto-play on page load
+- Auto-play blocked by browsers until user interacts with page
+- Both new and returning users must click to start playback
+- Removed auto-play attempt from App.vue (was causing `NotAllowedError`)
+
+**State Management**:
+
+*Core Reactive States*:
+- `audio` - HTML Audio element (ref)
+- `isPlaying` - Currently playing (boolean)
+- `isLoading` - Buffering/loading track (boolean)
+- `currentTrack` - Current track info (computed)
+- `volume` - Volume 0-100 (ref)
+- `playlist` - Array of tracks (ref)
+
+*User State (useRadioStore)*:
+- `hasListened` - User has clicked "Listen Live" before (boolean)
+  - Used for: Volume restoration logic only
+  - **NOT** used for: Button visibility (common mistake!)
+
+**Play/Pause Control Visibility Pattern**:
+
+The critical pattern for consistent UX:
+
+```vue
+<!-- RadioWidget.vue & VisualizerPage.vue -->
+<button v-if="!player.isPlaying.value">
+    Listen Live / Play
+</button>
+<button v-else>
+    Pause
+</button>
+```
+
+**Why `isPlaying` not `hasListened`**:
+- `hasListened` is user history, persists across sessions
+- `isPlaying` is current playback state, resets on page load
+- After page refresh, audio is **not playing** → show play button
+- Ensures users can always resume playback after refresh
+
+**Component Coordination**:
+
+*RadioWidget.vue*:
+- Shows "Listen Live" button when `!isPlaying`
+- Shows "Pause" button when `isPlaying`
+- Includes buffering spinner in buttons
+- Calls `restoreUserVolume()` on first interaction
+- Calls `player.play()` to start playback
+
+*VisualizerPage.vue*:
+- Shows full-screen "Click to Listen Live" overlay when `!isPlaying`
+- Overlay disappears when `isPlaying`
+- Bottom controls include play/pause button
+- Same `startListening()` logic as widget
+
+*App.vue*:
+- Initializes audio element on mount
+- Loads and syncs playlist
+- Sets initial volume (0 for new users, saved for returning users)
+- Does **NOT** auto-play (waits for user interaction)
+
+**Buffering Indicators**:
+
+Multiple indicators provide clear feedback:
+1. Button spinner: Shows in play button when `isLoading`
+2. Track info: Shows "Buffering..." text when `isLoading`
+3. Progress overlay: Full-screen spinner for long loads
+
+```vue
+<!-- Button with loading state -->
+<button :disabled="player.isLoading.value">
+    <div v-if="player.isLoading.value" class="spinner-small" />
+    <svg v-else><!-- play icon --></svg>
+</button>
+
+<!-- Track info with loading state -->
+<div v-if="player.isLoading.value" class="loading-state">
+    <div class="spinner-small" />
+    <span>Buffering...</span>
+</div>
+```
+
+**Proper Async Pattern**:
+
+Always use `nextTick()` not `setTimeout()`:
+```javascript
+// CORRECT - Vue lifecycle aware
+await nextTick();
+if (!radioStore.player.audio.value) {
+    await radioStore.player.init();
+}
+
+// WRONG - Arbitrary timing, race conditions
+await new Promise(resolve => setTimeout(resolve, 100));
+```
+
+**Common Pitfalls Avoided**:
+
+1. ❌ Auto-playing on page load → Browser blocks with `NotAllowedError`
+   ✅ Wait for user interaction, show play button
+
+2. ❌ Hiding play button based on `hasListened` → No way to resume after refresh
+   ✅ Show play button based on `isPlaying` state
+
+3. ❌ Calling `play()` before audio element ready → Silent failure
+   ✅ Lazy init with proper async/await chain
+
+4. ❌ Using `setTimeout()` for initialization timing → Race conditions
+   ✅ Use `nextTick()` for Vue lifecycle integration
+
+5. ❌ Initializing audio element in store creation → Too early, no DOM
+   ✅ Lazy init in App.vue onMounted after nextTick
+
+**Volume Restoration Logic**:
+
+First-time users:
+```javascript
+if (!hasListened) {
+    radioStore.player.setVolume(0); // Muted
+    localStorage.setItem("radio_saved_volume", savedVolume);
+}
+```
+
+On "Listen Live" click:
+```javascript
+function restoreUserVolume() {
+    userState.hasListened = true; // Mark as listened
+    const saved = localStorage.getItem("radio_saved_volume");
+    player.setVolume(saved ? parseInt(saved) : 70);
+}
+```
+
 ### Mojolicious OpenAPI Route Configuration
 
 **CRITICAL**: Routes defined in `swagger/swagger.json` MUST include `x-mojo-to` directive!
@@ -1040,6 +1203,64 @@ perl -I/usr/src/hello-perld/lib -MHelloPerld::Database::Postgres -e "..."
 ```
 
 **Current entrypoint script** (`docker-entrypoint.sh`) properly includes `-I/usr/src/hello-perld/lib` for database validation.
+
+### Radio Player Race Condition & Browser Autoplay
+
+**Problem Encountered**: Radio player had intermittent failures on first page load where audio would not play.
+
+**Root Causes Identified**:
+
+1. **Missing `play()` call in RadioWidget** (First-time users):
+   - `handleListenLive()` function restored volume but never called `player.play()`
+   - Fixed by adding `player.play()` call after `restoreUserVolume()`
+
+2. **Browser Autoplay Policy Violation** (Returning users):
+   - App.vue attempted auto-play on page load for returning users
+   - Browsers block autoplay until user interaction: `NotAllowedError: play() failed because the user didn't interact with the document first`
+   - Fixed by removing auto-play attempt entirely
+
+3. **Incorrect Button Visibility Logic** (Returning users):
+   - "Listen Live" button hidden based on `!userState.hasListened`
+   - After removing auto-play, returning users had no way to resume after page refresh
+   - Fixed by changing condition to `!player.isPlaying.value`
+
+**Solutions Implemented**:
+
+*Use `nextTick()` not `setTimeout()` for Vue initialization*:
+```javascript
+// WRONG - Arbitrary timing
+await new Promise(resolve => setTimeout(resolve, 100));
+
+// CORRECT - Vue lifecycle aware
+await nextTick();
+```
+
+*Lazy initialization pattern*:
+- Audio element created in `App.vue` `onMounted`, NOT in store creation
+- Ensures Vue DOM is ready before creating audio element
+- Prevents "too early" initialization race conditions
+
+*Button visibility based on playback state*:
+```vue
+<!-- WRONG - Based on user history -->
+<button v-if="!userState.hasListened">Listen Live</button>
+
+<!-- CORRECT - Based on current state -->
+<button v-if="!player.isPlaying.value">Listen Live</button>
+<button v-else>Pause</button>
+```
+
+*Never auto-play on page load*:
+- Both new and returning users must click to start playback
+- Respects browser autoplay policies
+- Consistent user experience
+
+**Key Takeaways**:
+1. Browser autoplay policies are strict - always require user interaction
+2. Use playback state (`isPlaying`) not user history (`hasListened`) for UI visibility
+3. `nextTick()` ensures Vue render cycle completes before DOM manipulation
+4. Lazy initialization prevents "audio element not ready" race conditions
+5. Always call `player.play()` after user interaction - don't assume it happens automatically
 
 ### Database Connection Best Practices
 
