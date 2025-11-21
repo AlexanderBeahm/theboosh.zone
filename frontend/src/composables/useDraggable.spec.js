@@ -1,3 +1,4 @@
+/* global MouseEvent */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useDraggable } from "./useDraggable";
 
@@ -180,10 +181,7 @@ describe("useDraggable", () => {
         });
 
         it("should add mousemove and mouseup event listeners", () => {
-            const addEventListenerSpy = vi.spyOn(
-                document,
-                "addEventListener",
-            );
+            const addEventListenerSpy = vi.spyOn(document, "addEventListener");
             const { startDrag } = useDraggable();
             const event = {
                 target: { tagName: "DIV" },

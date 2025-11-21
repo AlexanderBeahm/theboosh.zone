@@ -1,302 +1,409 @@
 <template>
-    <Teleport to="body">
-        <div
-            v-if="!isOnVisualizerPage"
-            class="radio-widget"
-            :class="{
-                'is-minimized': widgetState.isMinimized,
-                'is-dragging': isDragging,
-                'is-mobile': isMobile,
-            }"
-            :style="
-                !isMobile
-                    ? {
-                          left: position.x + 'px',
-                          top: position.y + 'px',
-                      }
-                    : {}
-            "
-            @mousedown="handleMouseDown"
-        >
-            <!-- Widget Header -->
-            <div class="widget-header">
-                <div class="widget-title">
-                    <svg
-                        class="radio-icon"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14M12 12h.01"
-                        />
-                    </svg>
-                    <span>Radio</span>
-                </div>
-                <div class="widget-controls">
-                    <button
-                        class="widget-btn"
-                        :title="
-                            widgetState.isMinimized ? 'Maximize' : 'Minimize'
-                        "
-                        @click.stop="toggleMinimize"
-                    >
-                        <svg
-                            v-if="widgetState.isMinimized"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <polyline points="15 3 21 3 21 9" />
-                            <polyline points="9 21 3 21 3 15" />
-                            <line x1="21" y1="3" x2="14" y2="10" />
-                            <line x1="3" y1="21" x2="10" y2="14" />
-                        </svg>
-                        <svg
-                            v-else
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                        >
-                            <polyline points="4 14 10 14 10 20" />
-                            <polyline points="20 10 14 10 14 4" />
-                            <line x1="14" y1="10" x2="21" y2="3" />
-                            <line x1="3" y1="21" x2="10" y2="14" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Widget Body (shows when not minimized) -->
-            <Transition name="expand">
-                <div v-if="!widgetState.isMinimized" class="widget-body">
-                    <!-- Track Info -->
-                    <div v-if="player.isLoading.value" class="track-info">
-                        <div class="loading-state">
-                            <div class="spinner-small" />
-                            <span class="loading-text">Buffering...</span>
-                        </div>
-                    </div>
-                    <div
-                        v-else-if="player.currentTrack.value"
-                        class="track-info"
-                    >
-                        <div class="track-title">
-                            {{ player.currentTrack.value.title }}
-                        </div>
-                        <div class="track-artist">
-                            {{ player.currentTrack.value.artist }}
-                        </div>
-                    </div>
-                    <div v-else-if="player.error.value" class="track-info">
-                        <div class="error-text">
-                            {{ player.error.value }}
-                        </div>
-                    </div>
-                    <div v-else class="track-info">
-                        <div class="no-track">No radio configured</div>
-                    </div>
-
-                    <!-- Progress Bar -->
-                    <div
-                        v-if="
-                            player.currentTrack.value &&
-                            player.duration.value > 0
-                        "
-                        class="progress-bar"
-                    >
-                        <div
-                            class="progress-fill"
-                            :style="{ width: player.progress.value + '%' }"
-                        />
-                    </div>
-
-                    <!-- Controls -->
-                    <div class="widget-player-controls">
-                        <!-- Listen Live Button (shown when not playing) -->
-                        <button
-                            v-if="!player.isPlaying.value"
-                            class="play-btn large listen-live"
-                            :disabled="
-                                player.isLoading.value ||
-                                !player.currentTrack.value
-                            "
-                            @click.stop="handleListenLive"
-                        >
-                            <div
-                                v-if="player.isLoading.value"
-                                class="spinner-small"
-                            />
-                            <svg v-else viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="5 3 19 12 5 21 5 3" />
-                            </svg>
-                        </button>
-
-                        <!-- Pause Button (shown when playing) -->
-                        <button
-                            v-else
-                            class="play-btn large"
-                            @click.stop="player.pause"
-                        >
-                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                <rect x="6" y="4" width="4" height="16" />
-                                <rect x="14" y="4" width="4" height="16" />
-                            </svg>
-                        </button>
-
-                        <!-- Mute Toggle (next to play/pause) -->
-                        <button
-                            class="mute-btn"
-                            :title="
-                                player.volume.value === 0 ? 'Unmute' : 'Mute'
-                            "
-                            @click.stop="handleMuteToggle"
-                        >
-                            <svg
-                                v-if="player.volume.value === 0"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <polygon
-                                    points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
-                                />
-                                <line x1="23" y1="9" x2="17" y2="15" />
-                                <line x1="17" y1="9" x2="23" y2="15" />
-                            </svg>
-                            <svg
-                                v-else-if="player.volume.value < 50"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <polygon
-                                    points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
-                                />
-                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                            </svg>
-                            <svg
-                                v-else
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <polygon
-                                    points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
-                                />
-                                <path
-                                    d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
-                                />
-                            </svg>
-                        </button>
-
-                        <!-- Volume Slider -->
-                        <input
-                            type="range"
-                            class="volume-slider"
-                            min="0"
-                            max="100"
-                            :value="player.volume.value"
-                            @input="
-                                (e) => player.setVolume(Number(e.target.value))
-                            "
-                            @click.stop
-                        />
-
-                        <!-- Playlist Toggle -->
-                        <button
-                            class="playlist-btn"
-                            :title="
-                                showPlaylist ? 'Hide Playlist' : 'Show Playlist'
-                            "
-                            @click.stop="showPlaylist = !showPlaylist"
-                        >
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <line x1="8" y1="6" x2="21" y2="6" />
-                                <line x1="8" y1="12" x2="21" y2="12" />
-                                <line x1="8" y1="18" x2="21" y2="18" />
-                                <line x1="3" y1="6" x2="3.01" y2="6" />
-                                <line x1="3" y1="12" x2="3.01" y2="12" />
-                                <line x1="3" y1="18" x2="3.01" y2="18" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </Transition>
-
-            <!-- Playlist Panel -->
-            <Transition name="playlist">
-                <div
-                    v-if="showPlaylist && !widgetState.isMinimized"
-                    class="widget-playlist-panel"
-                    @click.stop
-                >
-                    <div class="playlist-header">
-                        <h3>Playlist</h3>
-                        <button class="close-btn" @click="showPlaylist = false">
-                            <svg
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                            >
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div class="playlist-content">
-                        <div
-                            v-if="player.playlist.length === 0"
-                            class="empty-playlist"
-                        >
-                            No tracks in playlist
-                        </div>
-                        <div v-else class="playlist-tracks">
-                            <div
-                                v-for="(track, index) in player.playlist.value"
-                                :key="index"
-                                class="playlist-track"
-                                :class="{
-                                    active: index === player.currentIndex.value,
-                                }"
-                                @click="loadTrack(index)"
-                            >
-                                <div class="track-number">
-                                    {{ index + 1 }}
-                                </div>
-                                <div class="track-details">
-                                    <div class="playlist-track-title">
-                                        {{ track.title }}
-                                    </div>
-                                    <div class="playlist-track-artist">
-                                        {{ track.artist }}
-                                    </div>
-                                </div>
-                                <div
-                                    v-if="track.duration > 0"
-                                    class="track-duration"
-                                >
-                                    {{ formatTime(track.duration) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </Transition>
+  <Teleport to="body">
+    <div
+      v-if="!isOnVisualizerPage"
+      class="radio-widget"
+      :class="{
+        'is-minimized': widgetState.isMinimized,
+        'is-dragging': isDragging,
+        'is-mobile': isMobile,
+      }"
+      :style="
+        !isMobile
+          ? {
+            left: position.x + 'px',
+            top: position.y + 'px',
+          }
+          : {}
+      "
+      @mousedown="handleMouseDown"
+    >
+      <!-- Widget Header -->
+      <div class="widget-header">
+        <div class="widget-title">
+          <svg
+            class="radio-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path
+              d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14M12 12h.01"
+            />
+          </svg>
+          <span>Radio</span>
         </div>
-    </Teleport>
+        <div class="widget-controls">
+          <button
+            class="widget-btn"
+            :title="
+              widgetState.isMinimized ? 'Maximize' : 'Minimize'
+            "
+            @click.stop="toggleMinimize"
+          >
+            <svg
+              v-if="widgetState.isMinimized"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line
+                x1="21"
+                y1="3"
+                x2="14"
+                y2="10"
+              />
+              <line
+                x1="3"
+                y1="21"
+                x2="10"
+                y2="14"
+              />
+            </svg>
+            <svg
+              v-else
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <polyline points="4 14 10 14 10 20" />
+              <polyline points="20 10 14 10 14 4" />
+              <line
+                x1="14"
+                y1="10"
+                x2="21"
+                y2="3"
+              />
+              <line
+                x1="3"
+                y1="21"
+                x2="10"
+                y2="14"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Widget Body (shows when not minimized) -->
+      <Transition name="expand">
+        <div
+          v-if="!widgetState.isMinimized"
+          class="widget-body"
+        >
+          <!-- Track Info -->
+          <div
+            v-if="player.isLoading.value"
+            class="track-info"
+          >
+            <div class="loading-state">
+              <div class="spinner-small" />
+              <span class="loading-text">Buffering...</span>
+            </div>
+          </div>
+          <div
+            v-else-if="player.currentTrack.value"
+            class="track-info"
+          >
+            <div class="track-title">
+              {{ player.currentTrack.value.title }}
+            </div>
+            <div class="track-artist">
+              {{ player.currentTrack.value.artist }}
+            </div>
+          </div>
+          <div
+            v-else-if="player.error.value"
+            class="track-info"
+          >
+            <div class="error-text">
+              {{ player.error.value }}
+            </div>
+          </div>
+          <div
+            v-else
+            class="track-info"
+          >
+            <div class="no-track">
+              No radio configured
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div
+            v-if="
+              player.currentTrack.value &&
+                player.duration.value > 0
+            "
+            class="progress-bar"
+          >
+            <div
+              class="progress-fill"
+              :style="{ width: player.progress.value + '%' }"
+            />
+          </div>
+
+          <!-- Controls -->
+          <div class="widget-player-controls">
+            <!-- Listen Live Button (shown when not playing) -->
+            <button
+              v-if="!player.isPlaying.value"
+              class="play-btn large listen-live"
+              :disabled="
+                player.isLoading.value ||
+                  !player.currentTrack.value
+              "
+              @click.stop="handleListenLive"
+            >
+              <div
+                v-if="player.isLoading.value"
+                class="spinner-small"
+              />
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+            </button>
+
+            <!-- Pause Button (shown when playing) -->
+            <button
+              v-else
+              class="play-btn large"
+              @click.stop="player.pause"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <rect
+                  x="6"
+                  y="4"
+                  width="4"
+                  height="16"
+                />
+                <rect
+                  x="14"
+                  y="4"
+                  width="4"
+                  height="16"
+                />
+              </svg>
+            </button>
+
+            <!-- Mute Toggle (next to play/pause) -->
+            <button
+              class="mute-btn"
+              :title="
+                player.volume.value === 0 ? 'Unmute' : 'Mute'
+              "
+              @click.stop="handleMuteToggle"
+            >
+              <svg
+                v-if="player.volume.value === 0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polygon
+                  points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                />
+                <line
+                  x1="23"
+                  y1="9"
+                  x2="17"
+                  y2="15"
+                />
+                <line
+                  x1="17"
+                  y1="9"
+                  x2="23"
+                  y2="15"
+                />
+              </svg>
+              <svg
+                v-else-if="player.volume.value < 50"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polygon
+                  points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              </svg>
+              <svg
+                v-else
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polygon
+                  points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"
+                />
+                <path
+                  d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"
+                />
+              </svg>
+            </button>
+
+            <!-- Volume Slider -->
+            <input
+              type="range"
+              class="volume-slider"
+              min="0"
+              max="100"
+              :value="player.volume.value"
+              @input="
+                (e) => player.setVolume(Number(e.target.value))
+              "
+              @click.stop
+            >
+
+            <!-- Playlist Toggle -->
+            <button
+              class="playlist-btn"
+              :title="
+                showPlaylist ? 'Hide Playlist' : 'Show Playlist'
+              "
+              @click.stop="showPlaylist = !showPlaylist"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line
+                  x1="8"
+                  y1="6"
+                  x2="21"
+                  y2="6"
+                />
+                <line
+                  x1="8"
+                  y1="12"
+                  x2="21"
+                  y2="12"
+                />
+                <line
+                  x1="8"
+                  y1="18"
+                  x2="21"
+                  y2="18"
+                />
+                <line
+                  x1="3"
+                  y1="6"
+                  x2="3.01"
+                  y2="6"
+                />
+                <line
+                  x1="3"
+                  y1="12"
+                  x2="3.01"
+                  y2="12"
+                />
+                <line
+                  x1="3"
+                  y1="18"
+                  x2="3.01"
+                  y2="18"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Playlist Panel -->
+      <Transition name="playlist">
+        <div
+          v-if="showPlaylist && !widgetState.isMinimized"
+          class="widget-playlist-panel"
+          @click.stop
+        >
+          <div class="playlist-header">
+            <h3>Playlist</h3>
+            <button
+              class="close-btn"
+              @click="showPlaylist = false"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line
+                  x1="18"
+                  y1="6"
+                  x2="6"
+                  y2="18"
+                />
+                <line
+                  x1="6"
+                  y1="6"
+                  x2="18"
+                  y2="18"
+                />
+              </svg>
+            </button>
+          </div>
+          <div class="playlist-content">
+            <div
+              v-if="player.playlist.length === 0"
+              class="empty-playlist"
+            >
+              No tracks in playlist
+            </div>
+            <div
+              v-else
+              class="playlist-tracks"
+            >
+              <div
+                v-for="(track, index) in player.playlist.value"
+                :key="index"
+                class="playlist-track"
+                :class="{
+                  active: index === player.currentIndex.value,
+                }"
+                @click="loadTrack(index)"
+              >
+                <div class="track-number">
+                  {{ index + 1 }}
+                </div>
+                <div class="track-details">
+                  <div class="playlist-track-title">
+                    {{ track.title }}
+                  </div>
+                  <div class="playlist-track-artist">
+                    {{ track.artist }}
+                  </div>
+                </div>
+                <div
+                  v-if="track.duration > 0"
+                  class="track-duration"
+                >
+                  {{ formatTime(track.duration) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>

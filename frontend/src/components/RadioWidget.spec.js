@@ -706,7 +706,7 @@ describe("RadioWidget", () => {
     describe("Keyboard Shortcuts", () => {
         it("should increase volume on ArrowUp key", async () => {
             await router.push("/");
-            const wrapper = mount(RadioWidget, {
+            mount(RadioWidget, {
                 global: {
                     plugins: [router],
                     stubs: {
@@ -725,7 +725,7 @@ describe("RadioWidget", () => {
 
         it("should decrease volume on ArrowDown key", async () => {
             await router.push("/");
-            const wrapper = mount(RadioWidget, {
+            mount(RadioWidget, {
                 global: {
                     plugins: [router],
                     stubs: {
@@ -744,7 +744,7 @@ describe("RadioWidget", () => {
 
         it("should toggle mute on M key", async () => {
             await router.push("/");
-            const wrapper = mount(RadioWidget, {
+            mount(RadioWidget, {
                 global: {
                     plugins: [router],
                     stubs: {
