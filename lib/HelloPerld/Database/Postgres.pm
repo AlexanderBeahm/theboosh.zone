@@ -8,6 +8,7 @@ our $VERSION = '1.0.0';
 use DBI;
 use File::Path qw(make_path);
 use File::Glob qw(bsd_glob);
+use Time::HiRes qw(time);
 
 sub validate_connection {
     my ($logger) = @_;

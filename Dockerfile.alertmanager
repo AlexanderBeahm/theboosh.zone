@@ -1,0 +1,24 @@
+FROM alpine:latest AS builder
+
+# Install gettext for envsubst binary
+RUN apk add --no-cache gettext
+
+FROM prom/alertmanager:latest
+
+# Copy envsubst from alpine builder
+COPY --from=builder /usr/bin/envsubst /usr/bin/envsubst
+
+# Copy the template config
+COPY alertmanager/alertmanager.yml /etc/alertmanager/alertmanager.yml.template
+
+# Create entrypoint script that substitutes environment variables
+USER root
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'envsubst < /etc/alertmanager/alertmanager.yml.template > /etc/alertmanager/alertmanager.yml' >> /entrypoint.sh && \
+    echo 'exec /bin/alertmanager "$@"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+USER nobody
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]

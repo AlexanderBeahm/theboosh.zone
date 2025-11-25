@@ -5,6 +5,8 @@ our $VERSION = '1.0.0';
 
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
+use HelloPerld::Controller::Metrics;
+use Time::HiRes qw(time);
 
 sub startup {
     my $self = shift;
@@ -54,6 +56,38 @@ sub startup {
 
         # Set X-Request-ID in response headers for tracing
         $c->res->headers->header('X-Request-ID' => $request_id);
+
+        # Start request timing for Prometheus metrics
+        $c->stash('request_start_time' => time());
+
+        # Track requests in progress
+        HelloPerld::Controller::Metrics->inc_in_progress();
+    });
+
+    # Add Prometheus metrics tracking after request completion
+    $self->hook(after_dispatch => sub {
+        my $c = shift;
+
+        # Skip metrics for the metrics endpoint itself to avoid recursion
+        my $path = $c->req->url->path->to_string;
+        return if $path eq '/metrics';
+
+        # Decrement in-progress counter
+        HelloPerld::Controller::Metrics->dec_in_progress();
+
+        # Calculate request duration
+        my $start_time = $c->stash('request_start_time');
+        return unless $start_time;
+        my $duration = time() - $start_time;
+
+        # Normalize endpoint for metrics (remove IDs, slugs)
+        my $method = $c->req->method;
+        my $endpoint = _normalize_endpoint($path);
+        my $status = $c->res->code || 200;
+
+        # Record metrics
+        HelloPerld::Controller::Metrics->inc_request($method, $endpoint, $status);
+        HelloPerld::Controller::Metrics->observe_request_duration($method, $endpoint, $duration);
     });
 
     # Helper to generate unique session ID for anonymous users
@@ -226,6 +260,9 @@ sub startup {
     # Health check endpoints (outside API namespace for direct access)
     $self->routes->get('/health')->to('Health#getHealthStatus');
     $self->routes->get('/health/ready')->to('Health#get_readiness_status');
+
+    # Prometheus metrics endpoint
+    $self->routes->get('/metrics')->to('Metrics#get_metrics');
 
     # Configure session management from config
     my $session_config = $self->config->{session};
@@ -426,6 +463,39 @@ sub startup {
 
     # Log startup
     $self->logger_instance->info("HelloPerld web application started! Hello, perld!");
+}
+
+# Helper function to normalize API endpoints for metrics
+# Replaces dynamic path segments (IDs, slugs) with placeholders
+sub _normalize_endpoint {
+    my ($path) = @_;
+
+    # Skip static files and uploads
+    return '/static' if $path =~ /\.(css|js|mjs|map|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf)$/i;
+    return '/uploads' if $path =~ m{^/uploads/};
+
+    # Normalize API endpoints
+    # /api/articles/123 -> /api/articles/:id
+    # /api/articles/my-slug -> /api/articles/:slug
+    # /api/admin/articles/123 -> /api/admin/articles/:id
+    # /api/admin/media/123 -> /api/admin/media/:id
+    # /api/admin/tags/123 -> /api/admin/tags/:id
+
+    my $normalized = $path;
+
+    # Admin routes with numeric IDs
+    $normalized =~ s{^(/api/admin/(?:articles|media|tags))/\d+}{$1/:id}g;
+
+    # Public articles by slug (non-numeric path segment)
+    $normalized =~ s{^(/api/articles)/[^/]+$}{$1/:slug}g;
+
+    # Public tags by slug
+    $normalized =~ s{^(/api/tags)/[^/]+$}{$1/:slug}g;
+
+    # Uploads paths
+    $normalized =~ s{^(/uploads)/.*$}{$1/*}g;
+
+    return $normalized;
 }
 
 1;

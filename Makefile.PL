@@ -24,6 +24,7 @@ WriteMakefile(
         'File::Spec'          => 0,  # Added for secure path construction
         'MIME::Types'         => 0,  # Added for MIME type detection
         'MIME::Base64'        => 0,  # Added for base64 image upload support
+        'Prometheus::Tiny::Shared' => 0,  # Added for Prometheus metrics endpoint
         'Test::More'          => '1.302',  # Core testing framework
         'Test::Mojo'          => 0,  # Mojolicious testing
         'DBD::Mock'           => 0,  # Mock database driver

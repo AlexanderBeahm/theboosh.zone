@@ -29,6 +29,9 @@ requires 'File::ShareDir';
 requires 'JSON';
 requires 'MIME::Types';
 
+# Monitoring
+requires 'Prometheus::Tiny::Shared';
+
 # Time Utilities
 requires 'Time::Local';
 

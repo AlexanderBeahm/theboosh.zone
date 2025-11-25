@@ -6,6 +6,8 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Database::Postgres;
+use HelloPerld::Controller::Metrics;
+use Time::HiRes qw(time);
 
 =head1 NAME
 
@@ -83,6 +85,65 @@ sub _log_info {
     if ($self->{logger}) {
         $self->{logger}->info($message);
     }
+}
+
+=head2 _execute_query($dbh, $sql, $operation, @params)
+
+Execute a database query with metrics tracking.
+Returns the statement handle after execution.
+
+=cut
+
+sub _execute_query {
+    my ($self, $dbh, $sql, $operation, @params) = @_;
+
+    my $start_time = time();
+    my $sth = $dbh->prepare($sql);
+    $sth->execute(@params);
+    my $duration = time() - $start_time;
+
+    # Track metrics
+    HelloPerld::Controller::Metrics->inc_db_query($operation);
+    HelloPerld::Controller::Metrics->observe_db_duration($operation, $duration);
+
+    return $sth;
+}
+
+=head2 _execute_query_single($dbh, $sql, $operation, @params)
+
+Execute a database query and return a single row as hashref.
+Includes metrics tracking.
+
+=cut
+
+sub _execute_query_single {
+    my ($self, $dbh, $sql, $operation, @params) = @_;
+
+    my $sth = $self->_execute_query($dbh, $sql, $operation, @params);
+    my $result = $sth->fetchrow_hashref();
+    $sth->finish();
+
+    return $result;
+}
+
+=head2 _execute_query_all($dbh, $sql, $operation, @params)
+
+Execute a database query and return all rows as array of hashrefs.
+Includes metrics tracking.
+
+=cut
+
+sub _execute_query_all {
+    my ($self, $dbh, $sql, $operation, @params) = @_;
+
+    my $sth = $self->_execute_query($dbh, $sql, $operation, @params);
+    my @results;
+    while (my $row = $sth->fetchrow_hashref()) {
+        push @results, $row;
+    }
+    $sth->finish();
+
+    return \@results;
 }
 
 1;

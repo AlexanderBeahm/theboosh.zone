@@ -7,11 +7,13 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Database::Postgres;
+use HelloPerld::Controller::Metrics;
 use HelloPerld::Util::ErrorResponse qw(error_response);
 use Digest::SHA qw(sha256_hex);
 use Crypt::Random qw(makerandom_octet);
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 use JSON qw(encode_json decode_json);
+use Time::HiRes qw(time);
 
 sub login {
     my $self = shift;
@@ -56,6 +58,9 @@ sub login {
         # Clear rate limiting
         $self->_clear_rate_limit($username);
 
+        # Track successful login for metrics
+        HelloPerld::Controller::Metrics->inc_login_attempt(1);
+
         $self->app->logger_instance->info("Admin user '$username' logged in successfully");
 
         return $self->render(json => {
@@ -70,6 +75,9 @@ sub login {
     } else {
         # Track failed login attempt
         $self->_track_failed_login($username);
+
+        # Track failed login for metrics
+        HelloPerld::Controller::Metrics->inc_login_attempt(0);
 
         $self->app->logger_instance->warn("Failed login attempt for username '$username'");
 
@@ -231,11 +239,18 @@ sub _authenticate_user {
 
     my $authenticated_user;
     eval {
+        my $start_time = time();
         my $sth = $dbh->prepare($sql);
         $sth->execute($username);
 
         my $user = $sth->fetchrow_hashref();
         $sth->finish();
+        my $duration = time() - $start_time;
+
+        # Track database query metrics
+        HelloPerld::Controller::Metrics->inc_db_query('select');
+        HelloPerld::Controller::Metrics->observe_db_duration('select', $duration);
+
         $dbh->disconnect();
 
         if ($user) {
@@ -366,9 +381,16 @@ sub _update_last_login {
     return 0 unless $dbh;
 
     eval {
+        my $start_time = time();
         my $sql = "UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?";
         my $sth = $dbh->prepare($sql);
         $sth->execute($user_id);
+        my $duration = time() - $start_time;
+
+        # Track database query metrics
+        HelloPerld::Controller::Metrics->inc_db_query('update');
+        HelloPerld::Controller::Metrics->observe_db_duration('update', $duration);
+
         $dbh->disconnect();
     };
 

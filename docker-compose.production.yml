@@ -77,11 +77,12 @@ services:
         ports:
             - "127.0.0.1:9090:9090"
         volumes:
-            - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./prometheus.production.yml:/etc/prometheus/prometheus.yml:ro
+            - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
             - prometheus_data:/prometheus
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--storage.tsdb.retention.time=200h"
+            - "--storage.tsdb.retention.time=360h"
         networks:
             - theboosh-production-network
         restart: always
@@ -97,6 +98,67 @@ services:
             - GF_SERVER_ROOT_URL=https://monitoring.theboosh.zone
         volumes:
             - grafana_data:/var/lib/grafana
+            - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+        networks:
+            - theboosh-production-network
+        depends_on:
+            - prometheus
+        restart: always
+
+    nginx-exporter:
+        image: nginx/nginx-prometheus-exporter:latest
+        command:
+            - -nginx.scrape-uri=http://nginx:8080/stub_status
+        ports:
+            - "127.0.0.1:9113:9113"
+        networks:
+            - theboosh-production-network
+        depends_on:
+            - nginx
+        restart: always
+
+    node-exporter:
+        image: prom/node-exporter:latest
+        ports:
+            - "127.0.0.1:9100:9100"
+        volumes:
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+            - /:/rootfs:ro
+        command:
+            - "--path.procfs=/host/proc"
+            - "--path.rootfs=/rootfs"
+            - "--path.sysfs=/host/sys"
+            - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+        networks:
+            - theboosh-production-network
+        restart: always
+
+    postgres-exporter:
+        image: prometheuscommunity/postgres-exporter:latest
+        environment:
+            DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=require"
+        ports:
+            - "127.0.0.1:9187:9187"
+        networks:
+            - theboosh-production-network
+        restart: always
+
+    alertmanager:
+        build:
+            context: .
+            dockerfile: Dockerfile.alertmanager
+        ports:
+            - "127.0.0.1:9093:9093"
+        volumes:
+            - alertmanager_data:/alertmanager
+        environment:
+            - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+            - ALERT_EMAIL=${ALERT_EMAIL}
+            - SMTP_FROM=${SMTP_FROM}
+            - SMTP_USERNAME=${SMTP_USERNAME}
+            - SMTP_PASSWORD=${SMTP_PASSWORD}
         networks:
             - theboosh-production-network
         depends_on:
@@ -111,3 +173,4 @@ networks:
 volumes:
     prometheus_data:
     grafana_data:
+    alertmanager_data:
