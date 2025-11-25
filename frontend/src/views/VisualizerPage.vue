@@ -57,7 +57,10 @@
         </div>
 
         <!-- Bottom Controls: Play/Pause, Volume and Playlist -->
-        <div class="bottom-controls">
+        <div
+          class="bottom-controls"
+          :class="{ 'mobile-layout': isMobile }"
+        >
           <!-- Play/Pause Button -->
           <button
             v-if="player.isPlaying.value"
@@ -101,10 +104,19 @@
             </svg>
           </button>
 
-          <div class="volume-section">
+          <div
+            class="volume-section"
+            :class="{
+              'mobile-collapsed': isMobile && !showVolumeSlider,
+            }"
+          >
             <button
               class="control-button volume-button"
-              @click="player.toggleMute"
+              @click="
+                isMobile
+                  ? toggleVolumeSlider()
+                  : player.toggleMute()
+              "
             >
               <svg
                 v-if="
@@ -146,16 +158,20 @@
                 />
               </svg>
             </button>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              class="volume-slider"
-              :value="player.volume.value"
-              @input="
-                (e) => player.setVolume(Number(e.target.value))
-              "
-            >
+            <Transition name="volume-expand">
+              <input
+                v-show="showVolumeSlider"
+                type="range"
+                min="0"
+                max="100"
+                class="volume-slider"
+                :value="player.volume.value"
+                @input="
+                  (e) =>
+                    player.setVolume(Number(e.target.value))
+                "
+              >
+            </Transition>
           </div>
 
           <!-- Playlist Toggle -->
@@ -293,6 +309,26 @@ const { player, restoreUserVolume } = useRadioStore();
 
 const showPlaylist = ref(false);
 
+// Mobile detection and volume slider visibility
+const isMobile = ref(false);
+const showVolumeSlider = ref(false);
+
+// Check if viewport is mobile size
+function checkMobile() {
+    isMobile.value = window.innerWidth <= 768;
+    // Auto-show volume slider on desktop
+    if (!isMobile.value) {
+        showVolumeSlider.value = true;
+    }
+}
+
+// Toggle volume slider visibility on mobile
+function toggleVolumeSlider() {
+    if (isMobile.value) {
+        showVolumeSlider.value = !showVolumeSlider.value;
+    }
+}
+
 // Format time in MM:SS
 function formatTime(seconds) {
     if (!seconds || seconds < 0) return "0:00";
@@ -355,11 +391,18 @@ function handleKeyPress(event) {
 // Lifecycle
 onMounted(() => {
     // Player is already initialized by the store, no need to init again
+    // Initialize mobile detection
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
     // Add keyboard listener
     window.addEventListener("keydown", handleKeyPress);
+
+    // Initialize volume slider visibility
+    showVolumeSlider.value = !isMobile.value;
 });
 
 onUnmounted(() => {
+    window.removeEventListener("resize", checkMobile);
     window.removeEventListener("keydown", handleKeyPress);
     // Don't cleanup player - it's shared globally
 });
@@ -493,6 +536,11 @@ onUnmounted(() => {
     align-items: center;
 }
 
+.bottom-controls.mobile-layout {
+    gap: var(--spacing-sm);
+    justify-content: center;
+}
+
 .control-button {
     background: var(--card-bg);
     color: var(--text-primary);
@@ -531,6 +579,11 @@ onUnmounted(() => {
     gap: var(--spacing-md);
     align-items: center;
     flex: 1;
+}
+
+.volume-section.mobile-collapsed {
+    flex: 0;
+    min-width: auto;
 }
 
 .volume-button {
@@ -864,15 +917,92 @@ onUnmounted(() => {
     transform: translateX(100px);
 }
 
+/* Volume slider expand/collapse transition */
+.volume-expand-enter-active,
+.volume-expand-leave-active {
+    transition: all 0.3s ease;
+}
+
+.volume-expand-enter-from,
+.volume-expand-leave-to {
+    opacity: 0;
+    width: 0;
+    margin: 0;
+}
+
+.volume-expand-enter-to,
+.volume-expand-leave-from {
+    opacity: 1;
+    width: 100px;
+}
+
 @media (max-width: 768px) {
     .player-controls {
         min-width: auto;
         width: 100%;
         padding: var(--spacing-md);
+        max-width: 100%;
     }
 
     .player-overlay {
         padding: var(--spacing-md);
+        padding-bottom: var(--spacing-md);
+    }
+
+    .bottom-controls {
+        gap: var(--spacing-sm);
+        flex-wrap: nowrap;
+    }
+
+    .control-button {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+    }
+
+    /* Volume button subtle glow on mobile to indicate interactivity */
+    .volume-button {
+        width: 44px;
+        height: 44px;
+        box-shadow: 0 0 12px rgba(255, 105, 180, 0.3);
+        animation: subtle-pulse 3s ease-in-out infinite;
+    }
+
+    /* Disable hover effects on mobile to maintain parity with desktop base state */
+    .volume-button:hover {
+        background: var(--card-bg);
+        border-color: var(--border-color);
+        transform: none;
+        box-shadow: 0 0 12px rgba(255, 105, 180, 0.3);
+    }
+
+    /* Enhanced glow when volume slider is visible (but no full pink background) */
+    .volume-section:not(.mobile-collapsed) .volume-button {
+        box-shadow: 0 0 16px rgba(255, 105, 180, 0.5);
+        border-color: var(--primary-color);
+        background: var(--card-bg);
+    }
+
+    .volume-section:not(.mobile-collapsed) .volume-button:hover {
+        background: var(--card-bg);
+        box-shadow: 0 0 16px rgba(255, 105, 180, 0.5);
+    }
+
+    .volume-slider {
+        width: 80px;
+        flex-shrink: 1;
+    }
+
+    .volume-section {
+        gap: var(--spacing-sm);
+        flex: 0 1 auto;
+        min-width: 44px;
+        max-width: 140px;
+    }
+
+    .volume-section.mobile-collapsed {
+        flex: 0 0 44px;
+        max-width: 44px;
     }
 
     .playlist-panel {
@@ -881,10 +1011,6 @@ onUnmounted(() => {
         left: var(--spacing-md);
         width: auto;
         max-height: 60vh;
-    }
-
-    .volume-slider {
-        width: 100px;
     }
 
     .station-name {
@@ -930,6 +1056,44 @@ onUnmounted(() => {
 
 /* Small mobile devices */
 @media (max-width: 480px) {
+    .player-controls {
+        padding: var(--spacing-sm);
+    }
+
+    .player-overlay {
+        padding: var(--spacing-sm);
+    }
+
+    .bottom-controls {
+        gap: var(--spacing-xs);
+    }
+
+    .control-button {
+        width: 44px;
+        height: 44px;
+    }
+
+    .volume-slider {
+        width: 60px;
+    }
+
+    .volume-section {
+        gap: var(--spacing-xs);
+        max-width: 116px;
+    }
+
+    .station-name {
+        font-size: 0.875rem;
+    }
+
+    .track-title {
+        font-size: 1rem;
+    }
+
+    .track-artist {
+        font-size: 0.875rem;
+    }
+
     .listen-live-content {
         max-width: 95%;
         padding: var(--spacing-md);
@@ -956,6 +1120,17 @@ onUnmounted(() => {
     .listen-live-button svg {
         width: 18px;
         height: 18px;
+    }
+}
+
+/* Subtle pulse animation for mobile volume button */
+@keyframes subtle-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 12px rgba(255, 105, 180, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 105, 180, 0.4);
     }
 }
 </style>

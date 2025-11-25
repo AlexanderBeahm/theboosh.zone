@@ -167,6 +167,11 @@ See CLAUDE-FEATURE-TODO.md for detailed feature requests and priorities.
 
 ## Development Guidelines
 
+### Claude Functions
+
+- All claude plans and documentation will exist in the project's own root .claude directory (e.g. theboosh.zone/.claude/...), instead of the global /user/.claude/ directory. This keeps all project-specific context together and avoids cross-project contamination.
+- All claude plans should have clear versioning in their filenames (e.g. v1, v2) to track iterations, and have filenames that represent the purpose of the plan (e.g. feature-todo, dev-guide).
+
 ### Database Schemas
 
 #### Implemented Tables
