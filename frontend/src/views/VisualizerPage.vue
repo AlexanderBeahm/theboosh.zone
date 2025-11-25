@@ -414,7 +414,8 @@ onUnmounted(() => {
     top: 0;
     left: 0;
     width: 100%;
-    height: 100vh;
+    height: 100vh; /* Fallback for older browsers */
+    height: 100svh; /* Small viewport - accounts for browser bars */
     background: var(--bg-color);
     overflow: hidden;
 }
@@ -431,12 +432,13 @@ onUnmounted(() => {
     position: relative;
     z-index: 1;
     width: 100%;
-    height: 100vh;
+    height: 100vh; /* Fallback for older browsers */
+    height: 100svh; /* Small viewport - prevents content jumping */
     display: flex;
     align-items: flex-end;
     justify-content: center;
     padding: var(--spacing-md);
-    padding-bottom: var(--spacing-lg);
+    padding-bottom: max(var(--spacing-lg), env(safe-area-inset-bottom, 2rem));
     box-sizing: border-box;
 }
 
@@ -946,7 +948,7 @@ onUnmounted(() => {
 
     .player-overlay {
         padding: var(--spacing-md);
-        padding-bottom: var(--spacing-md);
+        padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom, 1.5rem));
     }
 
     .bottom-controls {
