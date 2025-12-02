@@ -121,13 +121,18 @@ services:
         volumes:
             - alertmanager_data:/alertmanager
         environment:
-            - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
             - ALERT_EMAIL=${ALERT_EMAIL}
             - SMTP_FROM=${SMTP_FROM}
             - SMTP_USERNAME=${SMTP_USERNAME}
             - SMTP_PASSWORD=${SMTP_PASSWORD}
         depends_on:
             - prometheus
+            - alertmanager-discord
+
+    alertmanager-discord:
+        image: benjojo/alertmanager-discord
+        environment:
+            - DISCORD_WEBHOOK=${DISCORD_WEBHOOK_URL}
 
 volumes:
     postgres_data:
