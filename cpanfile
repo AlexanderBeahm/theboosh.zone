@@ -11,7 +11,7 @@ requires 'Mojolicious::Plugin::OpenAPI';
 requires 'Mojolicious::Plugin::SwaggerUI';
 
 # Cryptography and Security
-requires 'Crypt::Random';
+requires 'Bytes::Random::Secure';
 requires 'Digest::SHA';
 requires 'Crypt::Bcrypt';
 

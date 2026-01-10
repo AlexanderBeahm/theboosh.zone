@@ -10,7 +10,7 @@ use HelloPerld::Database::Postgres;
 use HelloPerld::Controller::Metrics;
 use HelloPerld::Util::ErrorResponse qw(error_response);
 use Digest::SHA qw(sha256_hex);
-use Crypt::Random qw(makerandom_octet);
+use Bytes::Random::Secure qw(random_bytes);
 use Crypt::Bcrypt qw(bcrypt bcrypt_check);
 use JSON qw(encode_json decode_json);
 use Time::HiRes qw(time);
@@ -317,7 +317,7 @@ sub _hash_password {
     # Use bcrypt with cost factor 12 (recommended security level)
     # bcrypt automatically handles salt generation when salt parameter is omitted
     use Crypt::Bcrypt qw(bcrypt);
-    return bcrypt($password, '2b', 12, makerandom_octet(Length => 16));
+    return bcrypt($password, '2b', 12, random_bytes(16));
 }
 
 sub _verify_password {

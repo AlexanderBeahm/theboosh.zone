@@ -2,7 +2,7 @@ package HelloPerld::Security::CSRF;
 use strict;
 use warnings;
 
-use Crypt::Random qw(makerandom_octet);
+use Bytes::Random::Secure qw(random_bytes);
 use Digest::SHA qw(sha256_hex);
 use MIME::Base64 qw(encode_base64url decode_base64url);
 use Time::HiRes qw(time);
@@ -51,7 +51,7 @@ sub generate_token {
     die "secret_key is required" unless defined $secret_key;
 
     # Generate random nonce (16 bytes = 128 bits)
-    my $nonce = makerandom_octet(Length => 16);
+    my $nonce = random_bytes(16);
 
     # Current timestamp
     my $timestamp = int(time());
@@ -194,7 +194,7 @@ __END__
 
 =over 4
 
-=item * Uses cryptographically secure random number generation via Crypt::Random
+=item * Uses cryptographically secure random number generation via Bytes::Random::Secure
 
 =item * Implements HMAC-SHA256 for token integrity verification
 

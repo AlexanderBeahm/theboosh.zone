@@ -14,7 +14,7 @@ WriteMakefile(
         'Mojolicious'         => 0,  # Added for web framework,
         'Mojolicious::Plugin::OpenAPI' => 0, # Added for OpenAPI/Swagger
         'Mojolicious::Plugin::SwaggerUI' => 0, # Added for Swagger UI
-        'Crypt::Random'       => 0,  # Added for password salt generation
+        'Bytes::Random::Secure' => 0,  # Added for cryptographically secure random bytes
         'Digest::SHA'         => 0,  # Added for password hashing (legacy)
         'Crypt::Bcrypt'       => 0,  # Added for secure password hashing
         'Imager'              => 0,  # Added for image processing
