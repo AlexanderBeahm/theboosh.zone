@@ -349,6 +349,135 @@
         }
       },
       "gridPos": {"h": 6, "w": 12, "x": 12, "y": 34}
+    },
+    {
+      "id": 17,
+      "title": "Article Views Over Time",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_article_views_total{job=\"hello-perld\"}[5m])) by (article_slug)",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40}
+    },
+    {
+      "id": 18,
+      "title": "Top Articles by Views",
+      "type": "barchart",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "topk(10, sum(app_article_views_total{job=\"hello-perld\"}) by (article_slug))",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {"orientation": "horizontal", "displayMode": "gradient"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+    },
+    {
+      "id": 19,
+      "title": "Views by IP Range",
+      "type": "table",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(app_article_views_total{job=\"hello-perld\"}) by (ip_hash)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "IP Range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "list",
+            "inspect": false
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48}
+    },
+    {
+      "id": 20,
+      "title": "Unique IPs per Article",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "count(count(app_article_views_total{job=\"hello-perld\"}) by (ip_hash, article_slug)) by (article_slug)",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "blue", "value": 0}]},
+          "custom": {"displayMode": "list"}
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48}
+    },
+    {
+      "id": 21,
+      "title": "Total Article Views",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(app_article_views_total{job=\"hello-perld\"})",
+          "legendFormat": "Total Views"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "green", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 56}
+    },
+    {
+      "id": 22,
+      "title": "Article Views Rate (per minute)",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_article_views_total{job=\"hello-perld\"}[5m])) * 60",
+          "legendFormat": "Views/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqm",
+          "thresholds": {"steps": [{"color": "blue", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 56}
     }
   ],
   "time": {"from": "now-1h", "to": "now"},

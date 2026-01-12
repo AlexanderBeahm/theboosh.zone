@@ -99,6 +99,17 @@ sub _declare_metrics {
         help => 'Total number of application errors',
         type => 'counter'
     );
+
+    # Article viewership metrics
+    $p->declare('app_article_views_total',
+        help => 'Total number of article views by slug and IP hash',
+        type => 'counter'
+    );
+
+    $p->declare('app_article_views_by_ip_total',
+        help => 'Total article views per IP hash',
+        type => 'counter'
+    );
 }
 
 # Get the shared Prometheus instance for use by other parts of the app
@@ -159,6 +170,44 @@ sub inc_login_attempt ($class, $success) {
 sub inc_error ($class, $type) {
     my $p = _get_prometheus();
     $p->inc('app_errors_total', { type => $type });
+}
+
+# Hash IP address for Prometheus metrics (limits cardinality)
+sub _hash_ip_for_metrics {
+    my ($ip) = @_;
+    return 'unknown' unless $ip;
+
+    # IPv4: Replace last octet with 'x' (e.g., 192.168.1.123 -> 192.168.1.x)
+    if ($ip =~ /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/) {
+        return "$1.x";
+    }
+
+    # IPv6: Use first 3 groups (e.g., 2001:db8::1 -> 2001:db8::x)
+    if ($ip =~ /^([0-9a-fA-F]{0,4}:[0-9a-fA-F]{0,4}:[0-9a-fA-F]{0,4})/) {
+        my $prefix = $1;
+        $prefix =~ s/:$//;  # Remove trailing colon if present
+        return "$prefix::x";
+    }
+
+    # Fallback: return as-is if format is unrecognized
+    return $ip;
+}
+
+# Track article view
+sub inc_article_view ($class, $article_slug, $ip_address) {
+    my $p = _get_prometheus();
+    my $ip_hash = _hash_ip_for_metrics($ip_address);
+
+    # Increment per-article metric
+    $p->inc('app_article_views_total', {
+        article_slug => $article_slug,
+        ip_hash => $ip_hash
+    });
+
+    # Increment per-IP metric
+    $p->inc('app_article_views_by_ip_total', {
+        ip_hash => $ip_hash
+    });
 }
 
 # Metrics endpoint handler

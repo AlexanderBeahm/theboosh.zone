@@ -88,6 +88,41 @@ sub startup {
         # Record metrics
         HelloPerld::Controller::Metrics->inc_request($method, $endpoint, $status);
         HelloPerld::Controller::Metrics->observe_request_duration($method, $endpoint, $duration);
+
+        # Track article views for successful GET requests to article endpoints
+        if ($method eq 'GET' && $status == 200) {
+            # Check if this is an article view request: /api/articles/:slug
+            if ($path =~ m{^/api/articles/([^/]+)$}) {
+                my $slug = $1;
+                
+                # Skip if slug looks like an ID (numeric) - those are admin endpoints
+                unless ($slug =~ /^\d+$/) {
+                    # Extract client IP
+                    my $ip_address = _get_client_ip($c);
+                    
+                    # Track in Prometheus (non-blocking)
+                    eval {
+                        HelloPerld::Controller::Metrics->inc_article_view($slug, $ip_address);
+                    };
+                    if ($@) {
+                        $c->app->logger_instance->warn("Failed to track article view in Prometheus: $@");
+                    }
+                    
+                    # Store in database (non-blocking, wrapped in eval to not affect request)
+                    eval {
+                        my $db_config = $c->can('db_config') ? $c->db_config : {};
+                        my $view_model = HelloPerld::Model::ArticleView->new(
+                            logger => $c->app->logger_instance,
+                            db_config => $db_config || {}
+                        );
+                        $view_model->create($slug, $ip_address);
+                    };
+                    if ($@) {
+                        $c->app->logger_instance->warn("Failed to store article view in database: $@");
+                    }
+                }
+            }
+        }
     });
 
     # Helper to generate unique session ID for anonymous users
@@ -463,6 +498,29 @@ sub startup {
 
     # Log startup
     $self->logger_instance->info("HelloPerld web application started! Hello, perld!");
+}
+
+# Helper function to extract client IP address from request
+# Handles X-Forwarded-For header for proxy/load balancer scenarios
+sub _get_client_ip {
+    my ($c) = @_;
+
+    # Check X-Forwarded-For header (first IP if comma-separated)
+    my $forwarded_for = $c->req->headers->header('X-Forwarded-For');
+    if ($forwarded_for) {
+        # X-Forwarded-For can contain multiple IPs, take the first one
+        my @ips = split /\s*,\s*/, $forwarded_for;
+        my $ip = $ips[0];
+        $ip =~ s/^\s+|\s+$//g;  # Trim whitespace
+        return $ip if $ip;
+    }
+
+    # Fallback to direct connection IP
+    my $remote_addr = $c->tx->remote_address;
+    return $remote_addr if $remote_addr;
+
+    # Final fallback
+    return 'unknown';
 }
 
 # Helper function to normalize API endpoints for metrics
