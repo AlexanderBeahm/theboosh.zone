@@ -27,9 +27,32 @@ subtest 'IPv4 edge cases' => sub {
 };
 
 subtest 'IPv6 hashing' => sub {
+    # Standard compressed IPv6
     my $ip = '2001:db8::1';
     my $hashed = $hash_method->($ip);
-    like($hashed, qr/^2001:db8.*x$/, 'IPv6 hashed correctly');
+    is($hashed, '2001:db8::x', 'IPv6 compressed format hashed correctly');
+
+    # Full IPv6 address
+    my $full_ipv6 = '2001:0db8:0000:0000:0000:0000:0000:0001';
+    my $full_hashed = $hash_method->($full_ipv6);
+    is($full_hashed, '2001:db8::x', 'IPv6 full format hashed correctly');
+
+    # IPv6 loopback
+    my $loopback = '::1';
+    my $loopback_hashed = $hash_method->($loopback);
+    is($loopback_hashed, '::x', 'IPv6 loopback hashed correctly');
+
+    # IPv6 with mid-address compression
+    # fe80::1:2:3 has non-empty groups: fe80, 1, 2, 3
+    # First two non-empty groups: fe80 and 1
+    my $mid_compress = 'fe80::1:2:3';
+    my $mid_hashed = $hash_method->($mid_compress);
+    is($mid_hashed, 'fe80:1::x', 'IPv6 mid-compression hashed correctly');
+
+    # Full IPv6 with zeros
+    my $full_zeros = 'fe80:0:0:0:1:2:3:4';
+    my $zeros_hashed = $hash_method->($full_zeros);
+    is($zeros_hashed, 'fe80:0::x', 'IPv6 full format with zeros hashed correctly');
 };
 
 subtest 'unknown IP handling' => sub {

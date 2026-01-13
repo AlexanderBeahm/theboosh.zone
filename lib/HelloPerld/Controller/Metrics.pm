@@ -182,11 +182,39 @@ sub _hash_ip_for_metrics {
         return "$1.x";
     }
 
-    # IPv6: Use first 3 groups (e.g., 2001:db8::1 -> 2001:db8::x)
-    if ($ip =~ /^([0-9a-fA-F]{0,4}:[0-9a-fA-F]{0,4}:[0-9a-fA-F]{0,4})/) {
-        my $prefix = $1;
-        $prefix =~ s/:$//;  # Remove trailing colon if present
-        return "$prefix::x";
+    # IPv6: Handle both full and compressed formats
+    # Goal: Extract first two groups to identify network prefix, then mask the rest
+    # Examples: 2001:db8::1 -> 2001:db8::x
+    #           2001:0db8:0000:0000:0000:0000:0000:0001 -> 2001:db8::x
+    #           ::1 -> ::x
+    #           fe80::1 -> fe80::x (only one visible group before ::)
+    if ($ip =~ /:/) {
+        # Handle loopback and addresses starting with :: first
+        if ($ip =~ /^::/) {
+            return "::x";
+        }
+
+        # Split on colons to get groups
+        my @groups = split /:/, $ip, -1;  # -1 preserves trailing empty strings
+
+        # Filter out empty strings (from ::) and get first two non-empty groups
+        my @non_empty = grep { $_ ne '' } @groups;
+
+        if (@non_empty >= 2) {
+            # Have at least two groups
+            my $g1 = $non_empty[0];
+            my $g2 = $non_empty[1];
+            # Remove leading zeros for cleaner output
+            $g1 =~ s/^0+([0-9a-fA-F])/$1/;
+            $g2 =~ s/^0+([0-9a-fA-F])/$1/;
+            return "${g1}:${g2}::x";
+        } elsif (@non_empty == 1) {
+            # Only one group (like fe80::1 where 1 might be after ::)
+            # Check if first element before :: is non-empty
+            my $g1 = $non_empty[0];
+            $g1 =~ s/^0+([0-9a-fA-F])/$1/;
+            return "${g1}::x";
+        }
     }
 
     # Fallback: return as-is if format is unrecognized
@@ -210,6 +238,53 @@ sub inc_article_view ($class, $article_slug, $ip_address) {
     });
 }
 
+# Database connection cache (30-second TTL)
+my $dbh_cache = { dbh => undef, expires_at => 0 };
+
+# Business metrics cache (60-second TTL)
+my $business_metrics_cache = {
+    data => {},
+    expires_at => 0
+};
+
+# Get cached database connection
+sub _get_cached_dbh {
+    my ($self) = @_;
+    my $now = time();
+
+    # Check if cached connection is still valid
+    if ($dbh_cache->{dbh} && $now < $dbh_cache->{expires_at}) {
+        # Verify connection is still alive
+        eval { $dbh_cache->{dbh}->ping(); };
+        if (!$@) {
+            return $dbh_cache->{dbh};
+        }
+        # Connection is dead, clean up
+        eval { $dbh_cache->{dbh}->disconnect(); };
+        $dbh_cache->{dbh} = undef;
+    }
+
+    # Create new connection
+    my $dbh;
+    eval {
+        if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
+            $dbh = HelloPerld::Database::Postgres::get_connection_from_config(
+                $self->app->logger_instance,
+                $self->db_config
+            );
+        } else {
+            $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+        }
+    };
+
+    if ($dbh) {
+        $dbh_cache->{dbh} = $dbh;
+        $dbh_cache->{expires_at} = $now + 30;  # 30-second TTL
+    }
+
+    return $dbh;
+}
+
 # Metrics endpoint handler
 sub get_metrics ($self) {
     my $p = _get_prometheus();
@@ -223,7 +298,7 @@ sub get_metrics ($self) {
     # Update database connection status
     $self->_update_db_status($p);
 
-    # Update business metrics
+    # Update business metrics (with caching)
     $self->_update_business_metrics($p);
 
     # Render Prometheus format
@@ -233,20 +308,11 @@ sub get_metrics ($self) {
 
 sub _update_db_status ($self, $p) {
     my $connected = 0;
+    my $dbh;
     eval {
-        my $dbh;
-        if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
-            $dbh = HelloPerld::Database::Postgres::get_connection_from_config(
-                $self->app->logger_instance,
-                $self->db_config
-            );
-        } else {
-            # Fallback to environment variables
-            $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
-        }
+        $dbh = $self->_get_cached_dbh();
         if ($dbh) {
             $connected = 1;
-            $dbh->disconnect();
         }
     };
     if ($@) {
@@ -256,24 +322,38 @@ sub _update_db_status ($self, $p) {
 }
 
 sub _update_business_metrics ($self, $p) {
-    eval {
-        my $dbh;
-        if ($self->can('db_config') && $self->db_config && %{$self->db_config}) {
-            $dbh = HelloPerld::Database::Postgres::get_connection_from_config(
-                $self->app->logger_instance,
-                $self->db_config
-            );
-        } else {
-            # Fallback to environment variables
-            $dbh = HelloPerld::Database::Postgres::get_connection($self->app->logger_instance);
+    my $now = time();
+
+    # Check if cached metrics are still valid
+    if ($now < $business_metrics_cache->{expires_at} && %{$business_metrics_cache->{data}}) {
+        my $cached = $business_metrics_cache->{data};
+
+        # Apply cached values to Prometheus
+        if (exists $cached->{articles}) {
+            for my $status (keys %{$cached->{articles}}) {
+                $p->set('app_articles_total', $cached->{articles}{$status}, { status => $status });
+            }
         }
+        $p->set('app_media_files_total', $cached->{media_count} || 0);
+        $p->set('app_tags_total', $cached->{tag_count} || 0);
+        return;
+    }
+
+    # Fetch fresh metrics from database
+    my $dbh;
+    eval {
+        $dbh = $self->_get_cached_dbh();
         return unless $dbh;
+
+        my $metrics_data = {};
 
         # Count articles by status
         my $sth = $dbh->prepare("SELECT is_published, COUNT(*) FROM articles GROUP BY is_published");
         $sth->execute();
+        $metrics_data->{articles} = {};
         while (my ($is_published, $count) = $sth->fetchrow_array()) {
             my $status = $is_published ? 'published' : 'draft';
+            $metrics_data->{articles}{$status} = $count;
             $p->set('app_articles_total', $count, { status => $status });
         }
         $sth->finish();
@@ -282,17 +362,21 @@ sub _update_business_metrics ($self, $p) {
         $sth = $dbh->prepare("SELECT COUNT(*) FROM media");
         $sth->execute();
         my ($media_count) = $sth->fetchrow_array();
-        $p->set('app_media_files_total', $media_count || 0);
+        $metrics_data->{media_count} = $media_count || 0;
+        $p->set('app_media_files_total', $metrics_data->{media_count});
         $sth->finish();
 
         # Count tags
         $sth = $dbh->prepare("SELECT COUNT(*) FROM tags");
         $sth->execute();
         my ($tag_count) = $sth->fetchrow_array();
-        $p->set('app_tags_total', $tag_count || 0);
+        $metrics_data->{tag_count} = $tag_count || 0;
+        $p->set('app_tags_total', $metrics_data->{tag_count});
         $sth->finish();
 
-        $dbh->disconnect();
+        # Update cache
+        $business_metrics_cache->{data} = $metrics_data;
+        $business_metrics_cache->{expires_at} = $now + 60;  # 60-second TTL
     };
     if ($@) {
         $self->app->logger_instance->warn("Failed to update business metrics: $@");

@@ -7,33 +7,58 @@ use Test::Mojo;
 use FindBin;
 use lib "$FindBin::Bin/../../../lib";
 
+use HelloPerld::Model::ArticleView;
+
 # Initialize the Mojolicious app
 my $t = Test::Mojo->new('HelloPerld');
 
+# Helper to create ArticleView model with proper config
+sub create_view_model {
+    return HelloPerld::Model::ArticleView->new(
+        logger => $t->app->logger_instance,
+        db_config => $t->app->config->{database} || {}
+    );
+}
+
 # Create a test article first
 my $test_article_slug;
-subtest 'setup: create test article' => sub {
-    # Login as admin first
-    $t->post_ok('/api/auth/login' => json => {
-        username => $ENV{ADMIN_USERNAME} || 'admin',
-        password => $ENV{ADMIN_PASSWORD} || 'admin'
-    })->status_is(200);
+my $test_article_id;
+my $csrf_token;
 
-    # Create a test article
+subtest 'setup: create test article' => sub {
+    my $admin_pass = $ENV{ADMIN_PASSWORD};
+    unless ($admin_pass) {
+        plan skip_all => 'ADMIN_PASSWORD not set for article view tests';
+        return;
+    }
+
+    # Login as admin first and get CSRF token
+    my $login_response = $t->post_ok('/api/auth/login' => json => {
+        username => $ENV{ADMIN_USERNAME} || 'admin',
+        password => $admin_pass
+    })->status_is(200)->tx->res->json;
+
+    $csrf_token = $login_response->{csrf_token};
+    ok($csrf_token, 'Got CSRF token from login response');
+
+    # Create a test article with unique title
+    my $unique_title = 'Test Article for Views ' . time();
     my $article_data = {
-        title => 'Test Article for Views',
+        title => $unique_title,
         content => 'This is test content for view tracking',
         excerpt => 'Test excerpt',
         is_published => 1,
         tags => ['test']
     };
 
-    $t->post_ok('/api/admin/articles' => json => $article_data)
-      ->status_is(200)
+    $t->post_ok('/api/admin/articles' => {'X-CSRF-Token' => $csrf_token} => json => $article_data)
+      ->status_is(201)
       ->json_has('/article/slug', 'Article created with slug');
 
     $test_article_slug = $t->tx->res->json->{article}->{slug};
+    $test_article_id = $t->tx->res->json->{article}->{id};
     ok($test_article_slug, "Test article slug: $test_article_slug");
+    ok($test_article_id, "Test article ID: $test_article_id");
 };
 
 SKIP: {
@@ -48,9 +73,7 @@ SKIP: {
         sleep(1);
 
         # Verify view was tracked in database
-        my $view_model = HelloPerld::Model::ArticleView->new(
-            logger => $t->app->logger_instance
-        );
+        my $view_model = create_view_model();
 
         my $views = $view_model->get_views_by_slug($test_article_slug, 10, 0);
         ok(defined $views, 'Views query succeeded');
@@ -75,9 +98,7 @@ SKIP: {
         # Wait for async inserts
         sleep(1);
 
-        my $view_model = HelloPerld::Model::ArticleView->new(
-            logger => $t->app->logger_instance
-        );
+        my $view_model = create_view_model();
 
         my $total_views = $view_model->get_total_views_by_slug($test_article_slug);
         ok(defined $total_views, 'Total views query succeeded');
@@ -85,9 +106,7 @@ SKIP: {
     };
 
     subtest 'unique IPs counted correctly' => sub {
-        my $view_model = HelloPerld::Model::ArticleView->new(
-            logger => $t->app->logger_instance
-        );
+        my $view_model = create_view_model();
 
         my $unique_ips = $view_model->get_unique_ips_by_slug($test_article_slug);
         ok(defined $unique_ips, 'Unique IPs query succeeded');
@@ -95,9 +114,7 @@ SKIP: {
     };
 
     subtest 'views by IP address' => sub {
-        my $view_model = HelloPerld::Model::ArticleView->new(
-            logger => $t->app->logger_instance
-        );
+        my $view_model = create_view_model();
 
         # Get views to find an IP
         my $views = $view_model->get_views_by_slug($test_article_slug, 1, 0);
@@ -113,9 +130,7 @@ SKIP: {
 
     subtest 'non-article endpoints not tracked' => sub {
         my $initial_count = 0;
-        my $view_model = HelloPerld::Model::ArticleView->new(
-            logger => $t->app->logger_instance
-        );
+        my $view_model = create_view_model();
         $initial_count = $view_model->get_total_views_by_slug($test_article_slug) || 0;
 
         # Make request to non-article endpoint
@@ -131,17 +146,12 @@ SKIP: {
 }
 
 subtest 'cleanup: delete test article' => sub {
-    if ($test_article_slug) {
-        # Get article ID
-        $t->get_ok("/api/articles/$test_article_slug")
-          ->status_is(200);
+    if ($test_article_id && $csrf_token) {
+        $t->delete_ok("/api/admin/articles/$test_article_id" => {'X-CSRF-Token' => $csrf_token})
+          ->status_is(200, 'Test article deleted');
 
-        my $article_id = $t->tx->res->json->{article}->{id};
-
-        if ($article_id) {
-            $t->delete_ok("/api/admin/articles/$article_id")
-              ->status_is(200, 'Test article deleted');
-        }
+        # Logout
+        $t->post_ok('/api/auth/logout' => {'X-CSRF-Token' => $csrf_token})->status_is(200);
     }
 };
 

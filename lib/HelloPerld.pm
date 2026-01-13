@@ -60,8 +60,13 @@ sub startup {
         # Start request timing for Prometheus metrics
         $c->stash('request_start_time' => time());
 
-        # Track requests in progress
-        HelloPerld::Controller::Metrics->inc_in_progress();
+        # Track requests in progress (wrapped in eval to not affect user requests)
+        eval {
+            HelloPerld::Controller::Metrics->inc_in_progress();
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (inc_in_progress): $@");
+        }
     });
 
     # Add Prometheus metrics tracking after request completion
@@ -72,8 +77,13 @@ sub startup {
         my $path = $c->req->url->path->to_string;
         return if $path eq '/metrics';
 
-        # Decrement in-progress counter
-        HelloPerld::Controller::Metrics->dec_in_progress();
+        # Decrement in-progress counter (wrapped in eval to not affect user requests)
+        eval {
+            HelloPerld::Controller::Metrics->dec_in_progress();
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (dec_in_progress): $@");
+        }
 
         # Calculate request duration
         my $start_time = $c->stash('request_start_time');
@@ -85,21 +95,26 @@ sub startup {
         my $endpoint = _normalize_endpoint($path);
         my $status = $c->res->code || 200;
 
-        # Record metrics
-        HelloPerld::Controller::Metrics->inc_request($method, $endpoint, $status);
-        HelloPerld::Controller::Metrics->observe_request_duration($method, $endpoint, $duration);
+        # Record metrics (wrapped in eval to not affect user requests)
+        eval {
+            HelloPerld::Controller::Metrics->inc_request($method, $endpoint, $status);
+            HelloPerld::Controller::Metrics->observe_request_duration($method, $endpoint, $duration);
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (request metrics): $@");
+        }
 
         # Track article views for successful GET requests to article endpoints
         if ($method eq 'GET' && $status == 200) {
             # Check if this is an article view request: /api/articles/:slug
             if ($path =~ m{^/api/articles/([^/]+)$}) {
                 my $slug = $1;
-                
+
                 # Skip if slug looks like an ID (numeric) - those are admin endpoints
                 unless ($slug =~ /^\d+$/) {
                     # Extract client IP
                     my $ip_address = _get_client_ip($c);
-                    
+
                     # Track in Prometheus (non-blocking)
                     eval {
                         HelloPerld::Controller::Metrics->inc_article_view($slug, $ip_address);
@@ -107,7 +122,7 @@ sub startup {
                     if ($@) {
                         $c->app->logger_instance->warn("Failed to track article view in Prometheus: $@");
                     }
-                    
+
                     # Store in database (non-blocking, wrapped in eval to not affect request)
                     eval {
                         my $db_config = $c->can('db_config') ? $c->db_config : {};
