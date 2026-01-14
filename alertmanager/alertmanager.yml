@@ -47,11 +47,16 @@ receivers:
             headers:
                 subject: "[CRITICAL] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
 
-    # Warning alerts (Discord only)
+    # Warning alerts (Discord + Email)
     - name: "discord-warnings"
       webhook_configs:
           - url: "http://alertmanager-discord:9094"
             send_resolved: true
+      email_configs:
+          - to: "${ALERT_EMAIL}"
+            send_resolved: true
+            headers:
+                subject: "[WARNING] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
 
 inhibit_rules:
     # If critical is firing, suppress warning for same alertname
