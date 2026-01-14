@@ -152,7 +152,7 @@ sub get_views_by_ip {
     return undef unless $dbh;
 
     my $sql = q{
-        SELECT id, article_slug, ip_address, viewed_at
+        SELECT id, article_id, ip_address, viewed_at
         FROM article_views
         WHERE ip_address = ?
         ORDER BY viewed_at DESC

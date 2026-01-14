@@ -102,7 +102,7 @@ sub _declare_metrics {
 
     # Article viewership metrics
     $p->declare('app_article_views_total',
-        help => 'Total number of article views by slug and IP hash',
+        help => 'Total number of article views by article ID and IP hash',
         type => 'counter'
     );
 
@@ -222,13 +222,13 @@ sub _hash_ip_for_metrics {
 }
 
 # Track article view
-sub inc_article_view ($class, $article_slug, $ip_address) {
+sub inc_article_view ($class, $article_id, $ip_address) {
     my $p = _get_prometheus();
     my $ip_hash = _hash_ip_for_metrics($ip_address);
 
     # Increment per-article metric
     $p->inc('app_article_views_total', {
-        article_slug => $article_slug,
+        article_id => $article_id,
         ip_hash => $ip_hash
     });
 

@@ -128,7 +128,7 @@ sub get_by_slug {
             my $ip_address = $self->client_ip();
 
             # Track in Prometheus
-            HelloPerld::Controller::Metrics->inc_article_view($slug, $ip_address);
+            HelloPerld::Controller::Metrics->inc_article_view($article->{id}, $ip_address);
 
             # Store in database
             my $view_model = HelloPerld::Model::ArticleView->new(

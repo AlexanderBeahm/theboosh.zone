@@ -93,7 +93,7 @@ rate(app_database_queries_total[5m])
 | `app_articles_total` | Gauge | status | Article count (published/draft) |
 | `app_media_files_total` | Gauge | - | Total media files |
 | `app_tags_total` | Gauge | - | Total tags |
-| `app_article_views_total` | Counter | article_slug, ip_hash | Article view count |
+| `app_article_views_total` | Counter | article_id, ip_hash | Article view count |
 | `app_article_views_by_ip_total` | Counter | ip_hash | Views per IP hash |
 
 **Example Queries:**
@@ -106,7 +106,7 @@ app_articles_total{status="published"}
 rate(app_article_views_total[1h])
 
 # Top viewed articles
-topk(10, sum by (article_slug) (rate(app_article_views_total[24h])))
+topk(10, sum by (article_id) (rate(app_article_views_total[24h])))
 ```
 
 ### Application Metrics

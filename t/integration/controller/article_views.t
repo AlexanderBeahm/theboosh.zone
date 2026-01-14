@@ -9,8 +9,9 @@ use lib "$FindBin::Bin/../../../lib";
 
 use HelloPerld::Model::ArticleView;
 
-# Initialize the Mojolicious app
+# Initialize the Mojolicious app - one for admin actions, one for anonymous views
 my $t = Test::Mojo->new('HelloPerld');
+my $t_anon = Test::Mojo->new('HelloPerld');  # Separate client without admin session
 
 # Helper to create ArticleView model with proper config
 sub create_view_model {
@@ -65,8 +66,9 @@ SKIP: {
     skip 'No test article created', 5 unless $test_article_slug;
 
     subtest 'article view tracking on GET request' => sub {
-        # Make a GET request to the article endpoint
-        $t->get_ok("/api/articles/$test_article_slug")
+        # Make a GET request to the article endpoint using anonymous client
+        # (admin views are not tracked, so we use a separate session)
+        $t_anon->get_ok("/api/articles/$test_article_slug")
           ->status_is(200, 'Article endpoint returns 200');
 
         # Wait a moment for async database insert
@@ -75,23 +77,23 @@ SKIP: {
         # Verify view was tracked in database
         my $view_model = create_view_model();
 
-        my $views = $view_model->get_views_by_slug($test_article_slug, 10, 0);
+        my $views = $view_model->get_views_by_article_id($test_article_id, 10, 0);
         ok(defined $views, 'Views query succeeded');
         is(ref $views, 'ARRAY', 'Views is an array');
         cmp_ok(scalar @$views, '>=', 1, 'At least one view recorded');
 
         if (@$views > 0) {
             my $view = $views->[0];
-            is($view->{article_slug}, $test_article_slug, 'View has correct slug');
+            is($view->{article_id}, $test_article_id, 'View has correct article ID');
             ok($view->{ip_address}, 'View has IP address');
             ok($view->{viewed_at}, 'View has timestamp');
         }
     };
 
     subtest 'multiple views tracked correctly' => sub {
-        # Make multiple requests
+        # Make multiple requests using anonymous client
         for my $i (1..3) {
-            $t->get_ok("/api/articles/$test_article_slug")
+            $t_anon->get_ok("/api/articles/$test_article_slug")
               ->status_is(200);
         }
 
@@ -100,7 +102,7 @@ SKIP: {
 
         my $view_model = create_view_model();
 
-        my $total_views = $view_model->get_total_views_by_slug($test_article_slug);
+        my $total_views = $view_model->get_total_views_by_article_id($test_article_id);
         ok(defined $total_views, 'Total views query succeeded');
         cmp_ok($total_views, '>=', 4, 'Multiple views tracked (at least 4 including previous test)');
     };
@@ -108,7 +110,7 @@ SKIP: {
     subtest 'unique IPs counted correctly' => sub {
         my $view_model = create_view_model();
 
-        my $unique_ips = $view_model->get_unique_ips_by_slug($test_article_slug);
+        my $unique_ips = $view_model->get_unique_ips_by_article_id($test_article_id);
         ok(defined $unique_ips, 'Unique IPs query succeeded');
         cmp_ok($unique_ips, '>=', 1, 'At least one unique IP recorded');
     };
@@ -117,7 +119,7 @@ SKIP: {
         my $view_model = create_view_model();
 
         # Get views to find an IP
-        my $views = $view_model->get_views_by_slug($test_article_slug, 1, 0);
+        my $views = $view_model->get_views_by_article_id($test_article_id, 1, 0);
         skip 'No views to test IP lookup', 2 unless $views && @$views > 0;
 
         my $test_ip = $views->[0]->{ip_address};
@@ -131,16 +133,16 @@ SKIP: {
     subtest 'non-article endpoints not tracked' => sub {
         my $initial_count = 0;
         my $view_model = create_view_model();
-        $initial_count = $view_model->get_total_views_by_slug($test_article_slug) || 0;
+        $initial_count = $view_model->get_total_views_by_article_id($test_article_id) || 0;
 
-        # Make request to non-article endpoint
-        $t->get_ok('/api/tags')
+        # Make request to non-article endpoint using anonymous client
+        $t_anon->get_ok('/api/tags')
           ->status_is(200);
 
         sleep(1);
 
         # View count should not have increased
-        my $new_count = $view_model->get_total_views_by_slug($test_article_slug) || 0;
+        my $new_count = $view_model->get_total_views_by_article_id($test_article_id) || 0;
         is($new_count, $initial_count, 'Non-article endpoint does not create views');
     };
 }
