@@ -79,17 +79,19 @@ sub startup {
     $self->hook(after_dispatch => sub {
         my $c = shift;
 
-        # Skip metrics for the metrics endpoint itself to avoid recursion
         my $path = $c->req->url->path->to_string;
-        return if $path eq '/metrics';
 
-        # Decrement in-progress counter (wrapped in eval to not affect user requests)
+        # Always decrement in-progress counter for ALL requests (including /metrics)
+        # This must happen before any early returns to prevent gauge from growing unbounded
         eval {
             HelloPerld::Controller::Metrics->dec_in_progress();
         };
         if ($@) {
             $c->app->logger_instance->warn("Metrics tracking failed (dec_in_progress): $@");
         }
+
+        # Skip remaining metrics for the /metrics endpoint to avoid recursion
+        return if $path eq '/metrics';
 
         # Calculate request duration
         my $start_time = $c->stash('request_start_time');
