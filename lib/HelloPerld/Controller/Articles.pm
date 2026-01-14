@@ -7,7 +7,9 @@ use warnings;
 our $VERSION = '1.0.0';
 
 use HelloPerld::Model::Article;
+use HelloPerld::Model::ArticleView;
 use HelloPerld::Model::Tag;
+use HelloPerld::Controller::Metrics;
 use HelloPerld::Util::ErrorResponse qw(error_response);
 use JSON qw(decode_json);
 
@@ -117,6 +119,27 @@ sub get_by_slug {
             code => 'ART002',
             details => { slug => $slug }
         );
+    }
+
+    # Track article view (non-blocking, wrapped in eval to not affect request)
+    # Only track for non-admin users viewing published articles
+    if ($article->{is_published} && !$self->_is_admin()) {
+        eval {
+            my $ip_address = $self->client_ip();
+
+            # Track in Prometheus
+            HelloPerld::Controller::Metrics->inc_article_view($slug, $ip_address);
+
+            # Store in database
+            my $view_model = HelloPerld::Model::ArticleView->new(
+                logger => $self->app->logger_instance,
+                db_config => $self->db_config
+            );
+            $view_model->create($article->{id}, $ip_address);
+        };
+        if ($@) {
+            $self->app->logger_instance->warn("Failed to track article view: $@");
+        }
     }
 
     return $self->render(json => {

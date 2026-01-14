@@ -1139,6 +1139,10 @@
                     "is_published": { "type": "boolean" },
                     "meta_description": { "type": "string", "nullable": true },
                     "featured_image": { "type": "string", "nullable": true },
+                    "view_count": {
+                        "type": "integer",
+                        "description": "Aggregated view count for the article"
+                    },
                     "tags": {
                         "type": "array",
                         "items": { "$ref": "#/components/schemas/Tag" }

@@ -247,6 +247,64 @@ GROUP BY 1;
 
 Business metrics are cached with a 60-second TTL to reduce database load. Database connections are cached with a 30-second TTL. No manual intervention required.
 
+### View Count Aggregation
+
+Article view counts are permanently stored on the `articles.view_count` column via a scheduled incremental aggregation job running in a Docker cron container.
+
+**How it works:**
+1. Individual views are tracked in `article_views` table (with 2-year retention)
+2. Each view has a `view_indexed` flag (FALSE = not yet counted)
+3. Docker cron container runs `aggregate_article_view_counts()` every hour
+4. The function:
+   - Counts only views where `view_indexed = FALSE`
+   - Increments `articles.view_count` by the new count
+   - Marks processed views as `view_indexed = TRUE`
+5. This incremental approach ensures counts persist after old views are cleaned up
+
+**Why incremental?**
+- Each view is only counted once (tracked via `view_indexed` flag)
+- Counts survive the 2-year `article_views` cleanup
+- More efficient (only processes new views, not full recount)
+
+**Why Docker cron instead of pg_cron?**
+- pg_cron on DigitalOcean managed PostgreSQL only works on `defaultdb`
+- Docker cron container works identically across all environments
+- Easier to monitor and debug via container logs
+
+**Manual aggregation:**
+```bash
+# Run aggregation manually via Docker
+docker compose exec cron /script/aggregate-views.sh
+
+# Check cron container logs
+docker compose logs cron
+
+# Or run directly in database
+docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB \
+  -c "SELECT aggregate_article_view_counts();"
+```
+
+**SQL queries for debugging:**
+```sql
+-- Check current view counts
+SELECT slug, view_count FROM articles ORDER BY view_count DESC;
+
+-- Check unprocessed views
+SELECT COUNT(*) FROM article_views WHERE view_indexed = FALSE;
+
+-- Check views per article (unprocessed)
+SELECT article_slug, COUNT(*) as pending_views
+FROM article_views
+WHERE view_indexed = FALSE
+GROUP BY article_slug;
+```
+
+**Cron Container:**
+- Runs on Alpine Linux with postgresql-client
+- Schedule: Every hour at minute 0 (`0 * * * *`)
+- Logs output to stdout (visible via `docker compose logs cron`)
+- Automatically restarts on failure
+
 ## Troubleshooting
 
 ### Metrics Endpoint Returns Error

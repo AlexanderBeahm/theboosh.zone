@@ -18,12 +18,12 @@ and querying view statistics by article slug or IP address.
 
 =cut
 
-=head2 create($slug, $ip_address)
+=head2 create($article_id, $ip_address)
 
 Insert a new article view record.
 
 Parameters:
-    $slug - Article slug
+    $article_id - Article ID (integer)
     $ip_address - Client IP address (IPv4 or IPv6)
 
 Returns:
@@ -33,15 +33,15 @@ Returns:
 =cut
 
 sub create {
-    my ($self, $slug, $ip_address) = @_;
+    my ($self, $article_id, $ip_address) = @_;
 
-    return undef unless $slug && $ip_address;
+    return undef unless $article_id && $ip_address;
 
     my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 
     my $sql = q{
-        INSERT INTO article_views (article_slug, ip_address, viewed_at)
+        INSERT INTO article_views (article_id, ip_address, viewed_at)
         VALUES (?, ?, CURRENT_TIMESTAMP)
         RETURNING id
     };
@@ -49,7 +49,7 @@ sub create {
     my $id;
     eval {
         my $sth = $dbh->prepare($sql);
-        $sth->execute($slug, $ip_address);
+        $sth->execute($article_id, $ip_address);
         my ($inserted_id) = $sth->fetchrow_array();
         $sth->finish();
         $id = $inserted_id;
@@ -58,7 +58,7 @@ sub create {
 
     if ($@) {
         if ($self->{logger}) {
-            $self->{logger}->error("Failed to create article view: $@");
+            $self->{logger}->error("Failed to create article view for article_id $article_id: $@");
         }
         $dbh->disconnect() if $dbh;
         return undef;
@@ -67,12 +67,12 @@ sub create {
     return $id;
 }
 
-=head2 get_views_by_slug($slug, $limit, $offset)
+=head2 get_views_by_article_id($article_id, $limit, $offset)
 
 Get view records for a specific article.
 
 Parameters:
-    $slug - Article slug
+    $article_id - Article ID
     $limit - Maximum number of records to return (default: 100)
     $offset - Number of records to skip (default: 0)
 
@@ -82,10 +82,10 @@ Returns:
 
 =cut
 
-sub get_views_by_slug {
-    my ($self, $slug, $limit, $offset) = @_;
+sub get_views_by_article_id {
+    my ($self, $article_id, $limit, $offset) = @_;
 
-    return undef unless $slug;
+    return undef unless $article_id;
 
     $limit = $limit || 100;
     $offset = $offset || 0;
@@ -94,9 +94,9 @@ sub get_views_by_slug {
     return undef unless $dbh;
 
     my $sql = q{
-        SELECT id, article_slug, ip_address, viewed_at
+        SELECT id, article_id, ip_address, viewed_at
         FROM article_views
-        WHERE article_slug = ?
+        WHERE article_id = ?
         ORDER BY viewed_at DESC
         LIMIT ? OFFSET ?
     };
@@ -104,7 +104,7 @@ sub get_views_by_slug {
     my $views;
     eval {
         my $sth = $dbh->prepare($sql);
-        $sth->execute($slug, $limit, $offset);
+        $sth->execute($article_id, $limit, $offset);
         my @views_array;
         while (my $row = $sth->fetchrow_hashref()) {
             push @views_array, $row;
@@ -116,7 +116,7 @@ sub get_views_by_slug {
 
     if ($@) {
         if ($self->{logger}) {
-            $self->{logger}->error("Failed to get views by slug: $@");
+            $self->{logger}->error("Failed to get views by article_id: $@");
         }
         $dbh->disconnect() if $dbh;
         return undef;
@@ -183,12 +183,12 @@ sub get_views_by_ip {
     return $views;
 }
 
-=head2 get_unique_ips_by_slug($slug)
+=head2 get_unique_ips_by_article_id($article_id)
 
 Count unique IP addresses that viewed a specific article.
 
 Parameters:
-    $slug - Article slug
+    $article_id - Article ID
 
 Returns:
     $count - Number of unique IPs on success
@@ -196,10 +196,10 @@ Returns:
 
 =cut
 
-sub get_unique_ips_by_slug {
-    my ($self, $slug) = @_;
+sub get_unique_ips_by_article_id {
+    my ($self, $article_id) = @_;
 
-    return undef unless $slug;
+    return undef unless $article_id;
 
     my $dbh = $self->_get_dbh();
     return undef unless $dbh;
@@ -207,13 +207,13 @@ sub get_unique_ips_by_slug {
     my $sql = q{
         SELECT COUNT(DISTINCT ip_address)
         FROM article_views
-        WHERE article_slug = ?
+        WHERE article_id = ?
     };
 
     my $count;
     eval {
         my $sth = $dbh->prepare($sql);
-        $sth->execute($slug);
+        $sth->execute($article_id);
         ($count) = $sth->fetchrow_array();
         $sth->finish();
         $dbh->disconnect();
@@ -221,7 +221,7 @@ sub get_unique_ips_by_slug {
 
     if ($@) {
         if ($self->{logger}) {
-            $self->{logger}->error("Failed to get unique IPs by slug: $@");
+            $self->{logger}->error("Failed to get unique IPs by article_id: $@");
         }
         $dbh->disconnect() if $dbh;
         return undef;
@@ -230,12 +230,12 @@ sub get_unique_ips_by_slug {
     return $count || 0;
 }
 
-=head2 get_total_views_by_slug($slug)
+=head2 get_total_views_by_article_id($article_id)
 
 Get total view count for a specific article.
 
 Parameters:
-    $slug - Article slug
+    $article_id - Article ID
 
 Returns:
     $count - Total view count on success
@@ -243,10 +243,10 @@ Returns:
 
 =cut
 
-sub get_total_views_by_slug {
-    my ($self, $slug) = @_;
+sub get_total_views_by_article_id {
+    my ($self, $article_id) = @_;
 
-    return undef unless $slug;
+    return undef unless $article_id;
 
     my $dbh = $self->_get_dbh();
     return undef unless $dbh;
@@ -254,13 +254,13 @@ sub get_total_views_by_slug {
     my $sql = q{
         SELECT COUNT(*)
         FROM article_views
-        WHERE article_slug = ?
+        WHERE article_id = ?
     };
 
     my $count;
     eval {
         my $sth = $dbh->prepare($sql);
-        $sth->execute($slug);
+        $sth->execute($article_id);
         ($count) = $sth->fetchrow_array();
         $sth->finish();
         $dbh->disconnect();
@@ -268,7 +268,7 @@ sub get_total_views_by_slug {
 
     if ($@) {
         if ($self->{logger}) {
-            $self->{logger}->error("Failed to get total views by slug: $@");
+            $self->{logger}->error("Failed to get total views by article_id: $@");
         }
         $dbh->disconnect() if $dbh;
         return undef;

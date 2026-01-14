@@ -189,7 +189,8 @@ CREATE TABLE articles (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BOOLEAN DEFAULT FALSE,
     meta_description TEXT,
-    featured_image VARCHAR(255)
+    featured_image VARCHAR(255),
+    view_count INTEGER DEFAULT 0 NOT NULL  -- Aggregated from article_views via pg_cron
 );
 
 -- Tags table

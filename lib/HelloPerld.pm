@@ -47,6 +47,12 @@ sub startup {
         return $c->app->config->{database};
     });
 
+    # Add helper for client IP address extraction
+    $self->helper(client_ip => sub {
+        my $c = shift;
+        return _get_client_ip($c);
+    });
+
     # Add request ID correlation middleware
     $self->hook(before_dispatch => sub {
         my $c = shift;
@@ -104,40 +110,8 @@ sub startup {
             $c->app->logger_instance->warn("Metrics tracking failed (request metrics): $@");
         }
 
-        # Track article views for successful GET requests to article endpoints
-        if ($method eq 'GET' && $status == 200) {
-            # Check if this is an article view request: /api/articles/:slug
-            if ($path =~ m{^/api/articles/([^/]+)$}) {
-                my $slug = $1;
-
-                # Skip if slug looks like an ID (numeric) - those are admin endpoints
-                unless ($slug =~ /^\d+$/) {
-                    # Extract client IP
-                    my $ip_address = _get_client_ip($c);
-
-                    # Track in Prometheus (non-blocking)
-                    eval {
-                        HelloPerld::Controller::Metrics->inc_article_view($slug, $ip_address);
-                    };
-                    if ($@) {
-                        $c->app->logger_instance->warn("Failed to track article view in Prometheus: $@");
-                    }
-
-                    # Store in database (non-blocking, wrapped in eval to not affect request)
-                    eval {
-                        my $db_config = $c->can('db_config') ? $c->db_config : {};
-                        my $view_model = HelloPerld::Model::ArticleView->new(
-                            logger => $c->app->logger_instance,
-                            db_config => $db_config || {}
-                        );
-                        $view_model->create($slug, $ip_address);
-                    };
-                    if ($@) {
-                        $c->app->logger_instance->warn("Failed to store article view in database: $@");
-                    }
-                }
-            }
-        }
+        # Note: Article view tracking is now handled in the Articles controller
+        # (Articles::get_by_slug) where we have access to the article ID for the foreign key
     });
 
     # Helper to generate unique session ID for anonymous users
