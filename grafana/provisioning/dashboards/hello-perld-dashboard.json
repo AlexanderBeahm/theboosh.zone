@@ -1,205 +1,491 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Hello-Perld Monitoring",
-    "tags": ["hello-perld", "monitoring"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "id": 1,
-        "title": "Application Health Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up{job=\"hello-perld\"}",
-            "format": "time_series",
-            "legendFormat": "App Status"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
-              {
-                "options": {
-                  "0": {
-                    "text": "DOWN"
-                  },
-                  "1": {
-                    "text": "UP"
-                  }
-                },
-                "type": "value"
-              }
-            ],
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": 0
-                },
-                {
-                  "color": "green",
-                  "value": 1
-                }
-              ]
-            }
-          }
+  "id": null,
+  "uid": "thebooshzone-app",
+  "title": "TheBoosh.Zone Application",
+  "tags": ["thebooshzone", "application", "monitoring"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Application Status",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "up{job=\"hello-perld\"}",
+          "legendFormat": "App Status"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}
+          ],
+          "thresholds": {"steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Database Status",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "app_database_connection_status{job=\"hello-perld\"}",
+          "legendFormat": "DB Status"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "DISCONNECTED", "color": "red"}, "1": {"text": "CONNECTED", "color": "green"}}}
+          ],
+          "thresholds": {"steps": [{"color": "red", "value": 0}, {"color": "green", "value": 1}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Requests In Progress",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "http_requests_in_progress{job=\"hello-perld\"}",
+          "legendFormat": "In Progress"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 10}, {"color": "red", "value": 50}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0}
+    },
+    {
+      "id": 4,
+      "title": "Total Articles",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(app_articles_total{job=\"hello-perld\"})",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "blue", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0}
+    },
+    {
+      "id": 5,
+      "title": "Published Articles",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "app_articles_total{job=\"hello-perld\",status=\"published\"}",
+          "legendFormat": "Published"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "green", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0}
+    },
+    {
+      "id": 6,
+      "title": "Media Files",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "app_media_files_total{job=\"hello-perld\"}",
+          "legendFormat": "Media Files"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "purple", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0}
+    },
+    {
+      "id": 7,
+      "title": "Request Rate (per second)",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hello-perld\"}[5m]))",
+          "legendFormat": "Total"
         },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 0
-        }
-      },
-      {
-        "id": 2,
-        "title": "Database Connection Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "up{job=\"postgres\"}",
-            "format": "time_series",
-            "legendFormat": "DB Status"
-          }
-        ],
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
-              {
-                "options": {
-                  "0": {
-                    "text": "DOWN"
-                  },
-                  "1": {
-                    "text": "UP"
-                  }
-                },
-                "type": "value"
-              }
-            ],
-            "thresholds": {
-              "steps": [
-                {
-                  "color": "red",
-                  "value": 0
-                },
-                {
-                  "color": "green",
-                  "value": 1
-                }
-              ]
-            }
-          }
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hello-perld\",status=~\"2..\"}[5m]))",
+          "legendFormat": "2xx Success"
         },
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 0
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hello-perld\",status=~\"4..\"}[5m]))",
+          "legendFormat": "4xx Client Errors"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hello-perld\",status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx Server Errors"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}
         }
       },
-      {
-        "id": 3,
-        "title": "System CPU Usage",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
-            "format": "time_series",
-            "legendFormat": "CPU Usage %"
-          }
-        ],
-        "yAxes": [
-          {
-            "max": 100,
-            "min": 0,
-            "unit": "percent"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 8
-        }
-      },
-      {
-        "id": 4,
-        "title": "System Memory Usage",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "100 * (1 - ((node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes) / node_memory_MemTotal_bytes))",
-            "format": "time_series",
-            "legendFormat": "Memory Usage %"
-          }
-        ],
-        "yAxes": [
-          {
-            "max": 100,
-            "min": 0,
-            "unit": "percent"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 24,
-          "x": 0,
-          "y": 16
-        }
-      },
-      {
-        "id": 5,
-        "title": "PostgreSQL Active Connections",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "pg_stat_database_numbackends{datname=\"hello_perld\"}",
-            "format": "time_series",
-            "legendFormat": "Active Connections"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 0,
-          "y": 24
-        }
-      },
-      {
-        "id": 6,
-        "title": "Service Uptime",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "up{job=~\"hello-perld|postgres|node-exporter\"}",
-            "format": "time_series",
-            "legendFormat": "{{job}}"
-          }
-        ],
-        "gridPos": {
-          "h": 8,
-          "w": 12,
-          "x": 12,
-          "y": 24
-        }
-      }
-    ],
-    "time": {
-      "from": "now-1h",
-      "to": "now"
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4}
     },
-    "timepicker": {},
-    "templating": {
-      "list": []
+    {
+      "id": 8,
+      "title": "Request Duration (p50, p95, p99)",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"hello-perld\"}[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"hello-perld\"}[5m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"hello-perld\"}[5m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}
     },
-    "annotations": {
-      "list": []
+    {
+      "id": 9,
+      "title": "Error Rate (%)",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{job=\"hello-perld\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"hello-perld\"}[5m]))",
+          "legendFormat": "5xx Error Rate"
+        },
+        {
+          "expr": "100 * sum(rate(http_requests_total{job=\"hello-perld\",status=~\"4..\"}[5m])) / sum(rate(http_requests_total{job=\"hello-perld\"}[5m]))",
+          "legendFormat": "4xx Error Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"},
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12}
     },
-    "refresh": "30s",
-    "schemaVersion": 30,
-    "version": 1,
-    "links": []
-  }
+    {
+      "id": 10,
+      "title": "Requests by Endpoint",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"hello-perld\"}[5m])) by (endpoint)",
+          "legendFormat": "{{endpoint}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {"drawStyle": "bars", "stacking": {"mode": "normal"}}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12}
+    },
+    {
+      "id": 11,
+      "title": "Database Query Rate",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_database_queries_total{job=\"hello-perld\"}[5m])) by (operation)",
+          "legendFormat": "{{operation}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20}
+    },
+    {
+      "id": 12,
+      "title": "Admin Login Attempts",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_admin_login_attempts_total{job=\"hello-perld\",success=\"true\"}[5m])) * 60",
+          "legendFormat": "Successful"
+        },
+        {
+          "expr": "sum(rate(app_admin_login_attempts_total{job=\"hello-perld\",success=\"false\"}[5m])) * 60",
+          "legendFormat": "Failed"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {"drawStyle": "bars"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20}
+    },
+    {
+      "id": 13,
+      "title": "System CPU Usage",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "CPU Usage %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 70}, {"color": "red", "value": 90}]}
+        }
+      },
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 28}
+    },
+    {
+      "id": 14,
+      "title": "System Memory Usage",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "100 * (1 - ((node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes) / node_memory_MemTotal_bytes))",
+          "legendFormat": "Memory Usage %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}
+        }
+      },
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 28}
+    },
+    {
+      "id": 15,
+      "title": "PostgreSQL Active Connections",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(pg_stat_database_numbackends)",
+          "legendFormat": "Active Connections"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 50}, {"color": "red", "value": 90}]}
+        }
+      },
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 34}
+    },
+    {
+      "id": 16,
+      "title": "Disk Usage",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"} * 100)",
+          "legendFormat": "Root Disk Usage %"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {"steps": [{"color": "green", "value": 0}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}
+        }
+      },
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 34}
+    },
+    {
+      "id": 17,
+      "title": "Article Views Over Time",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_article_views_total{job=\"hello-perld\"}[5m])) by (article_slug)",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {"drawStyle": "line", "lineInterpolation": "smooth"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40}
+    },
+    {
+      "id": 18,
+      "title": "Top Articles by Views",
+      "type": "barchart",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "topk(10, sum(app_article_views_total{job=\"hello-perld\"}) by (article_slug))",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {"orientation": "horizontal", "displayMode": "gradient"}
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40}
+    },
+    {
+      "id": 19,
+      "title": "Views by IP Range",
+      "type": "table",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(app_article_views_total{job=\"hello-perld\"}) by (ip_hash)",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "IP Range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "list",
+            "inspect": false
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48}
+    },
+    {
+      "id": 20,
+      "title": "Unique IPs per Article",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "count(count(app_article_views_total{job=\"hello-perld\"}) by (ip_hash, article_slug)) by (article_slug)",
+          "legendFormat": "{{article_slug}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "blue", "value": 0}]},
+          "custom": {"displayMode": "list"}
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48}
+    },
+    {
+      "id": 21,
+      "title": "Total Article Views",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(app_article_views_total{job=\"hello-perld\"})",
+          "legendFormat": "Total Views"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {"steps": [{"color": "green", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 56}
+    },
+    {
+      "id": 22,
+      "title": "Article Views Rate (per minute)",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "prometheus-ds"},
+      "targets": [
+        {
+          "expr": "sum(rate(app_article_views_total{job=\"hello-perld\"}[5m])) * 60",
+          "legendFormat": "Views/min"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqm",
+          "thresholds": {"steps": [{"color": "blue", "value": 0}]}
+        }
+      },
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 56}
+    }
+  ],
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "templating": {"list": []},
+  "annotations": {"list": []},
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "version": 2,
+  "links": []
 }

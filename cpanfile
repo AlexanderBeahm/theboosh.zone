@@ -11,7 +11,7 @@ requires 'Mojolicious::Plugin::OpenAPI';
 requires 'Mojolicious::Plugin::SwaggerUI';
 
 # Cryptography and Security
-requires 'Crypt::Random';
+requires 'Bytes::Random::Secure';
 requires 'Digest::SHA';
 requires 'Crypt::Bcrypt';
 
@@ -28,6 +28,9 @@ requires 'File::ShareDir';
 # Data Handling
 requires 'JSON';
 requires 'MIME::Types';
+
+# Monitoring
+requires 'Prometheus::Tiny::Shared';
 
 # Time Utilities
 requires 'Time::Local';

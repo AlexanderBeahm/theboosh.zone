@@ -86,6 +86,28 @@
                 }
             }
         },
+        "/metrics": {
+            "get": {
+                "summary": "Prometheus Metrics Endpoint",
+                "description": "Returns application metrics in Prometheus text format for monitoring and observability.",
+                "operationId": "getMetrics",
+                "x-mojo-to": "Metrics#get_metrics",
+                "tags": ["Metrics"],
+                "responses": {
+                    "200": {
+                        "description": "Metrics in Prometheus text format",
+                        "content": {
+                            "text/plain": {
+                                "schema": {
+                                    "type": "string",
+                                    "example": "# HELP http_requests_total Total HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total{method=\"GET\",endpoint=\"/api/articles\",status=\"200\"} 42"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "summary": "Admin Login",
@@ -1117,6 +1139,10 @@
                     "is_published": { "type": "boolean" },
                     "meta_description": { "type": "string", "nullable": true },
                     "featured_image": { "type": "string", "nullable": true },
+                    "view_count": {
+                        "type": "integer",
+                        "description": "Aggregated view count for the article"
+                    },
                     "tags": {
                         "type": "array",
                         "items": { "$ref": "#/components/schemas/Tag" }
@@ -1447,6 +1473,10 @@
         {
             "name": "Health",
             "description": "Health check operations"
+        },
+        {
+            "name": "Metrics",
+            "description": "Prometheus metrics for monitoring and observability"
         },
         {
             "name": "Authentication",

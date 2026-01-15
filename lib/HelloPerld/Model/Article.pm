@@ -22,7 +22,7 @@ sub get_all {
     my $sql = q{
         SELECT DISTINCT a.id, a.title, a.slug, a.excerpt, a.author,
                a.published_at, a.date_added, a.date_updated, a.is_published,
-               a.meta_description, a.featured_image
+               a.meta_description, a.featured_image, a.view_count
         FROM articles a
     };
 
@@ -91,7 +91,7 @@ sub get_by_slug {
     my $sql = q{
         SELECT id, title, slug, content, excerpt, author,
                published_at, date_added, date_updated, is_published,
-               meta_description, featured_image
+               meta_description, featured_image, view_count
         FROM articles
         WHERE slug = ?
     };
@@ -131,7 +131,7 @@ sub get_by_id {
     my $sql = q{
         SELECT id, title, slug, content, excerpt, author,
                published_at, date_added, date_updated, is_published,
-               meta_description, featured_image
+               meta_description, featured_image, view_count
         FROM articles
         WHERE id = ?
     };

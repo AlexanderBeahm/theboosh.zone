@@ -5,6 +5,8 @@ our $VERSION = '1.0.0';
 
 use HelloPerld::Logger::LoggerFactory;
 use HelloPerld::Security::CSRF;
+use HelloPerld::Controller::Metrics;
+use Time::HiRes qw(time);
 
 sub startup {
     my $self = shift;
@@ -45,6 +47,12 @@ sub startup {
         return $c->app->config->{database};
     });
 
+    # Add helper for client IP address extraction
+    $self->helper(client_ip => sub {
+        my $c = shift;
+        return _get_client_ip($c);
+    });
+
     # Add request ID correlation middleware
     $self->hook(before_dispatch => sub {
         my $c = shift;
@@ -54,6 +62,58 @@ sub startup {
 
         # Set X-Request-ID in response headers for tracing
         $c->res->headers->header('X-Request-ID' => $request_id);
+
+        # Start request timing for Prometheus metrics
+        $c->stash('request_start_time' => time());
+
+        # Track requests in progress (wrapped in eval to not affect user requests)
+        eval {
+            HelloPerld::Controller::Metrics->inc_in_progress();
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (inc_in_progress): $@");
+        }
+    });
+
+    # Add Prometheus metrics tracking after request completion
+    $self->hook(after_dispatch => sub {
+        my $c = shift;
+
+        my $path = $c->req->url->path->to_string;
+
+        # Always decrement in-progress counter for ALL requests (including /metrics)
+        # This must happen before any early returns to prevent gauge from growing unbounded
+        eval {
+            HelloPerld::Controller::Metrics->dec_in_progress();
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (dec_in_progress): $@");
+        }
+
+        # Skip remaining metrics for the /metrics endpoint to avoid recursion
+        return if $path eq '/metrics';
+
+        # Calculate request duration
+        my $start_time = $c->stash('request_start_time');
+        return unless $start_time;
+        my $duration = time() - $start_time;
+
+        # Normalize endpoint for metrics (remove IDs, slugs)
+        my $method = $c->req->method;
+        my $endpoint = _normalize_endpoint($path);
+        my $status = $c->res->code || 200;
+
+        # Record metrics (wrapped in eval to not affect user requests)
+        eval {
+            HelloPerld::Controller::Metrics->inc_request($method, $endpoint, $status);
+            HelloPerld::Controller::Metrics->observe_request_duration($method, $endpoint, $duration);
+        };
+        if ($@) {
+            $c->app->logger_instance->warn("Metrics tracking failed (request metrics): $@");
+        }
+
+        # Note: Article view tracking is now handled in the Articles controller
+        # (Articles::get_by_slug) where we have access to the article ID for the foreign key
     });
 
     # Helper to generate unique session ID for anonymous users
@@ -226,6 +286,9 @@ sub startup {
     # Health check endpoints (outside API namespace for direct access)
     $self->routes->get('/health')->to('Health#getHealthStatus');
     $self->routes->get('/health/ready')->to('Health#get_readiness_status');
+
+    # Prometheus metrics endpoint
+    $self->routes->get('/metrics')->to('Metrics#get_metrics');
 
     # Configure session management from config
     my $session_config = $self->config->{session};
@@ -426,6 +489,62 @@ sub startup {
 
     # Log startup
     $self->logger_instance->info("HelloPerld web application started! Hello, perld!");
+}
+
+# Helper function to extract client IP address from request
+# Handles X-Forwarded-For header for proxy/load balancer scenarios
+sub _get_client_ip {
+    my ($c) = @_;
+
+    # Check X-Forwarded-For header (first IP if comma-separated)
+    my $forwarded_for = $c->req->headers->header('X-Forwarded-For');
+    if ($forwarded_for) {
+        # X-Forwarded-For can contain multiple IPs, take the first one
+        my @ips = split /\s*,\s*/, $forwarded_for;
+        my $ip = $ips[0];
+        $ip =~ s/^\s+|\s+$//g;  # Trim whitespace
+        return $ip if $ip;
+    }
+
+    # Fallback to direct connection IP
+    my $remote_addr = $c->tx->remote_address;
+    return $remote_addr if $remote_addr;
+
+    # Final fallback
+    return 'unknown';
+}
+
+# Helper function to normalize API endpoints for metrics
+# Replaces dynamic path segments (IDs, slugs) with placeholders
+sub _normalize_endpoint {
+    my ($path) = @_;
+
+    # Skip static files and uploads
+    return '/static' if $path =~ /\.(css|js|mjs|map|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|pdf)$/i;
+    return '/uploads' if $path =~ m{^/uploads/};
+
+    # Normalize API endpoints
+    # /api/articles/123 -> /api/articles/:id
+    # /api/articles/my-slug -> /api/articles/:slug
+    # /api/admin/articles/123 -> /api/admin/articles/:id
+    # /api/admin/media/123 -> /api/admin/media/:id
+    # /api/admin/tags/123 -> /api/admin/tags/:id
+
+    my $normalized = $path;
+
+    # Admin routes with numeric IDs
+    $normalized =~ s{^(/api/admin/(?:articles|media|tags))/\d+}{$1/:id}g;
+
+    # Public articles by slug (non-numeric path segment)
+    $normalized =~ s{^(/api/articles)/[^/]+$}{$1/:slug}g;
+
+    # Public tags by slug
+    $normalized =~ s{^(/api/tags)/[^/]+$}{$1/:slug}g;
+
+    # Uploads paths
+    $normalized =~ s{^(/uploads)/.*$}{$1/*}g;
+
+    return $normalized;
 }
 
 1;

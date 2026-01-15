@@ -1,0 +1,51 @@
+FROM alpine:latest AS builder
+
+# Install gettext-envsubst which provides a standalone envsubst
+RUN apk add --no-cache gettext libintl && \
+    cp /usr/bin/envsubst /tmp/envsubst && \
+    # Copy required libraries
+    mkdir -p /tmp/lib && \
+    cp /lib/ld-musl-x86_64.so.1 /tmp/lib/ && \
+    cp /usr/lib/libintl.so.8 /tmp/lib/
+
+FROM prom/alertmanager:latest
+
+USER root
+
+# Copy envsubst and its dependencies
+COPY --from=builder /tmp/envsubst /usr/local/bin/envsubst
+COPY --from=builder /tmp/lib/ /lib/
+
+# Copy the template config with proper permissions
+COPY --chmod=644 alertmanager/alertmanager.yml /etc/alertmanager/alertmanager.yml.template
+
+# Create entrypoint script that validates and substitutes environment variables
+RUN echo '#!/bin/sh' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Validate required environment variables' >> /entrypoint.sh && \
+    echo 'MISSING_VARS=""' >> /entrypoint.sh && \
+    echo 'if [ -z "$SMTP_FROM" ]; then MISSING_VARS="$MISSING_VARS SMTP_FROM"; fi' >> /entrypoint.sh && \
+    echo 'if [ -z "$SMTP_USERNAME" ]; then MISSING_VARS="$MISSING_VARS SMTP_USERNAME"; fi' >> /entrypoint.sh && \
+    echo 'if [ -z "$SMTP_PASSWORD" ]; then MISSING_VARS="$MISSING_VARS SMTP_PASSWORD"; fi' >> /entrypoint.sh && \
+    echo 'if [ -z "$ALERT_EMAIL" ]; then MISSING_VARS="$MISSING_VARS ALERT_EMAIL"; fi' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo 'if [ -n "$MISSING_VARS" ]; then' >> /entrypoint.sh && \
+    echo '    echo "ERROR: Missing required environment variables:$MISSING_VARS"' >> /entrypoint.sh && \
+    echo '    echo "Please set these variables before starting AlertManager"' >> /entrypoint.sh && \
+    echo '    exit 1' >> /entrypoint.sh && \
+    echo 'fi' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Substitute environment variables into config' >> /entrypoint.sh && \
+    echo '/usr/local/bin/envsubst < /etc/alertmanager/alertmanager.yml.template > /tmp/alertmanager.yml' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Set proper file permissions (restrictive since config may contain secrets)' >> /entrypoint.sh && \
+    echo 'chmod 600 /tmp/alertmanager.yml' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo 'exec /bin/alertmanager --config.file=/tmp/alertmanager.yml "$@"' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+USER nobody
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["--storage.path=/alertmanager"]

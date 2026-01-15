@@ -189,7 +189,8 @@ CREATE TABLE articles (
     date_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BOOLEAN DEFAULT FALSE,
     meta_description TEXT,
-    featured_image VARCHAR(255)
+    featured_image VARCHAR(255),
+    view_count INTEGER DEFAULT 0 NOT NULL  -- Aggregated from article_views via pg_cron
 );
 
 -- Tags table
@@ -2014,6 +2015,8 @@ See `.env.*.example` files for complete list of required variables.
 
 ### Monitoring & Logging
 
+**For comprehensive monitoring documentation, see [docs/MONITORING.md](../../docs/MONITORING.md)**. This includes metrics reference, PromQL examples, alert configuration, runbooks, and troubleshooting guides.
+
 **Prometheus** (port 9090):
 - Application metrics from Mojolicious
 - Database metrics (via postgres-exporter)
@@ -2210,6 +2213,7 @@ volumes:
 This is critical because certbot runs on the **host** and stores certificates in `/etc/letsencrypt/`. Using Docker named volumes would create a separate isolated storage that nginx can't access.
 
 ### References & Documentation
+- **Monitoring Guide**: `docs/MONITORING.md` (Prometheus, Grafana, AlertManager, metrics reference, runbooks)
 - **Post-Implementation Checklist**: `.claude/claude-documentation/Post-Implementation-Checklist.md` (Setup Steps)
 - **Mojolicious Documentation**: https://docs.mojolicious.org/
 - **Hypnotoad Guide**: https://docs.mojolicious.org/Mojo/Server/Hypnotoad

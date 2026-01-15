@@ -74,16 +74,16 @@ services:
 
     grafana:
         image: grafana/grafana:latest
-
         ports:
             - "3001:3000"
         environment:
             - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
             - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
             - GF_USERS_ALLOW_SIGN_UP=false
-
         volumes:
             - grafana_data:/var/lib/grafana
+            - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
         depends_on:
             - prometheus
 
@@ -110,10 +110,47 @@ services:
             - "--path.procfs=/host/proc"
             - "--path.rootfs=/rootfs"
             - "--path.sysfs=/host/sys"
-            - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+            - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|run/user)($$|/)"
+
+    alertmanager:
+        build:
+            context: .
+            dockerfile: Dockerfile.alertmanager
+        ports:
+            - "9093:9093"
+        volumes:
+            - alertmanager_data:/alertmanager
+        environment:
+            - ALERT_EMAIL=${ALERT_EMAIL}
+            - SMTP_FROM=${SMTP_FROM}
+            - SMTP_USERNAME=${SMTP_USERNAME}
+            - SMTP_PASSWORD=${SMTP_PASSWORD}
+        depends_on:
+            - prometheus
+            - alertmanager-discord
+
+    alertmanager-discord:
+        image: benjojo/alertmanager-discord
+        environment:
+            - DISCORD_WEBHOOK=${DISCORD_WEBHOOK_URL}
+
+    cron:
+        build:
+            context: .
+            dockerfile: Dockerfile.cron
+        environment:
+            POSTGRES_HOST: db
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+            POSTGRES_DB: ${POSTGRES_DB}
+            DB_SCHEMA: public
+        depends_on:
+            db:
+                condition: service_healthy
 
 volumes:
     postgres_data:
     prometheus_data:
     grafana_data:
     uploads_data:
+    alertmanager_data:
