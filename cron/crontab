@@ -1,0 +1,7 @@
+# Cron schedule for TheBoosh.Zone scheduled tasks
+# Format: minute hour day-of-month month day-of-week command
+
+# Aggregate article view counts every hour at minute 0
+0 * * * * /script/aggregate-views.sh >> /proc/1/fd/1 2>&1
+
+# Empty line required at end of crontab

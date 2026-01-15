@@ -1,0 +1,179 @@
+# Prometheus Alert Rules for TheBoosh.Zone
+# Based on SLOs: 99.5% uptime, p95 < 500ms, error rate < 1%
+
+groups:
+  - name: application
+    rules:
+      # Service Down - Critical
+      - alert: ServiceDown
+        expr: up{job="hello-perld"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "TheBoosh.Zone application is down"
+          description: "The application has been unreachable for more than 2 minutes."
+
+      # High Error Rate - Critical
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="hello-perld",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="hello-perld"}[5m]))
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 5%)"
+
+      # Database Unavailable - Critical
+      - alert: DatabaseUnavailable
+        expr: app_database_connection_status{job="hello-perld"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection unavailable"
+          description: "Application cannot connect to the database for more than 1 minute."
+
+      # High Latency - Critical
+      - alert: HighLatencyP95
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="hello-perld"}[5m])) by (le)) > 2
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High p95 latency detected"
+          description: "p95 latency is {{ $value | printf \"%.2f\" }}s (threshold: 2s)"
+
+      # Elevated Error Rate - Warning
+      - alert: ElevatedErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="hello-perld",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="hello-perld"}[5m]))
+          ) * 100 > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated 5xx error rate"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 1%)"
+
+      # High Request Queue - Warning
+      - alert: HighRequestQueue
+        expr: http_requests_in_progress{job="hello-perld"} > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of requests in progress"
+          description: "{{ $value }} requests currently being processed."
+
+  - name: infrastructure
+    rules:
+      # High Memory Usage - Warning
+      - alert: HighMemoryUsage
+        expr: |
+          100 * (1 - ((node_memory_MemFree_bytes + node_memory_Cached_bytes + node_memory_Buffers_bytes) / node_memory_MemTotal_bytes)) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
+
+      # High CPU Usage - Warning
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}% (threshold: 80%)"
+
+      # Low Disk Space - Warning
+      - alert: LowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | printf \"%.1f\" }}% disk space remaining (threshold: 15%)"
+
+      # Critical Low Disk Space
+      - alert: CriticalLowDiskSpace
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space shortage"
+          description: "Only {{ $value | printf \"%.1f\" }}% disk space remaining!"
+
+  - name: database
+    rules:
+      # PostgreSQL Down - Critical
+      - alert: PostgreSQLDown
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL exporter is down"
+          description: "Cannot reach PostgreSQL metrics exporter."
+
+      # High PostgreSQL Connections - Warning
+      - alert: HighPostgreSQLConnections
+        expr: sum(pg_stat_database_numbackends) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of PostgreSQL connections"
+          description: "{{ $value }} active connections (threshold: 50)"
+
+  - name: nginx
+    rules:
+      # nginx Down - Critical
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "nginx is down"
+          description: "nginx reverse proxy is unreachable for more than 2 minutes."
+
+      # High nginx Active Connections - Warning
+      - alert: HighNginxConnections
+        expr: nginx_connections_active > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High nginx connection count"
+          description: "{{ $value }} active connections (threshold: 500)"
+
+  - name: security
+    rules:
+      # Failed Login Spike - Warning
+      - alert: FailedLoginSpike
+        expr: |
+          sum(rate(app_admin_login_attempts_total{job="hello-perld",success="false"}[5m])) * 300 > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Spike in failed login attempts"
+          description: "{{ $value | printf \"%.0f\" }} failed login attempts in the last 5 minutes."

@@ -23,7 +23,7 @@ use warnings;
 
 use HelloPerld::Database::Postgres;
 use Digest::SHA qw(sha256_hex);
-use Crypt::Random qw(makerandom_octet);
+use Bytes::Random::Secure qw(random_bytes);
 use Crypt::Bcrypt qw(bcrypt);
 
 # This migration upgrades existing SHA-256 admin passwords to bcrypt
@@ -106,7 +106,7 @@ eval {
 
             if ($computed_hash eq $stored_hash) {
                 # Password matches - upgrade to bcrypt
-                my $bcrypt_hash = bcrypt($admin_password, '2b', 12, makerandom_octet(Length => 16));
+                my $bcrypt_hash = bcrypt($admin_password, '2b', 12, random_bytes(16));
 
                 my $update_sql = "UPDATE admin_users SET password_hash = ? WHERE id = ?";
                 my $update_sth = $dbh->prepare($update_sql);

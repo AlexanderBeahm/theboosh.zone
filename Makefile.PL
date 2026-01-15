@@ -14,7 +14,7 @@ WriteMakefile(
         'Mojolicious'         => 0,  # Added for web framework,
         'Mojolicious::Plugin::OpenAPI' => 0, # Added for OpenAPI/Swagger
         'Mojolicious::Plugin::SwaggerUI' => 0, # Added for Swagger UI
-        'Crypt::Random'       => 0,  # Added for password salt generation
+        'Bytes::Random::Secure' => 0,  # Added for cryptographically secure random bytes
         'Digest::SHA'         => 0,  # Added for password hashing (legacy)
         'Crypt::Bcrypt'       => 0,  # Added for secure password hashing
         'Imager'              => 0,  # Added for image processing
@@ -24,6 +24,7 @@ WriteMakefile(
         'File::Spec'          => 0,  # Added for secure path construction
         'MIME::Types'         => 0,  # Added for MIME type detection
         'MIME::Base64'        => 0,  # Added for base64 image upload support
+        'Prometheus::Tiny::Shared' => 0,  # Added for Prometheus metrics endpoint
         'Test::More'          => '1.302',  # Core testing framework
         'Test::Mojo'          => 0,  # Mojolicious testing
         'DBD::Mock'           => 0,  # Mock database driver

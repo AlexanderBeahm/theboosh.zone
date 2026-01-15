@@ -1,0 +1,18 @@
+# Lightweight cron container for scheduled tasks
+FROM alpine:3.19
+
+# Install postgresql-client for database access and bash for scripts
+RUN apk add --no-cache postgresql-client bash
+
+# Create scripts directory
+RUN mkdir -p /script
+
+# Copy the aggregation script
+COPY script/aggregate-views.sh /script/aggregate-views.sh
+RUN chmod +x /script/aggregate-views.sh
+
+# Copy crontab
+COPY cron/crontab /etc/crontabs/root
+
+# Run crond in foreground with logging to stdout
+CMD ["crond", "-f", "-l", "2"]

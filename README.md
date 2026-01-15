@@ -491,6 +491,8 @@ curl -X POST http://localhost:3000/api/admin/media/upload \
 
 ## Monitoring
 
+For comprehensive monitoring documentation, see **[docs/MONITORING.md](docs/MONITORING.md)**.
+
 ### Prometheus Metrics
 
 Available at http://localhost:9090
@@ -500,6 +502,8 @@ Metrics include:
 - Database connection pool stats
 - PostgreSQL performance metrics
 - System resource usage
+- Article view tracking with privacy-preserving IP hashing
+- Business metrics (articles, media, tags counts)
 
 ### Grafana Dashboards
 
@@ -508,6 +512,16 @@ Available at http://localhost:3001
 Default credentials (configure in `.env`):
 - Username: admin
 - Password: (set via `GF_SECURITY_ADMIN_PASSWORD`)
+
+### AlertManager
+
+Available at http://localhost:9093
+
+Alerts are sent via:
+- Discord webhooks
+- Email (SMTP)
+
+Required environment variables: `SMTP_FROM`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `ALERT_EMAIL`, `DISCORD_WEBHOOK_URL`
 
 ## Production Deployment
 
