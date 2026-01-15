@@ -37,6 +37,19 @@ sub create {
 
     return undef unless $article_id && $ip_address;
 
+    # Validate IP address format (IPv4 or IPv6)
+    # IPv4: 0.0.0.0 to 255.255.255.255
+    my $ipv4_pattern = qr/^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    # IPv6: Full and compressed formats
+    my $ipv6_pattern = qr/^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,7}:$|^(?:[0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,5}(?::[0-9a-fA-F]{1,4}){1,2}$|^(?:[0-9a-fA-F]{1,4}:){1,4}(?::[0-9a-fA-F]{1,4}){1,3}$|^(?:[0-9a-fA-F]{1,4}:){1,3}(?::[0-9a-fA-F]{1,4}){1,4}$|^(?:[0-9a-fA-F]{1,4}:){1,2}(?::[0-9a-fA-F]{1,4}){1,5}$|^[0-9a-fA-F]{1,4}:(?::[0-9a-fA-F]{1,4}){1,6}$|^:(?::[0-9a-fA-F]{1,4}){1,7}$|^::$/;
+
+    unless ($ip_address =~ $ipv4_pattern || $ip_address =~ $ipv6_pattern) {
+        if ($self->{logger}) {
+            $self->{logger}->warn("Invalid IP address format rejected: $ip_address");
+        }
+        return undef;
+    }
+
     my $dbh = $self->_get_dbh();
     return undef unless $dbh;
 

@@ -26,6 +26,9 @@ COPY --from=frontend-builder /frontend/dist /usr/src/hello-perld/lib/HelloPerld/
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Create metrics directory with restricted permissions
+RUN mkdir -p /var/lib/hello-perld && chmod 755 /var/lib/hello-perld
+
 EXPOSE 3000
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["morbo", "./script/hello-perld"]

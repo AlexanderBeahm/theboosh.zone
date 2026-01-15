@@ -9,16 +9,28 @@ use Mojo::Base 'Mojolicious::Controller', -signatures;
 use Prometheus::Tiny::Shared;
 use HelloPerld::Database::Postgres;
 use Time::HiRes qw(time);
+use File::Path qw(make_path);
 
 # Shared Prometheus instance for multi-worker support (hypnotoad)
 my $prom;
 
 sub _get_prometheus {
     unless ($prom) {
-        my $metrics_file = $ENV{PROMETHEUS_METRICS_FILE} || '/tmp/hello-perld-metrics';
+        my $metrics_dir = $ENV{PROMETHEUS_METRICS_DIR} || '/var/lib/hello-perld';
+        my $metrics_file = $ENV{PROMETHEUS_METRICS_FILE} || "$metrics_dir/metrics";
+
+        # Ensure directory exists with restricted permissions
+        unless (-d $metrics_dir) {
+            make_path($metrics_dir, { mode => 0755 });
+        }
+
         $prom = Prometheus::Tiny::Shared->new(
             filename => $metrics_file
         );
+
+        # Set restrictive permissions on metrics file (owner read/write only)
+        chmod 0600, $metrics_file if -f $metrics_file;
+
         _declare_metrics($prom);
     }
     return $prom;
