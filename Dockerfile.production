@@ -25,7 +25,9 @@ RUN cpanm --installdeps --notest .
 # Create app user for security (don't run as root)
 RUN useradd -m -u 1000 appuser && \
     mkdir -p /usr/src/hello-perld/uploads && \
-    chown -R appuser:appuser /usr/src/hello-perld
+    mkdir -p /var/lib/hello-perld && \
+    chown -R appuser:appuser /usr/src/hello-perld && \
+    chown -R appuser:appuser /var/lib/hello-perld
 
 # Copy application files
 COPY --chown=appuser:appuser . /usr/src/hello-perld

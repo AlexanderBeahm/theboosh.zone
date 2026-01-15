@@ -3,7 +3,7 @@
 
 global:
     resolve_timeout: 5m
-    smtp_smarthost: "${SMTP_SERVER:-smtp.protonmail.ch:587}"
+    smtp_smarthost: "${SMTP_SERVER}"
     smtp_from: "${SMTP_FROM}"
     smtp_auth_username: "${SMTP_USERNAME}"
     smtp_auth_password: "${SMTP_PASSWORD}"
