@@ -723,6 +723,24 @@ onUnmounted(() => {
     background: transparent;
 }
 
+/* Image centering and sizing */
+.article-body :deep(img) {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Table wrapper for horizontal scroll on overflow */
+.article-body :deep(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 /* Article Footer - Retro-Futuristic */
 .article-footer {
     padding: var(--spacing-xl);
