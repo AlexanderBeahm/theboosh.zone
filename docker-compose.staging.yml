@@ -115,10 +115,10 @@ services:
 
     postgres-exporter:
         image: prometheuscommunity/postgres-exporter:latest
-        environment:
-            DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=require"
         ports:
             - "127.0.0.1:9187:9187"
+        environment:
+            DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=require"
         networks:
             - theboosh-staging-network
         restart: unless-stopped
