@@ -62,6 +62,8 @@ services:
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.retention.time=360h"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         networks:
             - theboosh-staging-network
         restart: unless-stopped
@@ -115,12 +117,9 @@ services:
 
     postgres-exporter:
         image: prometheuscommunity/postgres-exporter:latest
+        network_mode: host
         environment:
             DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=require"
-        ports:
-            - "127.0.0.1:9187:9187"
-        networks:
-            - theboosh-staging-network
         restart: unless-stopped
 
     alertmanager:
