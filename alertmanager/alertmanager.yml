@@ -45,7 +45,7 @@ receivers:
           - to: "${ALERT_EMAIL}"
             send_resolved: true
             headers:
-                subject: "[CRITICAL] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
+                subject: "[CRITICAL] [${APP_ENV}] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
 
     # Warning alerts (Discord + Email)
     - name: "discord-warnings"
@@ -56,7 +56,7 @@ receivers:
           - to: "${ALERT_EMAIL}"
             send_resolved: true
             headers:
-                subject: "[WARNING] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
+                subject: "[WARNING] [${APP_ENV}] TheBoosh.Zone Alert: {{ .CommonAnnotations.summary }}"
 
 inhibit_rules:
     # If critical is firing, suppress warning for same alertname

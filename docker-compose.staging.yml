@@ -132,6 +132,7 @@ services:
         volumes:
             - alertmanager_data:/alertmanager
         environment:
+            - APP_ENV=staging
             - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
             - ALERT_EMAIL=${ALERT_EMAIL}
             - SMTP_FROM=${SMTP_FROM}
@@ -142,6 +143,15 @@ services:
             - theboosh-staging-network
         depends_on:
             - prometheus
+            - alertmanager-discord
+        restart: unless-stopped
+
+    alertmanager-discord:
+        image: benjojo/alertmanager-discord
+        environment:
+            - DISCORD_WEBHOOK=${DISCORD_WEBHOOK_URL}
+        networks:
+            - theboosh-staging-network
         restart: unless-stopped
 
     cron:
