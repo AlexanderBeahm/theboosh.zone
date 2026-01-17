@@ -159,6 +159,7 @@ services:
             - SMTP_FROM=${SMTP_FROM}
             - SMTP_USERNAME=${SMTP_USERNAME}
             - SMTP_PASSWORD=${SMTP_PASSWORD}
+            - SMTP_SERVER=${SMTP_SERVER}
         networks:
             - theboosh-production-network
         depends_on:

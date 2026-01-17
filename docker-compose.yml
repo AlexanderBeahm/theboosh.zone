@@ -125,6 +125,7 @@ services:
             - SMTP_FROM=${SMTP_FROM}
             - SMTP_USERNAME=${SMTP_USERNAME}
             - SMTP_PASSWORD=${SMTP_PASSWORD}
+            - SMTP_SERVER=${SMTP_SERVER}
         depends_on:
             - prometheus
             - alertmanager-discord
