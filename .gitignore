@@ -51,5 +51,6 @@ yarn-error.log*
 !.vscode/settings.json
 .idea/
 
-# Nginx htpasswd (generated on server)
+# Nginx htpasswd and IP whitelist (generated on server)
 nginx/.htpasswd
+nginx/ip-whitelist.conf
