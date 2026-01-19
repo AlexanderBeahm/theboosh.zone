@@ -50,3 +50,6 @@ yarn-error.log*
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
+
+# Nginx htpasswd (generated on server)
+nginx/.htpasswd

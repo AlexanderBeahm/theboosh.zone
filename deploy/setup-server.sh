@@ -141,6 +141,39 @@ read -p "Press Enter to continue with SSL certificate generation, or Ctrl+C to a
 sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos -m alexanderbeahm@gmail.com
 echo "SSL certificate generated for $DOMAIN"
 
+# Generate SSL certificates for monitoring subdomains
+echo ""
+echo "========================================="
+echo "Monitoring SSL Certificate Setup"
+echo "========================================="
+
+if [ "$ENVIRONMENT" = "staging" ]; then
+    MONITORING_DOMAINS=(
+        "monitoring-staging.theboosh.zone"
+        "prometheus-staging.theboosh.zone"
+        "alertmanager-staging.theboosh.zone"
+    )
+elif [ "$ENVIRONMENT" = "production" ]; then
+    MONITORING_DOMAINS=(
+        "monitoring.theboosh.zone"
+        "prometheus.theboosh.zone"
+        "alertmanager.theboosh.zone"
+    )
+fi
+
+echo "Generating certificates for monitoring subdomains..."
+echo "IMPORTANT: Make sure DNS records exist for these domains!"
+
+for domain in "${MONITORING_DOMAINS[@]}"; do
+    echo "Generating certificate for $domain..."
+    sudo certbot certonly --standalone -d "$domain" \
+        --non-interactive --agree-tos -m alexanderbeahm@gmail.com || {
+        echo "Warning: Failed to generate cert for $domain - DNS may not be ready"
+    }
+done
+
+echo "Monitoring SSL certificates complete"
+
 # Setup certbot auto-renewal
 echo "Setting up certbot auto-renewal..."
 sudo systemctl enable certbot.timer
