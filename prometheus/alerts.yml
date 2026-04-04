@@ -66,14 +66,16 @@ groups:
           description: "Error rate is {{ $value | printf \"%.2f\" }}% (threshold: 1%)"
 
       # High Request Queue - Warning
+      # Threshold raised and duration extended to reduce false positives
+      # from transient scanner bursts (most scanners are now blocked at nginx)
       - alert: HighRequestQueue
-        expr: http_requests_in_progress{job="hello-perld"} > 50
-        for: 5m
+        expr: http_requests_in_progress{job="hello-perld"} > 100
+        for: 10m
         labels:
           severity: warning
         annotations:
           summary: "High number of requests in progress"
-          description: "{{ $value }} requests currently being processed."
+          description: "{{ $value }} requests currently being processed (threshold: 100)."
 
   - name: infrastructure
     rules:
@@ -177,3 +179,16 @@ groups:
         annotations:
           summary: "Spike in failed login attempts"
           description: "{{ $value | printf \"%.0f\" }} failed login attempts in the last 5 minutes."
+
+      # Scanner Traffic Spike - Info
+      # Tracks elevated nginx 4xx rates which indicate active scanning.
+      # Routed as info severity so it does not trigger operational escalation.
+      - alert: ScannerTrafficSpike
+        expr: |
+          sum(rate(nginx_http_requests_total{status=~"4.."}[5m])) * 300 > 200
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "Elevated scanner/blocked traffic detected"
+          description: "{{ $value | printf \"%.0f\" }} blocked or 4xx requests in the last 5 minutes. This is typically automated scanning and is handled by nginx blocking rules."
