@@ -52,6 +52,7 @@ services:
             - /mnt/volume_nyc3_01/hello-perld-prod/uploads:/usr/share/nginx/html/uploads:ro
             - /etc/letsencrypt:/etc/letsencrypt:ro
             - /var/www/certbot:/var/www/certbot:ro
+            - /var/log/nginx:/var/log/nginx
         networks:
             - theboosh-production-network
         depends_on:
