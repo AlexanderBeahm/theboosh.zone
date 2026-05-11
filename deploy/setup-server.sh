@@ -141,11 +141,27 @@ read -p "Press Enter to continue with SSL certificate generation, or Ctrl+C to a
 sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos -m alexanderbeahm@gmail.com
 echo "SSL certificate generated for $DOMAIN"
 
-# Setup certbot auto-renewal
-echo "Setting up certbot auto-renewal..."
-sudo systemctl enable certbot.timer
-sudo systemctl start certbot.timer
-echo "Certbot auto-renewal configured"
+# Convert renewal config from standalone (used for bootstrap) to webroot,
+# so the dockerized certbot service can renew without binding port 80
+# (which is owned by the nginx container post-deploy).
+echo "Converting renewal config to webroot..."
+sudo mkdir -p /var/www/certbot/.well-known/acme-challenge
+RENEWAL_CONF=/etc/letsencrypt/renewal/$DOMAIN.conf
+sudo sed -i 's|^authenticator = standalone|authenticator = webroot|' "$RENEWAL_CONF"
+if ! sudo grep -q "^webroot_path" "$RENEWAL_CONF"; then
+    sudo sed -i '/^authenticator = webroot/a webroot_path = /var/www/certbot,' "$RENEWAL_CONF"
+fi
+if ! sudo grep -q "^\[\[webroot_map\]\]" "$RENEWAL_CONF"; then
+    echo "[[webroot_map]]" | sudo tee -a "$RENEWAL_CONF" > /dev/null
+    echo "$DOMAIN = /var/www/certbot" | sudo tee -a "$RENEWAL_CONF" > /dev/null
+fi
+echo "Renewal config converted to webroot"
+
+# Disable host certbot.timer: the docker-compose certbot service owns renewals
+# and reloads nginx via deploy-hook. Two renewers on the same lineage conflict.
+echo "Disabling host certbot.timer (docker certbot owns renewals)..."
+sudo systemctl disable --now certbot.timer 2>/dev/null || true
+echo "Host certbot.timer disabled"
 
 echo ""
 echo "========================================="
