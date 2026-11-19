@@ -34,6 +34,11 @@ if [ ! -f "docker-compose.$ENVIRONMENT.yml" ]; then
     exit 1
 fi
 
+# Host-level mitigation for the kernel half of nginx2root (blocks the SCTP kernel module).
+# Best-effort by design: it needs root or passwordless sudo, and it must never block a deploy.
+echo ""
+./deploy/harden-host.sh || echo "WARNING: SCTP mitigation was not applied; continuing deployment. See docs/NGINX2ROOT.md"
+
 # Check for port conflicts only if no containers are currently running
 # (prevents false positives on re-deployments)
 echo ""
@@ -128,6 +133,19 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     sleep 5
     ATTEMPT=$((ATTEMPT + 1))
 done
+
+# Verify the running nginx contains the nginx2root fixes (CVE-2026-123007 and related).
+# Fail only on a positively detected vulnerable version (exit 1). "Could not determine"
+# (exit 2, e.g. nginx not up yet) only warns, so a broken nginx still reaches the workflow's
+# post-deploy health check and rollback instead of being masked here.
+echo ""
+echo "Verifying nginx version (nginx2root)..."
+NGINX_VERSION_CHECK=0
+./deploy/check-nginx-version.sh "docker-compose.$ENVIRONMENT.yml" || NGINX_VERSION_CHECK=$?
+if [ "$NGINX_VERSION_CHECK" -eq 1 ]; then
+    echo "ERROR: nginx is running a vulnerable version. Check the nginx image tag in docker-compose.$ENVIRONMENT.yml."
+    exit 1
+fi
 
 # Verify firewall rules for external access
 echo ""
