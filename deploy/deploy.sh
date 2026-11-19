@@ -34,6 +34,11 @@ if [ ! -f "docker-compose.$ENVIRONMENT.yml" ]; then
     exit 1
 fi
 
+# Host-level mitigation for the kernel half of nginx2root (blocks the SCTP kernel module).
+# Best-effort by design: it needs root or passwordless sudo, and it must never block a deploy.
+echo ""
+./deploy/harden-host.sh || echo "WARNING: SCTP mitigation was not applied; continuing deployment. See docs/NGINX2ROOT.md"
+
 # Check for port conflicts only if no containers are currently running
 # (prevents false positives on re-deployments)
 echo ""
