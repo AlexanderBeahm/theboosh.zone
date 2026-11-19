@@ -588,6 +588,8 @@ Located in `deploy/` directory:
 - **`deploy.sh`** - Deploy application with health checks
 - **`rollback.sh`** - Rollback to previous deployment
 - **`backup.sh`** - Create database backup
+- **`harden-host.sh`** - Idempotent host hardening (blocks the SCTP kernel module); run by `deploy.sh`
+- **`check-nginx-version.sh`** - Verifies the running nginx is patched against nginx2root; run by `deploy.sh`
 
 ### Environment Configuration
 
@@ -629,6 +631,7 @@ Benefits: Cost-effective (one database), data isolation, easy backup/restore.
 - Non-root Docker containers
 - Firewall (ufw): Only SSH, HTTP, HTTPS open
 - Automated database backups (30-day retention)
+- nginx pinned to a patched release and verified after every deploy; SCTP kernel module blocked on hosts, best-effort from `deploy.sh` (nginx2root, see [docs/NGINX2ROOT.md](docs/NGINX2ROOT.md))
 
 **Secrets Management:**
 - Environment-specific `.env` files (gitignored)

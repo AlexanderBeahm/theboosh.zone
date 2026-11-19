@@ -1925,10 +1925,12 @@ Located in `deploy/` directory:
 
 2. **`deploy.sh`** - Deployment automation (run on every deployment)
    - Validates environment and loads `.env` file
+   - Applies host hardening via `harden-host.sh` (best-effort, never blocks a deploy)
    - Pulls latest Docker images
    - Runs database migrations
    - Deploys with docker-compose up -d
    - Health check with 30 retries (5s intervals)
+   - Verifies the running nginx is patched via `check-nginx-version.sh` (fails the deploy only on a detected vulnerable version)
    - Automatic rollback on health check failure
    - Cleanup old Docker images
    ```bash
@@ -1953,6 +1955,20 @@ Located in `deploy/` directory:
    - 30-day retention policy (auto-cleanup)
    ```bash
    ./deploy/backup.sh staging  # or production
+   ```
+
+5. **`harden-host.sh`** - Host hardening for the nginx2root kernel chain (run by `deploy.sh`)
+   - Blocks the SCTP kernel module via `/etc/modprobe.d/disable-sctp.conf` (idempotent)
+   - Needs root or passwordless sudo; otherwise it warns and the deploy continues
+   - See `docs/NGINX2ROOT.md`
+   ```bash
+   sudo ./deploy/harden-host.sh
+   ```
+
+6. **`check-nginx-version.sh`** - Verifies the running nginx contains the nginx2root fixes (run by `deploy.sh`)
+   - Exit 0 = patched (>= 1.31.9 mainline / >= 1.30.7 stable), 1 = vulnerable, 2 = could not determine
+   ```bash
+   ./deploy/check-nginx-version.sh docker-compose.production.yml
    ```
 
 ### Rollback Procedure
