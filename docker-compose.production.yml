@@ -42,6 +42,9 @@ services:
                 max-file: "3"
 
     nginx:
+        # Pinned (not the floating :alpine tag) so the running version never depends on when the
+        # host last pulled. Must stay >= 1.31.9 (mainline) or >= 1.30.7 (stable): nginx2root,
+        # CVE-2026-123007. deploy/check-nginx-version.sh fails the deploy if it is older.
         image: nginx:1.31.9-alpine
         container_name: nginx-production
         ports:

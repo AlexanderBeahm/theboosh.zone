@@ -134,6 +134,19 @@ while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
     ATTEMPT=$((ATTEMPT + 1))
 done
 
+# Verify the running nginx contains the nginx2root fixes (CVE-2026-123007 and related).
+# Fail only on a positively detected vulnerable version (exit 1). "Could not determine"
+# (exit 2, e.g. nginx not up yet) only warns, so a broken nginx still reaches the workflow's
+# post-deploy health check and rollback instead of being masked here.
+echo ""
+echo "Verifying nginx version (nginx2root)..."
+NGINX_VERSION_CHECK=0
+./deploy/check-nginx-version.sh "docker-compose.$ENVIRONMENT.yml" || NGINX_VERSION_CHECK=$?
+if [ "$NGINX_VERSION_CHECK" -eq 1 ]; then
+    echo "ERROR: nginx is running a vulnerable version. Check the nginx image tag in docker-compose.$ENVIRONMENT.yml."
+    exit 1
+fi
+
 # Verify firewall rules for external access
 echo ""
 echo "Verifying firewall configuration..."
